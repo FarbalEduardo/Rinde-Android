@@ -1,61 +1,62 @@
-# 👥 Historias de Usuario - Rinde
+# 🛒 Proyecto Rinde: Historias de Usuario (Versión Final)
 
-Este documento define las necesidades funcionales del proyecto desde la perspectiva del usuario final.
-
----
-
-### HU-01: Escaneo de Código de Barras
-**Como** usuario en el supermercado,
-**quiero** apuntar mi cámara al código de barras de un producto,
-**para** que la app lo identifique automáticamente sin que yo tenga que escribir.
-
-* **Criterios de Aceptación:**
-    * Debe reconocer formatos EAN-13 y UPC-A.
-    * El reconocimiento debe ocurrir en menos de 2 segundos.
-    * Si el producto ya existe en la base de datos, debe mostrar el último precio registrado.
-
+Este documento detalla las funcionalidades clave de **Rinde**, enfocadas en el ahorro inteligente mediante IA, colaboración comunitaria y comparativas en tiempo real.
 
 ---
 
-### HU-02: Extracción de Precio con IA (Gemini)
-**Como** comprador con prisa,
-**quiero** tomar una foto a la etiqueta de precio en el estante,
-**para** que la IA detecte el precio decimal y la unidad (kg, gr, lt) automáticamente.
+### HU-01: Extracción Inteligente con IA (Gemini)
+**Como** comprador, 
+**quiero** tomar una foto a la etiqueta de precio y escanear el código de barras, 
+**para** que la IA desglose ofertas complejas (3x2, bonificaciones) y me dé el **Precio Neto Real** por unidad (kg/lt).
 
 * **Criterios de Aceptación:**
-    * La app debe extraer el precio numérico y la unidad de medida.
-    * Debe permitir al usuario corregir el dato manualmente si la IA comete un error.
-    * Debe funcionar correctamente incluso con etiquetas de diferentes diseños.
+    * Extraer precio y unidad de medida automáticamente.
+    * Calcular el valor real frente a promociones de marketing.
+    * Funcionar en **Modo Offline** (Modo Búnker) y sincronizar al detectar señal.
 
 ---
 
-### HU-03: Comparativa de Valor Real
-**Como** ahorrador consciente,
-**quiero** que la app calcule cuánto cuesta el producto por cada kilo o litro,
-**para** poder comparar un envase grande con uno pequeño y saber cuál es realmente más barato.
+### HU-02: Lista de Seguimiento y Alertas de "Caza"
+**Como** usuario con planes de compra (despensa o tecnología), 
+**quiero** agregar productos a una lista de deseos, 
+**para** recibir una **Notificación Push** inmediata cuando alguien de la comunidad o una tienda en línea encuentre el artículo en oferta.
 
 * **Criterios de Aceptación:**
-    * La app debe normalizar todos los precios a una unidad común (ej: $/kg).
-    * Debe mostrar visualmente cuál es la opción más económica entre dos o más escaneos.
+    * Permitir agregar cualquier artículo (TV, Teléfono, Leche, etc.).
+    * Notificar si el precio reportado es menor al "Precio Objetivo" del usuario.
+    * Priorizar alertas con reporte de "Poco Stock".
 
 ---
 
-### HU-04: Historial Local (Modo Offline)
-**Como** usuario que compra en tiendas con mala señal de internet,
-**quiero** que mis escaneos se guarden en mi teléfono,
-**para** poder consultarlos en cualquier momento sin depender de la red.
+### HU-03: Comparativa Híbrida (Comunidad + Web)
+**Como** ahorrador, 
+**quiero** ver en una sola pantalla los precios reportados por otros usuarios y los precios de tiendas en línea (Google Shopping/Amazon), 
+**para** decidir dónde me conviene comprar en ese momento.
 
 * **Criterios de Aceptación:**
-    * Los datos deben persistir aunque se cierre la aplicación.
-    * El usuario debe poder borrar registros antiguos del historial.
+    * Mostrar reportes recientes de la comunidad en tiendas físicas cercanas.
+    * Integrar resultados de búsqueda web en tiempo real.
+    * Calcular el **Costo-Beneficio** (ahorro vs. tiempo/distancia de traslado).
 
 ---
 
-### HU-05: Registro de Tienda
-**Como** analista de mis propios gastos,
-**quiero** asignar una tienda (ej: Walmart, Costco) a cada precio guardado,
-**para** saber en qué lugar me conviene comprar cada cosa en el futuro.
+### HU-04: Validación Social y Reputación
+**Como** miembro de la comunidad, 
+**quiero** validar si las ofertas de otros siguen vigentes o reportar nuevas liquidaciones, 
+**para** ganar puntos de reputación y mantener la base de datos confiable.
 
 * **Criterios de Aceptación:**
-    * Debe permitir seleccionar tiendas de una lista o agregar una nueva.
-    * Opcional: Sugerir la tienda más cercana mediante GPS.
+    * Botones de "Sigue vigente" o "Ya no está" en cada reporte.
+    * Sistema de niveles (Cazador Novato a Experto) basado en la veracidad de los reportes.
+    * Caducidad automática de precios viejos (TTL).
+
+---
+
+### HU-05: Privacidad y Eficiencia (Zonas de Caza)
+**Como** usuario preocupado por mi privacidad y batería, 
+**quiero** seleccionar zonas generales de interés en lugar de compartir mi GPS exacto, 
+**para** recibir ofertas relevantes de mi área de forma segura.
+
+* **Criterios de Aceptación:**
+    * Selección de zonas por nombre (ej. "Zona Satélite", "Centro").
+    * Uso mínimo de servicios de ubicación en segundo plano.
