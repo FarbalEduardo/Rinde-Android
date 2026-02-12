@@ -1,0 +1,61 @@
+# 👥 Historias de Usuario - Rinde
+
+Este documento define las necesidades funcionales del proyecto desde la perspectiva del usuario final.
+
+---
+
+### HU-01: Escaneo de Código de Barras
+**Como** usuario en el supermercado,
+**quiero** apuntar mi cámara al código de barras de un producto,
+**para** que la app lo identifique automáticamente sin que yo tenga que escribir.
+
+* **Criterios de Aceptación:**
+    * Debe reconocer formatos EAN-13 y UPC-A.
+    * El reconocimiento debe ocurrir en menos de 2 segundos.
+    * Si el producto ya existe en la base de datos, debe mostrar el último precio registrado.
+
+
+---
+
+### HU-02: Extracción de Precio con IA (Gemini)
+**Como** comprador con prisa,
+**quiero** tomar una foto a la etiqueta de precio en el estante,
+**para** que la IA detecte el precio decimal y la unidad (kg, gr, lt) automáticamente.
+
+* **Criterios de Aceptación:**
+    * La app debe extraer el precio numérico y la unidad de medida.
+    * Debe permitir al usuario corregir el dato manualmente si la IA comete un error.
+    * Debe funcionar correctamente incluso con etiquetas de diferentes diseños.
+
+---
+
+### HU-03: Comparativa de Valor Real
+**Como** ahorrador consciente,
+**quiero** que la app calcule cuánto cuesta el producto por cada kilo o litro,
+**para** poder comparar un envase grande con uno pequeño y saber cuál es realmente más barato.
+
+* **Criterios de Aceptación:**
+    * La app debe normalizar todos los precios a una unidad común (ej: $/kg).
+    * Debe mostrar visualmente cuál es la opción más económica entre dos o más escaneos.
+
+---
+
+### HU-04: Historial Local (Modo Offline)
+**Como** usuario que compra en tiendas con mala señal de internet,
+**quiero** que mis escaneos se guarden en mi teléfono,
+**para** poder consultarlos en cualquier momento sin depender de la red.
+
+* **Criterios de Aceptación:**
+    * Los datos deben persistir aunque se cierre la aplicación.
+    * El usuario debe poder borrar registros antiguos del historial.
+
+---
+
+### HU-05: Registro de Tienda
+**Como** analista de mis propios gastos,
+**quiero** asignar una tienda (ej: Walmart, Costco) a cada precio guardado,
+**para** saber en qué lugar me conviene comprar cada cosa en el futuro.
+
+* **Criterios de Aceptación:**
+    * Debe permitir seleccionar tiendas de una lista o agregar una nueva.
+    * Opcional: Sugerir la tienda más cercana mediante GPS.
