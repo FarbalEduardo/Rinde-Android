@@ -27,7 +27,7 @@ Para este proyecto se han seleccionado tecnologías modernas que garantizan esca
 Este repositorio sigue metodologías de desarrollo profesional:
 - **GitFlow:** Manejo de ramas para funciones y correcciones.
 - **Kanban:** Gestión de tareas mediante [GitHub Projects](https://github.com/FarbalEduardo/Rinde-Android).
-- **Documentación:** [Historias de Usuario](./USER_STORIES.md) y diagramas de arquitectura.
+- **Documentación:** [Historias de Usuario](https://github.com/FarbalEduardo/Rinde-Android/blob/main/USER_STORIES) y diagramas de arquitectura.
 
 ---
 > *Proyecto desarrollado como referencia técnica de portafolio para Ingeniería en Android.*
