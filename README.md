@@ -46,3 +46,5 @@ Para conocer a detalle la lógica de negocio, los criterios de aceptación y el 
 
 ---
 *Desarrollado como proyecto de portafolio para demostrar la integración de modelos de lenguaje (LLM), sincronización de datos en tiempo real y arquitectura de software moderna en Android.*
+
+<!-- Prueba de humo para validar pipeline CI/CD y Release Please -->

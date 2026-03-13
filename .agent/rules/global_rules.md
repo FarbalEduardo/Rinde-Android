@@ -20,3 +20,10 @@
 - **Check `.agent/rules/`**: Before starting any task, read the rules in this folder.
 - **Check `docs/features/`**: Before working on a specific feature, check for its context file.
 - **Task Boundaries**: Always define task boundaries and keep `task.md` updated.
+
+## 🚀 SDD & CI/CD Workflow
+- **Spec-Driven Development (SDD)**: REQUIRED. Before writing any code, validate or create a specification file (`.md`). NO CODE is written without its corresponding test.
+- **Test-First**: Generate the test file first, observe it fail, then write the implementation in Domain/Data to make it pass.
+- **Conventional Commits**: REQUIRED. All suggested commits must follow Semantic Versioning format (`feat:`, `fix:`, `chore:`, `docs:`, etc.) to trigger Google Release Please correctly.
+- **Local Validation**: Always remind the user to run `./gradlew test` locally ensuring checks pass before pushing.
+- **CI/CD Integrity**: DO NOT modify `.github/workflows/tests.yml` or `.github/workflows/release-please.yml` unless explicitly requested for Android pipeline optimization.
