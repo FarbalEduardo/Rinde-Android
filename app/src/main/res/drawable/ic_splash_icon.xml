@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Use the original PNG logo, making it large and centered -->
+    <item
+        android:drawable="@drawable/ic_logo"
+        android:width="@dimen/logo_splash_size"
+        android:height="@dimen/logo_splash_size"
+        android:gravity="center" />
+</layer-list>

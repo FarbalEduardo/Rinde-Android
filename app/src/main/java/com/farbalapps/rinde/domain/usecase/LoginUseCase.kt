@@ -6,10 +6,12 @@ import com.farbalapps.rinde.domain.util.Resource
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
-class LoginUseCase(
+import javax.inject.Inject
+
+class LoginUseCase @Inject constructor(
     private val repository: AuthRepository,
-    private val validateEmail: ValidateEmail = ValidateEmail(),
-    private val validatePassword: ValidatePassword = ValidatePassword()
+    private val validateEmail: ValidateEmail,
+    private val validatePassword: ValidatePassword
 ) {
     fun execute(email: String, password: String): Flow<Resource<User>> {
         val emailResult = validateEmail.execute(email)

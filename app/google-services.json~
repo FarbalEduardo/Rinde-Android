@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "491472128600",
+    "project_id": "rinde-fab60",
+    "storage_bucket": "rinde-fab60.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:491472128600:android:d0b870177568772518582d",
+        "android_client_info": {
+          "package_name": "com.farbalapps.rinde"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "491472128600-a7rdvlqnutpvnqh6118jftnubphe5ins.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.farbalapps.rinde",
+            "certificate_hash": "7ad1eea0dac68a553c6662e600b02034edb8d342"
+          }
+        },
+        {
+          "client_id": "491472128600-bcq3patk208hqtjhphi8igr7gid46vn0.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB08u5_LJODP66cqpUZBVeuOFPrePr4JnY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "491472128600-bcq3patk208hqtjhphi8igr7gid46vn0.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
