@@ -2,12 +2,14 @@ package com.farbalapps.rinde.domain.usecase
 
 import com.farbalapps.rinde.domain.util.ValidationResult
 
-class ValidatePassword {
+import javax.inject.Inject
+
+class ValidatePassword @Inject constructor() {
     fun execute(password: String): ValidationResult {
-        if (password.length < 8) {
+        if (password.length < 6) {
             return ValidationResult(
                 successful = false,
-                errorMessage = "Minimum 8 characters required"
+                errorMessage = "Minimum 6 characters required"
             )
         }
         
@@ -16,14 +18,6 @@ class ValidatePassword {
             return ValidationResult(
                 successful = false,
                 errorMessage = "Password must contain at least one number"
-            )
-        }
-        
-        val containsSpecialChar = password.any { !it.isLetterOrDigit() }
-        if (!containsSpecialChar) {
-            return ValidationResult(
-                successful = false,
-                errorMessage = "Password must contain at least one special character"
             )
         }
         

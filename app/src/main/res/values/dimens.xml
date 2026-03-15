@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Padding & Spacing -->
+    <dimen name="padding_small">8dp</dimen>
+    <dimen name="padding_medium">16dp</dimen>
+    <dimen name="padding_large">24dp</dimen>
+    <dimen name="padding_xlarge">32dp</dimen>
+    
+    <!-- Logo Sizes -->
+    <dimen name="logo_welcome_size">100dp</dimen>
+    <dimen name="logo_splash_size">96dp</dimen>
+    
+    <!-- Button Sizes -->
+    <dimen name="button_height_standard">56.dp</dimen>
+    <dimen name="button_corner_radius">16dp</dimen>
+    
+    <!-- Typography -->
+    <dimen name="text_size_body">16sp</dimen>
+    <dimen name="text_size_title">24sp</dimen>
+    <dimen name="text_size_display">32sp</dimen>
+
+    <!-- Component Specific -->
+    <dimen name="card_corner_radius">28dp</dimen>
+    <dimen name="input_corner_radius">16dp</dimen>
+    <dimen name="spacer_small">8dp</dimen>
+    <dimen name="spacer_medium">16dp</dimen>
+    <dimen name="spacer_large">24dp</dimen>
+    <dimen name="spacer_xlarge">32dp</dimen>
+    <dimen name="social_icon_size">20dp</dimen>
+</resources>
