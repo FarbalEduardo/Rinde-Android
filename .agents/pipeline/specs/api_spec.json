@@ -1,0 +1,11 @@
+{
+  "contract_version": "1.0",
+  "sealed_classes": {
+    "LoginUiState": {
+      "required_properties": ["isLoading", "error", "email", "password"]
+    },
+    "SignUpUiState": {
+      "required_properties": ["isLoading", "error", "isSuccess"]
+    }
+  }
+}

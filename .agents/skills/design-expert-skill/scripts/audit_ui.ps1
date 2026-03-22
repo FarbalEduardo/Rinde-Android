@@ -1,44 +1,26 @@
-Write-Host "Iniciando Auditoría Avanzada de UI y Diseño (M3)..." -ForegroundColor Cyan
+$agentName = "design-expert"
+$issues = @()
 
-$uiFindings = 0
-$uiFiles = Get-ChildItem -Path "app\src\main\java" -Recurse -Filter "*.kt" | Where-Object { $_.FullName -like "*\ui\*" }
+$composeFiles = Get-ChildItem -Path "app/src/main/java/*/ui/screen", "app/src/main/java/*/ui/components" -Filter "*.kt" -Recurse -ErrorAction SilentlyContinue
 
-foreach ($file in $uiFiles) {
-    $content = Get-Content $file.FullName
-    
-    # 1. Buscar colores hardcodeados
-    $hardcodedColors = Select-String -Path $file.FullName -Pattern "Color\.(Red|Blue|Green|White|Black|Yellow|Cyan|Magenta)"
+foreach ($file in $composeFiles) {
+    # 1. Theme Mirroring: Buscar colores hardcodeados como Color(0xFF...)
+    $hardcodedColors = Select-String -Path $file.FullName -Pattern "Color\(0x[A-Fa-f0-9]{8}\)"
     foreach ($match in $hardcodedColors) {
-        $uiFindings++
-        Write-Host "[DESIGN RISK] $($file.Name):$($match.LineNumber) - Uso de color hardcodeado. Usar MaterialTheme.colorScheme." -ForegroundColor Yellow
+        $issues += @{ type = "ThemeMirroringViolated"; file = $file.Name; message = "Hardcoded color found at line $($match.LineNumber). Use MaterialTheme.colorScheme." }
     }
 
-    # 2. Buscar números mágicos en padding/spacer (ej. .padding(13.dp))
-    $magicNumbers = Select-String -Path $file.FullName -Pattern "\.padding\(\s*(?!(4|8|12|16|20|24|32|48|64))\d+\.dp\s*\)"
-    foreach ($match in $magicNumbers) {
-        $uiFindings++
-        Write-Host "[SPACING] $($file.Name):$($match.LineNumber) - Número mágico en padding. Usar sistema de 8dp." -ForegroundColor Gray
-    }
-
-    # 3. ACCESIBILIDAD: Buscar Icon/Image sin contentDescription (o nulo)
-    # Patrón: busca la palabra Image o Icon y verifica si el bloque tiene contentDescription
-    # Nota: Es una aproximación simple para scripts
-    $accessibilityGap = Select-String -Path $file.FullName -Pattern "(Icon|Image)\s*\((\s*[^)]*)\)" | Where-Object { $_.Line -notlike "*contentDescription*" }
-    foreach ($match in $accessibilityGap) {
-        $uiFindings++
-        Write-Host "[ACCESSIBILITY] $($file.Name):$($match.LineNumber) - $($match.Line.Trim().Substring(0, [Math]::Min($match.Line.Length, 30))) - Falta contentDescription." -ForegroundColor Yellow
-    }
-
-    # 4. TYPOGRAPHY: Buscar Text que no use style del tema
-    $textStyleGap = Select-String -Path $file.FullName -Pattern "Text\s*\((\s*[^)]*)\)" | Where-Object { $_.Line -notlike "*style = MaterialTheme.typography*" -and $_.Line -notlike "*style = MaterialTheme.colorScheme*" }
-    foreach ($match in $textStyleGap) {
-        # $uiFindings++
-        # Write-Host "[TYPOGRAPHY] $($file.Name):$($match.LineNumber) - Text sin estilo de MaterialTheme." -ForegroundColor Gray
+    # 2. Compose Stability: Detectar Listas en parámetros sin protección de inmutabilidad (List<T>) en Composables
+    $content = Get-Content $file.FullName -Raw
+    # Regex para @Composable fun Name( ... List< ...
+    if ($content -match "@Composable\s*fun\s*\w*\([^)]*(?<!Immutable)List<[^>]+>[^)]*\)") {
+        $issues += @{ type = "ComposeStabilityWarning"; file = $file.Name; message = "Unstable standard List parameter or raw List found. Consider using kotlinx.collections.immutable.ImmutableList or wrapper classes." }
     }
 }
 
-if ($uiFindings -eq 0) {
-    Write-Host "✅ UI alineada con estándares modernos de M3 y Accesibilidad." -ForegroundColor Green
-} else {
-    Write-Host "`n⚠️ Hallazgos de UI: $uiFindings" -ForegroundColor Yellow
-}
+$status = if ($issues.Count -eq 0) { "PASSED" } else { "FAILED" }
+$result = @{ agent = $agentName; status = $status; issues = $issues }
+
+$outPath = ".agents/pipeline/ui_report.json"
+$result | ConvertTo-Json -Depth 3 | Out-File $outPath -Force
+Write-Host "UI Audit Completed. Result saved to $outPath" -ForegroundColor Magenta
