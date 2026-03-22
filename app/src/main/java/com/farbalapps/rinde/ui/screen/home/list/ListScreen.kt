@@ -81,7 +81,7 @@ fun ListScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
             item {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "COMPLETADO",
+                    text = stringResource(id = R.string.filter_completed).uppercase(),
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -103,7 +103,7 @@ fun ListScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
             containerColor = MaterialTheme.colorScheme.primary,
             contentColor = MaterialTheme.colorScheme.onPrimary
         ) {
-            Icon(Icons.Default.Add, contentDescription = "Añadir elemento")
+            Icon(Icons.Default.Add, contentDescription = stringResource(id = R.string.add_entry))
         }
     }
 }
@@ -162,7 +162,7 @@ fun FiltersRow() {
             onClick = { /* Pending Filter selection */ },
             label = { 
                 Text(
-                    text = "Todos", // Changed from "Todo" to avoid debt matching
+                    text = stringResource(id = R.string.filter_all),
                     fontWeight = FontWeight.Bold 
                 ) 
             },
@@ -180,7 +180,7 @@ fun FiltersRow() {
             modifier = Modifier.clip(RoundedCornerShape(percent = 50))
         ) {
             Text(
-                text = "+ Añadir Categoría",
+                text = stringResource(id = R.string.add_category),
                 style = MaterialTheme.typography.labelLarge,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 color = MaterialTheme.colorScheme.onSurfaceVariant

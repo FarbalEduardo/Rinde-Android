@@ -26,8 +26,13 @@
     <string name="signup_with">Sign up with</string>
     <string name="already_have_account">Already have an account?</string>
     
+    <!-- List Screen Filters -->
+    <string name="filter_all">All</string>
+    <string name="filter_pending">Pending</string>
+    <string name="filter_completed">Completed</string>
+    <string name="add_category">+ Add Category</string>
+
     <!-- Home Screen -->
-    <string name="btn_log_in">Log In</string>
 
     <!-- Home Tabs -->
     <string name="home_tab_home">Home</string>

@@ -26,8 +26,13 @@
     <string name="signup_with">Registrarse con</string>
     <string name="already_have_account">¿Ya tienes una cuenta?</string>
     
+    <!-- List Screen Filters -->
+    <string name="filter_all">Todos</string>
+    <string name="filter_pending">Pendientes</string>
+    <string name="filter_completed">Completados</string>
+    <string name="add_category">+ Añadir Categoría</string>
+
     <!-- Home Screen -->
-    <string name="btn_log_in">Iniciar sesión</string>
 
     <!-- Home Screen -->
     <string name="home_tab_home">Inicio</string>
