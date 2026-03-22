@@ -26,7 +26,7 @@ fun ResetPasswordDialog(
             text = {
                 Column {
                     Text(
-                        text = "Enter your email to receive a reset link.",
+                        text = stringResource(id = R.string.reset_password_instruction),
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
@@ -46,7 +46,8 @@ fun ResetPasswordDialog(
                         if (email.contains("@") && email.contains(".")) {
                             onConfirm(email)
                         } else {
-                            emailError = "Please enter a valid email address"
+                            // Validation error handled in UI via stringResource below if we change the state
+                            emailError = "invalid" 
                         }
                     },
                     enabled = !isLoading
@@ -58,13 +59,13 @@ fun ResetPasswordDialog(
                             strokeWidth = 2.dp
                         )
                     } else {
-                        Text("Send")
+                        Text(stringResource(id = R.string.btn_send))
                     }
                 }
             },
             dismissButton = {
                 TextButton(onClick = onDismiss, enabled = !isLoading) {
-                    Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(id = R.string.btn_cancel), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             },
             containerColor = MaterialTheme.colorScheme.surface,
@@ -87,7 +88,7 @@ private fun EmailInputDialogField(
         isError = emailError != null,
         supportingText = {
             emailError?.let {
-                Text(it, color = MaterialTheme.colorScheme.error)
+                Text(stringResource(id = R.string.error_invalid_email), color = MaterialTheme.colorScheme.error)
             }
         },
         singleLine = true,

@@ -152,7 +152,8 @@ fun SignUpScreen(
                             if (agreeToTerms) {
                                 viewModel.signUp(fullName, email, password)
                             } else {
-                                android.widget.Toast.makeText(context, "Please agree to terms", android.widget.Toast.LENGTH_SHORT).show()
+                                val message = context.getString(R.string.error_agree_to_terms)
+                                android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
                             }
                         },
                         modifier = Modifier
