@@ -10,10 +10,11 @@ import androidx.compose.ui.Modifier
 
 @Composable
 fun AuthBackground(
+    modifier: Modifier = Modifier,
     content: @Composable BoxScope.() -> Unit
 ) {
     Surface(
-        modifier = Modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
         Box(
@@ -23,3 +24,4 @@ fun AuthBackground(
         }
     }
 }
+

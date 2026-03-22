@@ -16,7 +16,7 @@ class ValidatePasswordTest {
 
     @Test
     fun `Valid password should return successful result`() {
-        val password = "Password123"
+        val password = "TestPassword123"
         val result = validatePassword.execute(password)
         assertTrue("Password $password should be valid", result.successful)
     }

@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Rinde</string>
-    
+
     <!-- Welcome Screen -->
     <string name="welcome_title">Welcome Back!</string>
     <string name="welcome_subtitle">Enter personal details to access your account</string>
@@ -14,7 +13,7 @@
     <string name="label_email">Username or Email</string>
     <string name="label_password">Password</string>
     <string name="btn_forgot_password">Forgot password?</string>
-    <string name="social_connect">SOCIAL CONNECT</string>
+    <string name="social_connect">Social conect</string>
     <string name="social_google">Google</string>
     <string name="new_here">New here?</string>
     <string name="create_account">Create Account</string>
