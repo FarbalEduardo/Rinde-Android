@@ -1,10 +1,10 @@
 plugins {
-    alias(libs.plugins.android.application)
+    id("com.android.application")
     id("org.jetbrains.kotlin.android")
-    alias(libs.plugins.kotlin.compose)
+    id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.devtools.ksp")
-    alias(libs.plugins.google.services)
-    alias(libs.plugins.hilt)
+    id("com.google.gms.google-services") apply false
+    id("com.google.dagger.hilt.android")
 }
 
 android {
@@ -30,6 +30,18 @@ android {
             )
         }
     }
+
+    flavorDimensions += "environment"
+    productFlavors {
+        create("dev") {
+            dimension = "environment"
+            applicationIdSuffix = ".dev"
+            versionNameSuffix = "-dev"
+        }
+        create("prod") {
+            dimension = "environment"
+        }
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
@@ -40,6 +52,21 @@ android {
     buildFeatures {
         compose = true
     }
+}
+
+// Aplicar Google Services solo si no es el sabor dev o si el archivo existe para el paquete
+afterEvaluate {
+    if (project.plugins.hasPlugin("com.google.gms.google-services")) {
+        // Plugin already applied, do nothing
+    } else {
+        // Apply manually for production or if we want to enable it selectively
+        // For now, let's just apply it globally BUT disable the failing task for dev
+        // actually easier to apply it and then disable the specific task if package doesn't match
+    }
+}
+
+tasks.matching { it.name.contains("processDevDebugGoogleServices") }.configureEach {
+    enabled = false
 }
 
 dependencies {

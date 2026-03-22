@@ -165,7 +165,6 @@ fun SignUpOption(onSignUpClick: () -> Unit) {
             )
         }
     }
-    }
 }
 
 @Composable

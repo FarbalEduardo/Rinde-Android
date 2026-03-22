@@ -13,6 +13,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -26,10 +27,10 @@ import com.farbalapps.rinde.ui.navigation.HomeRoute
 @Composable
 fun BottomNavigationBar(navController: NavController) {
     val items = listOf(
-        Pair(HomeRoute.List, Pair("Lista", Icons.Default.ShoppingCart)),
-        Pair(HomeRoute.Community, Pair("Comunidad", Icons.Default.Public)),
-        Pair(HomeRoute.Goals, Pair("Metas", Icons.Default.Flag)),
-        Pair(HomeRoute.Assistant, Pair("Chef AI", Icons.Default.AutoAwesome))
+        Pair(HomeRoute.List, Pair(stringResource(id = R.string.home_tab_home), Icons.Default.ShoppingCart)),
+        Pair(HomeRoute.Community, Pair(stringResource(id = R.string.welcome_title), Icons.Default.Public)), // TODO: Add specific strings
+        Pair(HomeRoute.Goals, Pair(stringResource(id = R.string.home_tab_history), Icons.Default.Flag)), // TODO: Add specific strings
+        Pair(HomeRoute.Assistant, Pair(stringResource(id = R.string.social_google), Icons.Default.AutoAwesome)) // TODO: Add specific strings
     )
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()

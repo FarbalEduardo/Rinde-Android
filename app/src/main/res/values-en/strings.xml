@@ -1,44 +1,44 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-
+    <string name="app_name" translatable="false">Rinde</string>
+    
     <!-- Welcome Screen -->
-    <string name="welcome_title">Welcome Back!</string>
-    <string name="welcome_subtitle">Enter personal details to access your account</string>
-    <string name="btn_sign_in">Sign in</string>
-    <string name="btn_sign_up">Sign up</string>
+    <string name="welcome_title">Welcome back!</string>
+    <string name="welcome_subtitle">Enter your personal details to access your account</string>
+    <string name="btn_sign_in">Sign In</string>
+    <string name="btn_sign_up">Sign Up</string>
     
     <!-- Login Screen -->
-    <string name="login_welcome">Welcome Back</string>
+    <string name="login_welcome">Welcome</string>
     <string name="login_subtitle">Sign in to continue</string>
     <string name="label_email">Username or Email</string>
     <string name="label_password">Password</string>
-    <string name="btn_forgot_password">Forgot password?</string>
-    <string name="social_connect">Social conect</string>
+    <string name="btn_forgot_password">Forgot your password?</string>
+    <string name="social_connect">Social connect</string>
     <string name="social_google">Google</string>
-    <string name="new_here">New here?</string>
-    <string name="create_account">Create Account</string>
+    <string name="new_here">Are you new here?</string>
+    <string name="create_account">Create account</string>
     
     <!-- Sign Up Screen -->
     <string name="signup_title">Get Started</string>
     <string name="label_full_name">Full Name</string>
-    <string name="terms_agreement">I agree to the processing of Personal data</string>
+    <string name="terms_agreement">I agree to the processing of personal data</string>
     <string name="signup_with">Sign up with</string>
     <string name="already_have_account">Already have an account?</string>
     
     <!-- Home Screen -->
     <string name="btn_log_in">Log In</string>
 
-    <!-- Home Screen -->
+    <!-- Home Tabs -->
     <string name="home_tab_home">Home</string>
     <string name="home_tab_history">History</string>
     <string name="home_tab_profile">Profile</string>
     <string name="add_entry">Add record</string>
     <string name="btn_logout">Logout</string>
 
-    <!-- Sign Up Screen Placeholder -->
+    <!-- Navigation/General -->
     <string name="back">Back</string>
-    <string name="personal_data_highlight">Personal data</string>
+    <string name="personal_data_highlight">personal data</string>
     <string name="personal_data_title">Data Processing</string>
     <string name="privacy_policy_content">At Rinde, we take your data security very seriously. The personal information we collect (such as name and email) is used exclusively to manage your account and improve your experience. We do not share your data with third parties without your explicit consent.</string>
-    <string name="default_web_client_id">491472128600-bcq3patk208hqtjhphi8igr7gid46vn0.apps.googleusercontent.com</string>
 </resources>
