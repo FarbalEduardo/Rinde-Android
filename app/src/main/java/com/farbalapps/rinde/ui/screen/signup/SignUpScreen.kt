@@ -98,36 +98,14 @@ fun SignUpScreen(
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(bottom = dimensionResource(id = R.dimen.padding_xlarge))
                     )
-                    OutlinedTextField(
-                        value = fullName,
-                        onValueChange = { fullName = it },
-                        label = { Text(stringResource(id = R.string.label_full_name)) },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(dimensionResource(id = R.dimen.input_corner_radius))
+                    SignUpFormFields(
+                        fullName = fullName,
+                        onFullNameChange = { fullName = it },
+                        email = email,
+                        onEmailChange = { email = it },
+                        password = password,
+                        onPasswordChange = { password = it }
                     )
-
-                    Spacer(modifier = Modifier.height(dimensionResource(id = R.dimen.spacer_medium)))
-
-                    OutlinedTextField(
-                        value = email,
-                        onValueChange = { email = it },
-                        label = { Text(stringResource(id = R.string.label_email)) },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(dimensionResource(id = R.dimen.input_corner_radius))
-                    )
-
-                    Spacer(modifier = Modifier.height(dimensionResource(id = R.dimen.spacer_medium)))
-
-                    OutlinedTextField(
-                        value = password,
-                        onValueChange = { password = it },
-                        label = { Text(stringResource(id = R.string.label_password)) },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(dimensionResource(id = R.dimen.input_corner_radius)),
-                        visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation()
-                    )
-
-                    Spacer(modifier = Modifier.height(dimensionResource(id = R.dimen.spacer_medium)))
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -174,15 +152,15 @@ fun SignUpScreen(
                             if (agreeToTerms) {
                                 viewModel.signUp(fullName, email, password)
                             } else {
-                                android.widget.Toast.makeText(context, "Please agree to terms", android.widget.Toast.LENGTH_SHORT).show()
+                                val message = context.getString(R.string.error_agree_to_terms)
+                                android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
                             }
                         },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(dimensionResource(id = R.dimen.button_height_standard)),
+                            .height(56.dp),
                         enabled = !state.isLoading,
-                        shape = RoundedCornerShape(dimensionResource(id = R.dimen.card_corner_radius)),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                        shape = MaterialTheme.shapes.large
                     ) {
                         if (state.isLoading) {
                             CircularProgressIndicator(
@@ -191,7 +169,11 @@ fun SignUpScreen(
                                 strokeWidth = 2.dp
                             )
                         } else {
-                            Text(stringResource(id = R.string.btn_sign_up), fontWeight = FontWeight.Bold)
+                            Text(
+                                stringResource(id = R.string.btn_sign_up),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
                     }
 
@@ -207,65 +189,22 @@ fun SignUpScreen(
                     Spacer(modifier = Modifier.height(dimensionResource(id = R.dimen.spacer_large)))
 
                     Text(
-                        stringResource(id = R.string.signup_with),
-                        style = MaterialTheme.typography.labelSmall,
+                        text = stringResource(id = R.string.social_connect),
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth(),
+                        fontSize = 14.sp
+
+
                     )
 
                     Spacer(modifier = Modifier.height(dimensionResource(id = R.dimen.spacer_medium)))
 
-                    OutlinedButton(
-                        onClick = { 
-                            val googleIdOption = com.google.android.libraries.identity.googleid.GetGoogleIdOption.Builder()
-                                .setFilterByAuthorizedAccounts(false)
-                                .setServerClientId(context.getString(R.string.default_web_client_id))
-                                .build()
-
-                            val request = androidx.credentials.GetCredentialRequest.Builder()
-                                .addCredentialOption(googleIdOption)
-                                .build()
-
-                            scope.launch {
-                                try {
-                                    val result = credentialManager.getCredential(
-                                        context = context,
-                                        request = request
-                                    )
-                                    val idToken = com.google.android.libraries.identity.googleid.GoogleIdTokenCredential.createFrom(result.credential.data).idToken
-                                    viewModel.onGoogleSignInResult(idToken)
-                                } catch (e: Exception) {
-                                    android.widget.Toast.makeText(context, "Google Sign Up failed: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(dimensionResource(id = R.dimen.input_corner_radius)),
-                        contentPadding = PaddingValues(
-                            horizontal = dimensionResource(id = R.dimen.padding_small),
-                            vertical = dimensionResource(id = R.dimen.padding_small)
-                        )
-                    ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_google),
-                            contentDescription = stringResource(id = R.string.social_google),
-                            modifier = Modifier.size(dimensionResource(id = R.dimen.social_icon_size)),
-                            tint = Color.Unspecified
-                        )
-                        Spacer(modifier = Modifier.width(dimensionResource(id = R.dimen.padding_small)))
-                        Text(
-                            buildAnnotatedString {
-                                withStyle(SpanStyle(color = Color(0xFF4285F4))) { append("G") }
-                                withStyle(SpanStyle(color = Color(0xFFEA4335))) { append("o") }
-                                withStyle(SpanStyle(color = Color(0xFFFBBC05))) { append("o") }
-                                withStyle(SpanStyle(color = Color(0xFF4285F4))) { append("g") }
-                                withStyle(SpanStyle(color = Color(0xFF34A853))) { append("l") }
-                                withStyle(SpanStyle(color = Color(0xFFEA4335))) { append("e") }
-                            },
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
+                    GoogleSignUpButton(
+                        onTokenReceived = { token -> viewModel.onGoogleSignInResult(token) },
+                        onError = { msg -> android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show() }
+                    )
 
                     Spacer(modifier = Modifier.height(dimensionResource(id = R.dimen.spacer_large)))
 
@@ -275,12 +214,119 @@ fun SignUpScreen(
                     ) {
                         Text(stringResource(id = R.string.already_have_account), color = MaterialTheme.colorScheme.onSurfaceVariant)
                         TextButton(onClick = onSignInClick, contentPadding = PaddingValues(0.dp)) {
-                            Text(stringResource(id = R.string.btn_sign_in), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                            Text(stringResource(id = R.string.btn_sign_in),
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp)
+
                         }
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+fun SignUpFormFields(
+    fullName: String,
+    onFullNameChange: (String) -> Unit,
+    email: String,
+    onEmailChange: (String) -> Unit,
+    password: String,
+    onPasswordChange: (String) -> Unit
+) {
+    OutlinedTextField(
+        value = fullName,
+        onValueChange = onFullNameChange,
+        label = { Text(stringResource(id = R.string.label_full_name)) },
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(dimensionResource(id = R.dimen.input_corner_radius))
+    )
+
+    Spacer(modifier = Modifier.height(dimensionResource(id = R.dimen.spacer_medium)))
+
+    OutlinedTextField(
+        value = email,
+        onValueChange = onEmailChange,
+        label = { Text(stringResource(id = R.string.label_email)) },
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(dimensionResource(id = R.dimen.input_corner_radius))
+    )
+
+    Spacer(modifier = Modifier.height(dimensionResource(id = R.dimen.spacer_medium)))
+
+    OutlinedTextField(
+        value = password,
+        onValueChange = onPasswordChange,
+        label = { Text(stringResource(id = R.string.label_password)) },
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(dimensionResource(id = R.dimen.input_corner_radius)),
+        visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation()
+    )
+
+    Spacer(modifier = Modifier.height(dimensionResource(id = R.dimen.spacer_medium)))
+}
+
+@Composable
+fun GoogleSignUpButton(
+    onTokenReceived: (String) -> Unit,
+    onError: (String) -> Unit
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val scope = rememberCoroutineScope()
+    val credentialManager = remember { androidx.credentials.CredentialManager.create(context) }
+
+    OutlinedButton(
+        onClick = { 
+            val googleIdOption = com.google.android.libraries.identity.googleid.GetGoogleIdOption.Builder()
+                .setFilterByAuthorizedAccounts(false)
+                .setServerClientId(context.getString(R.string.default_web_client_id))
+                .build()
+
+            val request = androidx.credentials.GetCredentialRequest.Builder()
+                .addCredentialOption(googleIdOption)
+                .build()
+
+            scope.launch {
+                try {
+                    val result = credentialManager.getCredential(
+                        context = context,
+                        request = request
+                    )
+                    val idToken = com.google.android.libraries.identity.googleid.GoogleIdTokenCredential.createFrom(result.credential.data).idToken
+                    onTokenReceived(idToken)
+                } catch (e: Exception) {
+                    onError("Google Sign Up failed: ${e.message}")
+                }
+            }
+        },
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(dimensionResource(id = R.dimen.input_corner_radius)),
+        contentPadding = PaddingValues(
+            horizontal = dimensionResource(id = R.dimen.padding_small),
+            vertical = dimensionResource(id = R.dimen.padding_small)
+        )
+    ) {
+        Icon(
+            painter = painterResource(id = R.drawable.ic_google),
+            contentDescription = stringResource(id = R.string.social_google),
+            modifier = Modifier.size(dimensionResource(id = R.dimen.social_icon_size)),
+            tint = Color.Unspecified
+        )
+        Spacer(modifier = Modifier.width(dimensionResource(id = R.dimen.padding_small)))
+        Text(
+            buildAnnotatedString {
+                withStyle(SpanStyle(color = Color(0xFF4285F4))) { append("G") }
+                withStyle(SpanStyle(color = Color(0xFFEA4335))) { append("o") }
+                withStyle(SpanStyle(color = Color(0xFFFBBC05))) { append("o") }
+                withStyle(SpanStyle(color = Color(0xFF4285F4))) { append("g") }
+                withStyle(SpanStyle(color = Color(0xFF34A853))) { append("l") }
+                withStyle(SpanStyle(color = Color(0xFFEA4335))) { append("e") }
+            },
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium
+        )
     }
 }
 

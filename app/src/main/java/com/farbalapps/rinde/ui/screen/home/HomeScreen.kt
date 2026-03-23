@@ -1,78 +1,79 @@
 package com.farbalapps.rinde.ui.screen.home
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
 import com.farbalapps.rinde.R
-
-sealed class HomeTab(val route: String, val titleRes: Int, val icon: ImageVector) {
-    object Home : HomeTab("home_tab", R.string.home_tab_home, Icons.Default.Home)
-    object History : HomeTab("history_tab", R.string.home_tab_history, Icons.Default.History)
-    object Profile : HomeTab("profile_tab", R.string.home_tab_profile, Icons.Default.Person)
-}
+import com.farbalapps.rinde.ui.navigation.HomeNavHost
+import com.farbalapps.rinde.ui.navigation.HomeRoute
+import com.farbalapps.rinde.ui.components.BottomNavigationBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    navController: NavHostController = rememberNavController()
 ) {
-    var selectedTab by remember { mutableStateOf<HomeTab>(HomeTab.Home) }
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+
+    val appBarTitle = when (currentRoute) {
+        HomeRoute.List.route -> "Rinde"
+        HomeRoute.Community.route -> "Comunidad"
+        HomeRoute.Goals.route -> "Metas"
+        HomeRoute.Assistant.route -> "Chef AI"
+        else -> stringResource(id = R.string.app_name)
+    }
 
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text(stringResource(id = R.string.app_name)) },
+            TopAppBar(
+                title = { 
+                    Text(
+                        text = appBarTitle,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
                 actions = {
                     IconButton(onClick = onLogout) {
-                        Icon(Icons.Default.Logout, contentDescription = stringResource(id = R.string.btn_logout))
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Logout,
+                            contentDescription = stringResource(id = R.string.btn_logout),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
+                )
             )
         },
         bottomBar = {
-            NavigationBar {
-                val tabs = listOf(HomeTab.Home, HomeTab.History, HomeTab.Profile)
-                tabs.forEach { tab ->
-                    NavigationBarItem(
-                        selected = selectedTab == tab,
-                        onClick = { selectedTab = tab },
-                        label = { Text(stringResource(id = tab.titleRes)) },
-                        icon = { Icon(tab.icon, contentDescription = null) }
-                    )
-                }
-            }
-        },
-        floatingActionButton = {
-            FloatingActionButton(onClick = { /* TODO: New Entry */ }) {
-                Icon(Icons.Default.Add, contentDescription = stringResource(id = R.string.add_entry))
-            }
-        },
-        floatingActionButtonPosition = FabPosition.End
-    ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-            contentAlignment = Alignment.Center
-        ) {
-            when (selectedTab) {
-                HomeTab.Home -> {
-                    Text(text = "Bienvenido a Rinde")
-                }
-                HomeTab.History -> {
-                    Text(text = "Tu historial aparecerá aquí")
-                }
-                HomeTab.Profile -> {
-                    Text(text = "Configuración de perfil")
-                }
-            }
+            BottomNavigationBar(navController = navController)
         }
+    ) { innerPadding ->
+        HomeNavHost(
+            navController = navController,
+            innerPadding = innerPadding
+        )
     }
+}
+@Preview(showSystemUi = true, showBackground = true)
+@Composable
+fun HomeScreenPreview() {
+    
+    HomeScreen(onLogout = {})
+
 }

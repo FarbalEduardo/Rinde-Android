@@ -38,76 +38,84 @@ fun WelcomeScreen(
         ) {
             Spacer(modifier = Modifier.weight(1f))
 
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                // ── Logo ──────────────────────────────────────────────────
-                Image(
-                    painter = painterResource(id = R.drawable.ic_logo),
-                    contentDescription = stringResource(id = R.string.app_name),
-                    modifier = Modifier
-                        .size(dimensionResource(id = R.dimen.logo_welcome_size))
-                        .clip(CircleShape)
-                )
+                WelcomeHeader()
 
-                Spacer(modifier = Modifier.height(dimensionResource(id = R.dimen.padding_large)))
+            WelcomeActionButtons(onSignUpClick, onSignInClick)
+        }
+    }
+}
 
-                Text(
-                    text = stringResource(id = R.string.welcome_title),
-                    style = MaterialTheme.typography.displayMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Text(
-                    text = stringResource(id = R.string.welcome_subtitle),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = dimensionResource(id = R.dimen.padding_medium)),
-                    textAlign = TextAlign.Center
-                )
-            }
+@Composable
+private fun WelcomeHeader() {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Image(
+            painter = painterResource(id = R.drawable.ic_logo),
+            contentDescription = stringResource(id = R.string.app_name),
+            modifier = Modifier
+                .size(dimensionResource(id = R.dimen.logo_welcome_size))
+                .clip(CircleShape)
+        )
 
-            Spacer(modifier = Modifier.weight(1.5f))
+        Spacer(modifier = Modifier.height(dimensionResource(id = R.dimen.padding_large)))
 
-            // ── Buttons (Side by Side) ────────────────────────────────
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = dimensionResource(id = R.dimen.padding_xlarge)),
-                horizontalArrangement = Arrangement.spacedBy(dimensionResource(id = R.dimen.padding_medium))
-            ) {
-                // Sign In Button
-                Button(
-                    onClick = onSignInClick,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(dimensionResource(id = R.dimen.button_height_standard)),
-                    shape = RoundedCornerShape(dimensionResource(id = R.dimen.button_corner_radius)),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.Transparent,
-                        contentColor = MaterialTheme.colorScheme.primary
-                    ),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
-                ) {
-                    Text(stringResource(id = R.string.btn_sign_in), fontWeight = FontWeight.Bold)
-                }
+        Text(
+            text = stringResource(id = R.string.welcome_title),
+            style = MaterialTheme.typography.displayMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            textAlign = TextAlign.Center
+        )
+        Text(
+            text = stringResource(id = R.string.welcome_subtitle),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = dimensionResource(id = R.dimen.padding_medium)),
+            textAlign = TextAlign.Center
+        )
+    }
+}
 
-                // Sign Up Button
-                Button(
-                    onClick = onSignUpClick,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(dimensionResource(id = R.dimen.button_height_standard)),
-                    shape = RoundedCornerShape(dimensionResource(id = R.dimen.button_corner_radius)),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    ),
-                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
-                ) {
-                    Text(stringResource(id = R.string.btn_sign_up), fontWeight = FontWeight.Bold)
-                }
-            }
+@Composable
+private fun ColumnScope.WelcomeActionButtons(onSignUpClick: () -> Unit, onSignInClick: () -> Unit) {
+    Spacer(modifier = Modifier.weight(1.5f))
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = dimensionResource(id = R.dimen.padding_xlarge)),
+        horizontalArrangement = Arrangement.spacedBy(dimensionResource(id = R.dimen.padding_medium))
+    ) {
+        Button(
+            onClick = onSignUpClick,
+            modifier = Modifier
+                .weight(1f)
+                .height(56.dp),
+            shape = MaterialTheme.shapes.large,
+            elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
+        ) {
+            Text(
+                stringResource(id = R.string.btn_sign_up),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        OutlinedButton(
+            onClick = onSignInClick,
+            modifier = Modifier
+                .weight(1f)
+                .height(56.dp),
+            shape = MaterialTheme.shapes.large,
+            border = ButtonDefaults.outlinedButtonBorder.copy(width = 1.dp)
+        ) {
+            Text(
+                stringResource(id = R.string.btn_sign_in),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.primary
+            )
         }
     }
 }

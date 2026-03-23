@@ -53,3 +53,11 @@ fun PrivacyPolicyScreen(
         }
     }
 }
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true)
+@Composable
+fun PrivacyPolicyScreenPreview() {
+    MaterialTheme {
+        PrivacyPolicyScreen(onBackClick = {})
+    }
+}

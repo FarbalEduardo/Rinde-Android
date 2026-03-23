@@ -1,0 +1,9 @@
+We are excited to release **Rinde v1.1.0-beta**! This release marks a massive leap forward in our development infrastructure and application quality standards.
+
+### ✨ What's New
+* **Bilingual Experience:** Rinde now fully supports both Spanish (default) and English. All authentication screens and core navigation elements adapt automatically to the user's device settings.
+* **Developer Productivity (SDD Pipeline):** We've introduced a bespoke, locally orchestrated integration pipeline out of the box. 
+
+### 🔧 Under the Hood
+* Upgraded to Gradle 8.9 with distinct `dev` and `prod` Gradle Build Flavors.
+* Strengthened the application's overall security posture via automated SAST that catches vulnerable `PendingIntent` configurations and unsafe Android component exports directly at compile-time.

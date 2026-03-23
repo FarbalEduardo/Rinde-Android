@@ -1,0 +1,10 @@
+## 📝 Details
+This PR introduces vital foundational upgrades to the Rinde application, establishing a robust DevOps environment, complete multi-language support, and a state-of-the-art Local Integration Pipeline powered by Spec-Driven Development (SDD).
+
+### 🚀 Key Features & Improvements
+* **Infrastructure Upgrades:** Upgraded Gradle to 8.9 and implemented Build Flavors (dev/prod).
+* **🌍 Internationalization (i18n):** Complete English and Spanish support mapped to dynamic `stringResource` elements across all Auth and Dashboard screens.
+* **🤖 SDD Local Integration Pipeline:** Re-architected Agent skills into a JSON-emitting pipeline. QA AutoHeal, UI Stability checks, Data Isolation contracts, and SAST Manifest Vulnerability scans.
+
+## 🧪 How Has This Been Tested?
+* Run the new Local Pipeline natively via powershell: `powershell -ExecutionPolicy Bypass -File .agents/pipeline/run_pipeline.ps1`. Passed 100%.

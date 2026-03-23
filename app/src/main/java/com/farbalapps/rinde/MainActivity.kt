@@ -48,67 +48,80 @@ class MainActivity : ComponentActivity() {
                     if (isLoggedByFirebase || isLoggedBySessionManager) "home" else "welcome"
                 }
 
-                NavHost(navController = navController, startDestination = startDestination) {
-                    composable("welcome") {
-                        WelcomeScreen(
-                            onSignInClick = { navController.navigate("login") },
-                            onSignUpClick = { navController.navigate("signup") }
-                        )
-                    }
+                RindeAppNavHost(
+                    navController = navController, 
+                    startDestination = startDestination,
+                    authRepository = authRepository
+                )
+            }
+        }
+    }
+}
 
-                    composable("signup") {
-                        SignUpScreen(
-                            onBackClick = { navController.popBackStack() },
-                            onPrivacyPolicyClick = { navController.navigate("privacy_policy") },
-                            onSignInClick = {
-                                navController.navigate("login") {
-                                    popUpTo("welcome")
-                                }
-                            },
-                            onSignUpSuccess = {
-                                navController.navigate("home") {
-                                    popUpTo("welcome") { inclusive = true }
-                                }
-                            }
-                        )
-                    }
+@Composable
+fun RindeAppNavHost(
+    navController: androidx.navigation.NavHostController,
+    startDestination: String,
+    authRepository: AuthRepository
+) {
+    NavHost(navController = navController, startDestination = startDestination) {
+        composable("welcome") {
+            WelcomeScreen(
+                onSignInClick = { navController.navigate("login") },
+                onSignUpClick = { navController.navigate("signup") }
+            )
+        }
 
-                    composable("login") {
-                        val loginViewModel: LoginViewModel = hiltViewModel()
-                        LoginScreen(
-                            viewModel = loginViewModel,
-                            onLoginSuccess = {
-                                navController.navigate("home") {
-                                    popUpTo("welcome") { inclusive = true }
-                                }
-                            },
-                            onSignUpClick = {
-                                navController.navigate("signup")
-                            },
-                            onBackClick = {
-                                navController.popBackStack()
-                            }
-                        )
+        composable("signup") {
+            SignUpScreen(
+                onBackClick = { navController.popBackStack() },
+                onPrivacyPolicyClick = { navController.navigate("privacy_policy") },
+                onSignInClick = {
+                    navController.navigate("login") {
+                        popUpTo("welcome")
                     }
-
-                    composable("home") {
-                        HomeScreen(
-                            onLogout = {
-                                authRepository.logout()
-                                navController.navigate("welcome") {
-                                    popUpTo("home") { inclusive = true }
-                                }
-                            }
-                        )
-                    }
-
-                    composable("privacy_policy") {
-                        PrivacyPolicyScreen(
-                            onBackClick = { navController.popBackStack() }
-                        )
+                },
+                onSignUpSuccess = {
+                    navController.navigate("home") {
+                        popUpTo("welcome") { inclusive = true }
                     }
                 }
-            }
+            )
+        }
+
+        composable("login") {
+            val loginViewModel: LoginViewModel = hiltViewModel()
+            LoginScreen(
+                viewModel = loginViewModel,
+                onLoginSuccess = {
+                    navController.navigate("home") {
+                        popUpTo("welcome") { inclusive = true }
+                    }
+                },
+                onSignUpClick = {
+                    navController.navigate("signup")
+                },
+                onBackClick = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        composable("home") {
+            HomeScreen(
+                onLogout = {
+                    authRepository.logout()
+                    navController.navigate("welcome") {
+                        popUpTo("home") { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable("privacy_policy") {
+            PrivacyPolicyScreen(
+                onBackClick = { navController.popBackStack() }
+            )
         }
     }
 }
