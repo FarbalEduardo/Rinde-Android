@@ -5,4 +5,5 @@ sealed class HomeRoute(val route: String) {
     object Community : HomeRoute("home_community")
     object Goals : HomeRoute("home_goals")
     object Assistant : HomeRoute("home_assistant")
+    object Profile : HomeRoute("home_profile")
 }

@@ -1,33 +1,31 @@
 package com.farbalapps.rinde.ui.screen.signup
 
-import androidx.compose.foundation.background
+import androidx.compose.animation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
-import androidx.compose.animation.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
-import com.farbalapps.rinde.R
-import com.farbalapps.rinde.ui.components.AuthBackground
-import com.farbalapps.rinde.ui.theme.RindeTheme
-import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
-import kotlinx.coroutines.launch
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.farbalapps.rinde.R
+import com.farbalapps.rinde.ui.components.AuthBackground
+import com.farbalapps.rinde.ui.screen.signup.components.*
+import com.farbalapps.rinde.ui.theme.RindeTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,10 +41,8 @@ fun SignUpScreen(
     var password by remember { mutableStateOf("") }
     var agreeToTerms by remember { mutableStateOf(false) }
 
-    val state by viewModel.state.collectAsState()
-    val scope = rememberCoroutineScope()
+    val state by viewModel.state.collectAsStateWithLifecycle()
     val context = androidx.compose.ui.platform.LocalContext.current
-    val credentialManager = androidx.credentials.CredentialManager.create(context)
 
     LaunchedEffect(state.isSuccess) {
         if (state.isSuccess) {
@@ -57,7 +53,7 @@ fun SignUpScreen(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { }, // Título vacío
+                title = { },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
@@ -86,7 +82,7 @@ fun SignUpScreen(
             ) {
                 Column(
                     modifier = Modifier
-                        .widthIn(max = 400.dp) // Responsive width limit
+                        .widthIn(max = 400.dp)
                         .padding(horizontal = dimensionResource(id = R.dimen.padding_large))
                         .fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
@@ -98,6 +94,7 @@ fun SignUpScreen(
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(bottom = dimensionResource(id = R.dimen.padding_xlarge))
                     )
+                    
                     SignUpFormFields(
                         fullName = fullName,
                         onFullNameChange = { fullName = it },
@@ -195,8 +192,6 @@ fun SignUpScreen(
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                         modifier = Modifier.fillMaxWidth(),
                         fontSize = 14.sp
-
-
                     )
 
                     Spacer(modifier = Modifier.height(dimensionResource(id = R.dimen.spacer_medium)))
@@ -218,115 +213,11 @@ fun SignUpScreen(
                                 color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp)
-
                         }
                     }
                 }
             }
         }
-    }
-}
-
-@Composable
-fun SignUpFormFields(
-    fullName: String,
-    onFullNameChange: (String) -> Unit,
-    email: String,
-    onEmailChange: (String) -> Unit,
-    password: String,
-    onPasswordChange: (String) -> Unit
-) {
-    OutlinedTextField(
-        value = fullName,
-        onValueChange = onFullNameChange,
-        label = { Text(stringResource(id = R.string.label_full_name)) },
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(dimensionResource(id = R.dimen.input_corner_radius))
-    )
-
-    Spacer(modifier = Modifier.height(dimensionResource(id = R.dimen.spacer_medium)))
-
-    OutlinedTextField(
-        value = email,
-        onValueChange = onEmailChange,
-        label = { Text(stringResource(id = R.string.label_email)) },
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(dimensionResource(id = R.dimen.input_corner_radius))
-    )
-
-    Spacer(modifier = Modifier.height(dimensionResource(id = R.dimen.spacer_medium)))
-
-    OutlinedTextField(
-        value = password,
-        onValueChange = onPasswordChange,
-        label = { Text(stringResource(id = R.string.label_password)) },
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(dimensionResource(id = R.dimen.input_corner_radius)),
-        visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation()
-    )
-
-    Spacer(modifier = Modifier.height(dimensionResource(id = R.dimen.spacer_medium)))
-}
-
-@Composable
-fun GoogleSignUpButton(
-    onTokenReceived: (String) -> Unit,
-    onError: (String) -> Unit
-) {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val scope = rememberCoroutineScope()
-    val credentialManager = remember { androidx.credentials.CredentialManager.create(context) }
-
-    OutlinedButton(
-        onClick = { 
-            val googleIdOption = com.google.android.libraries.identity.googleid.GetGoogleIdOption.Builder()
-                .setFilterByAuthorizedAccounts(false)
-                .setServerClientId(context.getString(R.string.default_web_client_id))
-                .build()
-
-            val request = androidx.credentials.GetCredentialRequest.Builder()
-                .addCredentialOption(googleIdOption)
-                .build()
-
-            scope.launch {
-                try {
-                    val result = credentialManager.getCredential(
-                        context = context,
-                        request = request
-                    )
-                    val idToken = com.google.android.libraries.identity.googleid.GoogleIdTokenCredential.createFrom(result.credential.data).idToken
-                    onTokenReceived(idToken)
-                } catch (e: Exception) {
-                    onError("Google Sign Up failed: ${e.message}")
-                }
-            }
-        },
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(dimensionResource(id = R.dimen.input_corner_radius)),
-        contentPadding = PaddingValues(
-            horizontal = dimensionResource(id = R.dimen.padding_small),
-            vertical = dimensionResource(id = R.dimen.padding_small)
-        )
-    ) {
-        Icon(
-            painter = painterResource(id = R.drawable.ic_google),
-            contentDescription = stringResource(id = R.string.social_google),
-            modifier = Modifier.size(dimensionResource(id = R.dimen.social_icon_size)),
-            tint = Color.Unspecified
-        )
-        Spacer(modifier = Modifier.width(dimensionResource(id = R.dimen.padding_small)))
-        Text(
-            buildAnnotatedString {
-                withStyle(SpanStyle(color = Color(0xFF4285F4))) { append("G") }
-                withStyle(SpanStyle(color = Color(0xFFEA4335))) { append("o") }
-                withStyle(SpanStyle(color = Color(0xFFFBBC05))) { append("o") }
-                withStyle(SpanStyle(color = Color(0xFF4285F4))) { append("g") }
-                withStyle(SpanStyle(color = Color(0xFF34A853))) { append("l") }
-                withStyle(SpanStyle(color = Color(0xFFEA4335))) { append("e") }
-            },
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium
-        )
     }
 }
 

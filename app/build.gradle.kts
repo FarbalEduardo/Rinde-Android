@@ -3,7 +3,7 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.devtools.ksp")
-    id("com.google.gms.google-services") apply false
+    id("com.google.gms.google-services")
     id("com.google.dagger.hilt.android")
 }
 
@@ -54,26 +54,12 @@ android {
     }
 }
 
-// Aplicar Google Services solo si no es el sabor dev o si el archivo existe para el paquete
-afterEvaluate {
-    if (project.plugins.hasPlugin("com.google.gms.google-services")) {
-        // Plugin already applied, do nothing
-    } else {
-        // Apply manually for production or if we want to enable it selectively
-        // For now, let's just apply it globally BUT disable the failing task for dev
-        // actually easier to apply it and then disable the specific task if package doesn't match
-    }
-}
-
-tasks.matching { it.name.contains("processDevDebugGoogleServices") }.configureEach {
-    enabled = false
-}
-
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
@@ -99,6 +85,16 @@ dependencies {
     implementation(libs.androidx.material3)
     ksp(libs.hilt.compiler)
     implementation(libs.hilt.navigation.compose)
+
+    // Room
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
+
+    // Firebase Tasks coroutine support (.await())
+    implementation(libs.kotlinx.coroutines.play.services)
+    implementation(libs.coil.compose)
+
     
     testImplementation(libs.junit)
     testImplementation(libs.mockk)

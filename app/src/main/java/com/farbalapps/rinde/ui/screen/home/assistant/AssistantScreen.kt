@@ -7,8 +7,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
-
+import com.farbalapps.rinde.R
+import com.farbalapps.rinde.ui.theme.RindeTheme
 
 @Composable
 fun AssistantScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
@@ -31,12 +34,12 @@ fun AssistantScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "Chef AI Asistente",
+                text = stringResource(R.string.chef_ai_title),
                 style = MaterialTheme.typography.headlineMedium,
                 color = MaterialTheme.colorScheme.onBackground
             )
             Text(
-                text = "Recetas inteligentes para ti.",
+                text = stringResource(R.string.chef_ai_subtitle),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -44,11 +47,10 @@ fun AssistantScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
     }
 }
 
-@androidx.compose.ui.tooling.preview.Preview(showBackground = true)
+@PreviewLightDark
 @Composable
 fun AssistantScreenPreview() {
-    MaterialTheme {
+    RindeTheme {
         AssistantScreen()
     }
 }
-

@@ -4,6 +4,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Public
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -30,9 +31,10 @@ import com.farbalapps.rinde.ui.navigation.HomeRoute
 fun BottomNavigationBar(navController: NavController) {
     val items = listOf(
         Pair(HomeRoute.List, Pair(stringResource(id = R.string.home_tab_home), Icons.Default.ShoppingCart)),
-        Pair(HomeRoute.Community, Pair(stringResource(id = R.string.welcome_title), Icons.Default.Public)), // TODO: Add specific strings
-        Pair(HomeRoute.Goals, Pair(stringResource(id = R.string.home_tab_history), Icons.Default.Flag)), // TODO: Add specific strings
-        Pair(HomeRoute.Assistant, Pair(stringResource(id = R.string.social_google), Icons.Default.AutoAwesome)) // TODO: Add specific strings
+        Pair(HomeRoute.Community, Pair(stringResource(id = R.string.home_tab_community), Icons.Default.Public)),
+        Pair(HomeRoute.Goals, Pair(stringResource(id = R.string.home_tab_goals), Icons.Default.Flag)),
+        Pair(HomeRoute.Assistant, Pair(stringResource(id = R.string.social_google), Icons.Default.AutoAwesome)),
+        Pair(HomeRoute.Profile, Pair("Perfil", Icons.Default.AccountCircle))
     )
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
