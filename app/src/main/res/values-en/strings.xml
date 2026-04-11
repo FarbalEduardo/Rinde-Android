@@ -5,8 +5,8 @@
     <!-- Welcome Screen -->
     <string name="welcome_title">Welcome back!</string>
     <string name="welcome_subtitle">Enter your personal details to access your account</string>
-    <string name="btn_sign_in">Sign In</string>
-    <string name="btn_sign_up">Sign Up</string>
+    <string name="btn_sign_in">Sign in</string>
+    <string name="btn_sign_up">Sign up</string>
     
     <!-- Login Screen -->
     <string name="login_welcome">Welcome</string>
@@ -18,10 +18,10 @@
     <string name="btn_send">Send</string>
     <string name="btn_cancel">Cancel</string>
     <string name="error_invalid_email">Please enter a valid email address</string>
-    <string name="error_agree_to_terms">Please agree to the terms and conditions</string>
-    <string name="social_connect">Social connect</string>
+    <string name="error_agree_to_terms">Please accept the terms and conditions</string>
+    <string name="social_connect">Social network</string>
     <string name="social_google">Google</string>
-    <string name="new_here">Are you new here?</string>
+    <string name="new_here">New here?</string>
     <string name="create_account">Create account</string>
     
     <!-- Sign Up Screen -->
@@ -35,20 +35,82 @@
     <string name="filter_all">All</string>
     <string name="filter_pending">Pending</string>
     <string name="filter_completed">Completed</string>
-    <string name="add_category">+ Add Category</string>
+    <string name="add_category">Add Category</string>
+    <string name="mi_lista">My List</string>
+    <string name="add_product_title">Add Product</string>
+    <string name="add_product_name_hint">Product name</string>
+    <string name="add_product_category_hint">Category</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_edit">Edit</string>
+    <string name="btn_add">Add</string>
+    <string name="dialog_delete_group_title">Delete group?</string>
+    <string name="dialog_delete_group_text">Do you want to delete the group \"%s\"? All products in this group will be deleted.</string>
+    <string name="dialog_delete_group_confirm">Delete</string>
+    <string name="dialog_delete_group_cancel">Cancel</string>
+
+    <!-- Categories -->
+    <string name="cat_groceries">Groceries</string>
+    <string name="cat_fruits">Fruits &amp; Veggies</string>
+    <string name="cat_proteins">Proteins</string>
+    <string name="cat_electronics">Electronics</string>
+    <string name="cat_household">Appliances</string>
+    <string name="cat_pharmacy">Pharmacy &amp; Hygiene</string>
+    <string name="cat_clothing">Clothing</string>
+    <string name="cat_home">Home</string>
+    <string name="cat_others">Others</string>
+
+    <!-- Empty State -->
+    <string name="empty_list_title">Your list is empty</string>
+    <string name="empty_list_subtitle">Start saving by adding your favorite products with the blue + button.</string>
 
     <!-- Home Screen -->
+    <string name="home_tab_home">List</string>
+    <string name="home_tab_community">Community</string>
+    <string name="home_tab_goals">Goals</string>
+    <string name="home_tab_chef_ai">Chef AI</string>
+    <string name="add_entry">Add entry</string>
+    <string name="btn_logout">Log out</string>
 
-    <!-- Home Tabs -->
-    <string name="home_tab_home">Home</string>
-    <string name="home_tab_history">History</string>
-    <string name="home_tab_profile">Profile</string>
-    <string name="add_entry">Add record</string>
-    <string name="btn_logout">Logout</string>
-
-    <!-- Navigation/General -->
+    <!-- Sign Up Screen Placeholder -->
     <string name="back">Back</string>
     <string name="personal_data_highlight">personal data</string>
     <string name="personal_data_title">Data Processing</string>
-    <string name="privacy_policy_content">At Rinde, we take your data security very seriously. The personal information we collect (such as name and email) is used exclusively to manage your account and improve your experience. We do not share your data with third parties without your explicit consent.</string>
+    <string name="privacy_policy_content">At Rinde, we take your data security very seriously. The personal information we collect (like name and email) is used exclusively to manage your account and improve your experience. We do not share your data with third parties without your explicit consent.</string>
+    
+    <string name="default_web_client_id" translatable="false">491472128600-bcq3patk208hqtjhphi8igr7gid46vn0.apps.googleusercontent.com</string>
+    
+    <!-- Bottom Sheet -->
+    <string name="add_items_title">Add Items</string>
+    <string name="edit_item_title">Edit Item</string>
+    <string name="tab_catalog">Catalog</string>
+    <string name="tab_custom">Custom</string>
+    <string name="search_placeholder">Search product...</string>
+    <string name="category_all">All</string>
+    <string name="label_quantity">QUANTITY</string>
+    <string name="label_unit">UNIT</string>
+    <string name="btn_add_to_list">Add to list</string>
+    <string name="btn_save_changes">Save Changes</string>
+    <string name="btn_add_custom">Add Custom</string>
+    <string name="btn_done">Done</string>
+    
+    <!-- Units -->
+    <string name="unit_piece">Piece</string>
+    <string name="unit_kg">Kg</string>
+    <string name="msg_product_added">%s added to the list</string>
+    <string name="msg_product_updated">%s updated</string>
+    <string name="suggestions_label">Previous suggestions</string>
+    <string name="unit_liter">Liter</string>
+    <string name="unit_package">Package</string>
+
+    <!-- Assistant Screen -->
+    <string name="chef_ai_title">Chef AI Assistant</string>
+    <string name="chef_ai_subtitle">Smart recipes for you.</string>
+    
+    <!-- Community Screen -->
+    <string name="community_title">Rinde Community</string>
+    <string name="community_subtitle">Explore offers from other users.</string>
+    
+    <!-- Goals Screen -->
+    <string name="goals_title">My Goals</string>
+    <string name="goals_subtitle">Track your savings.</string>
 </resources>

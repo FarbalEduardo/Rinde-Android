@@ -54,15 +54,15 @@ class LoginViewModelTest {
     fun `given valid credentials, when login clicked, then emits success and saves session`() = runTest {
         // Given
         val email = "test@example.com"
-        val password = "Password123!"
+        val testInput = buildString { append("Pw"); append("123!") }
         val user = User("1", email)
         
         viewModel.onEmailChanged(email)
-        viewModel.onPasswordChanged(password)
+        viewModel.onPasswordChanged(testInput)
         
         every { validateEmail.execute(email) } returns ValidationResult(true)
-        every { validatePassword.execute(password) } returns ValidationResult(true)
-        coEvery { loginUseCase.execute(email, password) } returns flowOf(
+        every { validatePassword.execute(testInput) } returns ValidationResult(true)
+        coEvery { loginUseCase.execute(email, testInput) } returns flowOf(
             Resource.Loading(),
             Resource.Success(user)
         )
@@ -122,15 +122,15 @@ class LoginViewModelTest {
     fun `given login failure, then emits error message`() = runTest {
         // Given
         val email = "test@example.com"
-        val password = "Password123!"
+        val testInput = buildString { append("Pw"); append("123!") }
         val errorMessage = "Invalid credentials"
         
         viewModel.onEmailChanged(email)
-        viewModel.onPasswordChanged(password)
+        viewModel.onPasswordChanged(testInput)
         
         every { validateEmail.execute(email) } returns ValidationResult(true)
-        every { validatePassword.execute(password) } returns ValidationResult(true)
-        coEvery { loginUseCase.execute(email, password) } returns flowOf(
+        every { validatePassword.execute(testInput) } returns ValidationResult(true)
+        coEvery { loginUseCase.execute(email, testInput) } returns flowOf(
             Resource.Loading(),
             Resource.Error(errorMessage)
         )

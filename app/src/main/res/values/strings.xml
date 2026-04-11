@@ -35,14 +35,44 @@
     <string name="filter_all">Todos</string>
     <string name="filter_pending">Pendientes</string>
     <string name="filter_completed">Completados</string>
-    <string name="add_category">+ Añadir Categoría</string>
+    <string name="add_category">Añadir Categoría</string>
+    <string name="add_category_title">Añadir nueva categoría</string>
+    <string name="category_name_label">Nombre de la categoría</string>
+    <string name="mi_lista">Mi Lista</string>
+    <string name="add_product_title">Agregar Producto</string>
+    <string name="add_product_name_hint">Nombre del producto</string>
+    <string name="add_product_category_hint">Categoría</string>
+    <string name="action_delete">Eliminar</string>
+    <string name="action_edit">Editar</string>
+    <string name="btn_add">Agregar</string>
+    <string name="dialog_delete_group_title">¿Borrar grupo?</string>
+    <string name="dialog_delete_group_text">¿Deseas borrar el grupo \"%s\"? Se eliminarán todos los productos de este grupo.</string>
+    <string name="dialog_delete_group_confirm">Borrar</string>
+    <string name="dialog_delete_group_cancel">Cancelar</string>
+
+    <!-- Categories -->
+    <string name="cat_groceries">Despensa</string>
+    <string name="cat_fruits">Frutas y Verduras</string>
+    <string name="cat_proteins">Proteínas</string>
+    <string name="cat_electronics">Electrónica</string>
+    <string name="cat_household">Línea Blanca</string>
+    <string name="cat_pharmacy">Farmacia e Higiene</string>
+    <string name="cat_clothing">Ropa</string>
+    <string name="cat_home">Hogar</string>
+    <string name="cat_others">Otros</string>
+
+    <!-- Empty State -->
+    <string name="empty_list_title">Tu lista está vacía</string>
+    <string name="empty_list_subtitle">Empieza a ahorrar agregando tus productos favoritos con el botón + azul.</string>
+
 
     <!-- Home Screen -->
 
     <!-- Home Screen -->
-    <string name="home_tab_home">Inicio</string>
-    <string name="home_tab_history">Historial</string>
-    <string name="home_tab_profile">Perfil</string>
+    <string name="home_tab_home">Lista</string>
+    <string name="home_tab_community">Comunidad</string>
+    <string name="home_tab_goals">Metas</string>
+    <string name="home_tab_chef_ai">Chef AI</string>
     <string name="add_entry">Añadir registro</string>
     <string name="btn_logout">Cerrar sesión</string>
 
@@ -52,4 +82,39 @@
     <string name="personal_data_title">Tratamiento de Datos</string>
     <string name="privacy_policy_content">En Rinde, nos tomamos muy en serio la seguridad de tus datos. La información personal que recolectamos (como nombre y correo) se utiliza exclusivamente para gestionar tu cuenta y mejorar tu experiencia. No compartimos tus datos con terceros sin tu consentimiento explícito.</string>
     <string name="default_web_client_id">491472128600-bcq3patk208hqtjhphi8igr7gid46vn0.apps.googleusercontent.com</string>
+    
+    <!-- Bottom Sheet -->
+    <string name="add_items_title">Agregar Ítems</string>
+    <string name="edit_item_title">Editar Ítem</string>
+    <string name="tab_catalog">Catálogo</string>
+    <string name="tab_custom">Personalizado</string>
+    <string name="search_placeholder">Buscar producto...</string>
+    <string name="category_all">Todo</string>
+    <string name="label_quantity">CANTIDAD</string>
+    <string name="label_unit">UNIDAD</string>
+    <string name="btn_add_to_list">Añadir a la lista</string>
+    <string name="btn_save_changes">Guardar cambios</string>
+    <string name="btn_add_custom">Añadir Personalizado</string>
+    <string name="btn_done">Listo</string>
+    
+    <!-- Units -->
+    <string name="unit_piece">Pieza</string>
+    <string name="unit_kg">Kg</string>
+    <string name="unit_liter">Litro</string>
+    <string name="unit_package">Paquete</string>
+    <string name="msg_product_added">%s añadido a la lista</string>
+    <string name="msg_product_updated">%s actualizado</string>
+    <string name="suggestions_label">Sugerencias anteriores</string>
+    
+    <!-- Assistant Screen -->
+    <string name="chef_ai_title">Chef AI Asistente</string>
+    <string name="chef_ai_subtitle">Recetas inteligentes para ti.</string>
+    
+    <!-- Community Screen -->
+    <string name="community_title">Comunidad Rinde</string>
+    <string name="community_subtitle">Explora ofertas de otros usuarios.</string>
+    
+    <!-- Goals Screen -->
+    <string name="goals_title">Mis Metas</string>
+    <string name="goals_subtitle">Seguimiento de tu ahorro.</string>
 </resources>
