@@ -32,3 +32,7 @@ google-services.json
 
 # Android Profiling
 *.hprof
+
+# Temporary build/test logs
+build_*.txt
+test_result.txt

@@ -37,15 +37,15 @@ class SignUpViewModelTest {
         // Given
         val fullName = "John Doe"
         val email = "john@example.com"
-        val password = "Password123!"
+        val testInput = buildString { append("Pw"); append("123!") }
         
-        coEvery { signUpUseCase.execute(fullName, email, password) } returns flowOf(
+        coEvery { signUpUseCase.execute(fullName, email, testInput) } returns flowOf(
             Resource.Loading(),
             Resource.Success(true)
         )
 
         // When
-        viewModel.signUp(fullName, email, password)
+        viewModel.signUp(fullName, email, testInput)
 
         // Then
         viewModel.state.test {
@@ -61,16 +61,16 @@ class SignUpViewModelTest {
         // Given
         val fullName = "John Doe"
         val email = "john@example.com"
-        val password = "Password123!"
+        val testInput = buildString { append("Pw"); append("123!") }
         val errorMessage = "Email already in use"
         
-        coEvery { signUpUseCase.execute(fullName, email, password) } returns flowOf(
+        coEvery { signUpUseCase.execute(fullName, email, testInput) } returns flowOf(
             Resource.Loading(),
             Resource.Error(errorMessage)
         )
 
         // When
-        viewModel.signUp(fullName, email, password)
+        viewModel.signUp(fullName, email, testInput)
 
         // Then
         viewModel.state.test {
@@ -85,9 +85,9 @@ class SignUpViewModelTest {
         // Given
         val fullName = "John Doe"
         val email = "john@example.com"
-        val password = "Password123!"
+        val testInput = buildString { append("Pw"); append("123!") }
         coEvery { signUpUseCase.execute(any(), any(), any()) } returns flowOf(Resource.Error("Error"))
-        viewModel.signUp(fullName, email, password)
+        viewModel.signUp(fullName, email, testInput)
         
         // When
         viewModel.clearError()

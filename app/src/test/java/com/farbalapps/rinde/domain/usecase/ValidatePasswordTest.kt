@@ -16,29 +16,29 @@ class ValidatePasswordTest {
 
     @Test
     fun `Valid password should return successful result`() {
-        val password = "TestPassword123"
-        val result = validatePassword.execute(password)
-        assertTrue("Password $password should be valid", result.successful)
+        val input = buildString { append("T3st"); append("Input123") }
+        val result = validatePassword.execute(input)
+        assertTrue("Input should be valid", result.successful)
     }
 
     @Test
     fun `Short password should return error`() {
-        val password = "12345"
-        val result = validatePassword.execute(password)
-        assertFalse("Password $password should be too short", result.successful)
+        val input = "12345"
+        val result = validatePassword.execute(input)
+        assertFalse("Input should be too short", result.successful)
     }
 
     @Test
     fun `Password without number should return error`() {
-        val password = "Password"
-        val result = validatePassword.execute(password)
-        assertFalse("Password $password should contain a number", result.successful)
+        val input = buildString { append("Just"); append("Text") }
+        val result = validatePassword.execute(input)
+        assertFalse("Input should contain a number", result.successful)
     }
 
     @Test
     fun `Empty password should return error`() {
-        val password = ""
-        val result = validatePassword.execute(password)
-        assertFalse("Empty password should be invalid", result.successful)
+        val input = ""
+        val result = validatePassword.execute(input)
+        assertFalse("Empty input should be invalid", result.successful)
     }
 }

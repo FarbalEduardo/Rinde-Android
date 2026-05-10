@@ -5,6 +5,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -33,8 +34,8 @@ fun LoginScreen(
     onSignUpClick: () -> Unit,
     onBackClick: () -> Unit
 ) {
-    val state by viewModel.state.collectAsState()
-    val resetState by viewModel.resetPasswordState.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val resetState by viewModel.resetPasswordState.collectAsStateWithLifecycle()
 
     val scope = rememberCoroutineScope()
     val context = LocalContext.current

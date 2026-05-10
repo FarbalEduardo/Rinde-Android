@@ -13,6 +13,9 @@ Este skill proporciona capacidades de auditoría automática para identificar ri
 2.  **Escaneo de Secretos**: Busca patrones de llaves API, tokens y contraseñas hardcoreadas.
 3.  **Seguridad de Red**: Identifica el uso de protocolos inseguros (`http://`) y falta de `networkSecurityConfig`.
 4.  **Criptografía e Inyección**: Detecta el uso de algoritmos débiles o inyecciones SQL potenciales.
+5.  **Almacenamiento Seguro (Data at Rest)**: Exige expresamente que los tokens o datos sensibles locales utilicen `EncryptedSharedPreferences` o DataStore encriptado bajo Android Keystore.
+6.  **Detección de Dependencias Vulnerables**: Sugiere auditorías sistemáticas de versiones y dependencias en `build.gradle` para aislar librerías con CVE conocidas.
+7.  **Ofuscación y Minificación (R8)**: Requiere revisar que las reglas de ProGuard/R8 ofusquen adecuadamente la capa de datos/dominio y eviten exponer estructuras base previo a la compilación release.
 
 ## Cómo usar este Skill
 

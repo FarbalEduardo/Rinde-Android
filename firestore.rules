@@ -1,0 +1,94 @@
+rules_version = '2';
+
+// ============================================================
+// RINDE APP — Firestore Security Rules
+// Proyecto: rinde-fab60
+// Última actualización: 2026-04-26
+//
+// Política: Solo usuarios autenticados pueden leer/escribir.
+// Cada usuario solo puede modificar sus propios datos.
+// Los posts son de lectura pública (para usuarios autenticados).
+// ============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── Función de utilidad ───────────────────────────────────────────────────
+    // Verifica que el usuario está autenticado
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Verifica que el usuario autenticado es el dueño del recurso
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // ─── Colección: users ──────────────────────────────────────────────────────
+    // Cada usuario puede leer cualquier perfil público,
+    // pero solo modificar el suyo propio.
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isOwner(userId);
+      allow update: if isAuthenticated() && isOwner(userId);
+      allow delete: if false; // No se permite borrar perfiles
+
+      // Subcolección: saved_posts
+      // Solo el dueño puede ver y gestionar sus posts guardados
+      match /saved_posts/{postId} {
+        allow read, write: if isAuthenticated() && isOwner(userId);
+      }
+
+      // Subcolección: blocked_users
+      // Solo el dueño puede ver y gestionar sus usuarios bloqueados
+      match /blocked_users/{blockedUserId} {
+        allow read, write: if isAuthenticated() && isOwner(userId);
+      }
+    }
+
+    // ─── Colección: posts ──────────────────────────────────────────────────────
+    // Todos los usuarios autenticados pueden leer posts activos.
+    // Solo el autor puede crear/modificar sus propios posts.
+    match /posts/{postId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated()
+                    && request.resource.data.authorId == request.auth.uid;
+      allow update: if isAuthenticated()
+                    && (
+                      // El autor puede editar su post
+                      resource.data.authorId == request.auth.uid
+                      // Cualquier usuario autenticado puede incrementar likes/votes
+                      || (request.resource.data.diff(resource.data).affectedKeys()
+                          .hasOnly(['likes', 'votes']))
+                    );
+      allow delete: if isAuthenticated()
+                    && resource.data.authorId == request.auth.uid;
+    }
+
+    // ─── Colección: relationships ──────────────────────────────────────────────
+    // Gestiona follows entre usuarios.
+    // El followerId debe coincidir con el uid del usuario autenticado.
+    match /relationships/{relationshipId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated()
+                    && request.resource.data.followerId == request.auth.uid;
+      allow delete: if isAuthenticated()
+                    && resource.data.followerId == request.auth.uid;
+      allow update: if false; // Las relaciones no se editan, se crean/borran
+    }
+
+    // ─── Colección: shopping_lists ─────────────────────────────────────────────
+    // Acceso exclusivo del propietario
+    match /shopping_lists/{listId} {
+      allow read, write: if isAuthenticated()
+                         && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated()
+                    && request.resource.data.userId == request.auth.uid;
+    }
+
+    // ─── Denegar todo lo demás por defecto ────────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -2,6 +2,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Permisos para GPS y Ubicación -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- Permiso para acceso a Internet (Firebase/Storage) -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+
     <application
         android:name=".RindeApp"
         android:allowBackup="false"
