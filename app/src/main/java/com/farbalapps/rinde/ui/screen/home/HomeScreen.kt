@@ -1,28 +1,25 @@
 package com.farbalapps.rinde.ui.screen.home
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.padding
-import androidx.compose.ui.unit.dp
+import androidx.compose.animation.*
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
-import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
@@ -30,7 +27,6 @@ import com.farbalapps.rinde.R
 import com.farbalapps.rinde.ui.navigation.HomeNavHost
 import com.farbalapps.rinde.ui.navigation.HomeRoute
 import com.farbalapps.rinde.ui.components.BottomNavigationBar
-import androidx.compose.ui.platform.LocalContext
 import com.farbalapps.rinde.ui.screen.home.list.ListViewModel
 import com.farbalapps.rinde.ui.screen.home.list.components.AddProductBottomSheet
 
@@ -47,62 +43,25 @@ fun HomeScreen(
     val context = LocalContext.current
     val activity = context as? android.app.Activity
     
-    // Intercept back button to show confirmation dialog
-    androidx.activity.compose.BackHandler(enabled = currentRoute == HomeRoute.List.route) {
-        showExitDialog = true
-    }
-
-    if (showExitDialog) {
-        AlertDialog(
-            onDismissRequest = { showExitDialog = false },
-            title = {
-                Text(
-                    text = "¿Salir de la aplicación?",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
-                )
-            },
-            text = {
-                Text(
-                    text = "Al salir se perderán los cambios no guardados en la nube. ¿Estás seguro de que deseas cerrar Rinde?",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = { activity?.finish() },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("Cerrar")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showExitDialog = false }) {
-                    Text("Cancelar")
-                }
-            },
-            containerColor = MaterialTheme.colorScheme.surface,
-            icon = {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ExitToApp,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary
-                )
-            },
-            shape = RoundedCornerShape(24.dp)
-        )
-    }
-
-    // Shared ViewModel scoped to the HomeScreen NavHost so FAB and ListScreen share state
+    // ViewModels
     val listViewModel: ListViewModel = hiltViewModel()
     val uiState by listViewModel.uiState.collectAsStateWithLifecycle()
 
     // Trigger catalog load
     LaunchedEffect(Unit) {
         listViewModel.loadCatalog(context)
+    }
+
+    // Intercept back button to show confirmation dialog
+    androidx.activity.compose.BackHandler(enabled = currentRoute == HomeRoute.List.route) {
+        showExitDialog = true
+    }
+
+    if (showExitDialog) {
+        ExitConfirmationDialog(
+            onConfirm = { activity?.finish() },
+            onDismiss = { showExitDialog = false }
+        )
     }
 
     val appBarTitle = when (currentRoute) {
@@ -122,61 +81,44 @@ fun HomeScreen(
                 available: Offset,
                 source: NestedScrollSource
             ): Offset {
-                // Only hide if the list actually consumed some scroll (i.e., it moved)
-                if (consumed.y < -5) {
-                    isFabVisible = false
-                }
-                // Show if scrolling up and it moved
-                if (consumed.y > 5) {
-                    isFabVisible = true
-                }
+                if (consumed.y < -5) isFabVisible = false
+                if (consumed.y > 5) isFabVisible = true
                 return Offset.Zero
             }
         }
     }
 
+    val isTopLevelRoute = currentRoute in listOf(
+        HomeRoute.List.route,
+        HomeRoute.Community.route,
+        HomeRoute.Goals.route,
+        HomeRoute.Assistant.route,
+        HomeRoute.Profile.route
+    )
+
     Scaffold(
+        modifier = Modifier.nestedScroll(nestedScrollConnection),
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = appBarTitle,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                },
-                actions = {
-                    if (currentRoute == HomeRoute.Community.route) {
-                        IconButton(onClick = { /* TODO: Implement Search */ }) {
-                            Icon(
-                                imageVector = Icons.Default.Search,
-                                contentDescription = "Buscar",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                    IconButton(onClick = onLogout) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.Logout,
-                            contentDescription = stringResource(id = R.string.btn_logout),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface
+            if (isTopLevelRoute && currentRoute != HomeRoute.Community.route) {
+                HomeScreenTopBar(
+                    title = appBarTitle,
+                    showSearch = currentRoute == HomeRoute.Community.route,
+                    onSearchClick = { /* TODO */ },
+                    showSettings = currentRoute == HomeRoute.Profile.route,
+                    onSettingsClick = { navController.navigate(HomeRoute.Settings.route) }
                 )
-            )
+            }
         },
         bottomBar = {
-            BottomNavigationBar(navController = navController)
+            if (isTopLevelRoute) {
+                BottomNavigationBar(navController = navController)
+            }
         },
         floatingActionButton = {
-            androidx.compose.animation.AnimatedVisibility(
+            AnimatedVisibility(
                 visible = isFabVisible,
-                enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.scaleIn(),
-                exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.scaleOut()
+                enter = fadeIn() + scaleIn(),
+                exit = fadeOut() + scaleOut()
             ) {
                 when (currentRoute) {
                     HomeRoute.List.route -> {
@@ -185,37 +127,28 @@ fun HomeScreen(
                             containerColor = MaterialTheme.colorScheme.primary,
                             contentColor = MaterialTheme.colorScheme.onPrimary
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Add,
-                                contentDescription = stringResource(id = R.string.add_entry)
-                            )
+                            Icon(Icons.Default.Add, stringResource(id = R.string.add_entry))
                         }
                     }
-                    HomeRoute.Goals.route, HomeRoute.Community.route -> {
+                    HomeRoute.Goals.route -> {
                         FloatingActionButton(
-                            onClick = { /* TODO */ },
+                            onClick = { /* TODO: Crear meta */ },
                             containerColor = MaterialTheme.colorScheme.primary,
                             contentColor = MaterialTheme.colorScheme.onPrimary
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Add,
-                                contentDescription = "Añadir"
-                            )
+                            Icon(Icons.Default.Add, "Añadir meta")
                         }
                     }
                 }
             }
         }
     ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .padding(innerPadding)
-                .nestedScroll(nestedScrollConnection)
-        ) {
+        Box(modifier = Modifier.padding(innerPadding)) {
             HomeNavHost(
                 navController = navController,
                 innerPadding = PaddingValues(0.dp),
-                listViewModel = listViewModel
+                listViewModel = listViewModel,
+                onLogout = onLogout
             )
         }
     }
@@ -226,31 +159,107 @@ fun HomeScreen(
             onDismiss = { 
                 showAddProductSheet = false
                 listViewModel.stopEditing()
-                listViewModel.triggerPendingHighlights() // Trigger highlight animation for all items added while sheet was open
+                listViewModel.triggerPendingHighlights() 
             },
             catalogItems = uiState.catalogItems,
             productCategories = uiState.catalogCategories,
             targetGroup = uiState.selectedFilterGroup,
             initialItem = editingItem,
-            onShowMessage = { message ->
-                android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
-            },
-            onProductAdded = { name, category, group, qty, unit, emoji, isCustom ->
-                listViewModel.addItem(name, category, group, qty, unit, emoji, isCustom)
-                // Do not close sheet here to allow multiple additions
-            },
-            onProductUpdated = { id, name, category, qty, unit, emoji ->
-                listViewModel.updateItem(id, name, category, qty, unit, emoji)
-                listViewModel.stopEditing()
-            },
+            onShowMessage = { android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_SHORT).show() },
+            onProductAdded = { n, c, g, q, u, e, ic -> listViewModel.addItem(n, c, g, q, u, e, ic) },
+            onProductUpdated = { id, n, c, q, u, e -> listViewModel.updateItem(id, n, c, q, u, e); listViewModel.stopEditing() },
             onAddCategory = { listViewModel.addCategory(it) },
             customHistory = uiState.customProductsHistory
         )
     }
 }
 
-@Preview(showSystemUi = true, showBackground = true)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreenPreview() {
-    HomeScreen(onLogout = {})
+fun HomeScreenTopBar(
+    title: String,
+    showSearch: Boolean,
+    onSearchClick: () -> Unit,
+    showSettings: Boolean = false,
+    onSettingsClick: () -> Unit = {}
+) {
+    TopAppBar(
+        title = {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        actions = {
+            if (showSearch) {
+                IconButton(onClick = onSearchClick) {
+                    Icon(Icons.Default.Search, "Buscar")
+                }
+            }
+            if (showSettings) {
+                IconButton(onClick = onSettingsClick) {
+                    Icon(Icons.Default.Settings, "Configuración")
+                }
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            titleContentColor = MaterialTheme.colorScheme.onSurface
+        )
+    )
+}
+
+@Composable
+fun ExitConfirmationDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "¿Salir de la aplicación?",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Text(
+                text = "Al salir se perderán los cambios no guardados en la nube. ¿Estás seguro de que deseas cerrar Rinde?",
+                style = MaterialTheme.typography.bodyMedium
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Cerrar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
+        },
+        containerColor = MaterialTheme.colorScheme.surface,
+        icon = {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary
+            )
+        },
+        shape = RoundedCornerShape(24.dp)
+    )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun HomeScreenTopBarPreview() {
+    com.farbalapps.rinde.ui.theme.RindeTheme {
+        HomeScreenTopBar(title = "Rinde", showSearch = true, onSearchClick = {})
+    }
 }

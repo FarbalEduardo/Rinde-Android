@@ -1,120 +1,242 @@
 package com.farbalapps.rinde.ui.screen.home.community
 
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.roundToInt
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.farbalapps.rinde.ui.screen.home.community.components.FilterChipRow
 import com.farbalapps.rinde.ui.screen.home.community.components.PostCard
-import com.farbalapps.rinde.ui.screen.home.community.components.WishlistAddCard
+import com.farbalapps.rinde.ui.theme.RindePrimary
 import com.farbalapps.rinde.ui.theme.RindeTheme
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.ui.tooling.preview.Preview
+import com.farbalapps.rinde.domain.model.CommunityPost
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.background
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberTopAppBarState
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CommunityScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
-    Surface(
+fun CommunityScreen(
+    onNavigateToCreatePost: () -> Unit = {},
+    viewModel: CommunityViewModel = hiltViewModel(),
+    innerPadding: PaddingValues = PaddingValues(0.dp)
+) {
+    val currentTab by viewModel.currentTab.collectAsState()
+    val posts by viewModel.posts.collectAsState()
+
+    CommunityContent(
+        currentTab = currentTab,
+        posts = posts,
+        onTabSelected = { viewModel.setTab(it) },
+        onNavigateToCreatePost = onNavigateToCreatePost,
+        onLikeClick = { viewModel.toggleLike(it) },
+        onSaveClick = { viewModel.toggleSave(it) },
+        onLoadMore = { viewModel.loadMore() },
+        innerPadding = innerPadding
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CommunityContent(
+    currentTab: CommunityTab,
+    posts: List<CommunityPost>,
+    onTabSelected: (CommunityTab) -> Unit,
+    onNavigateToCreatePost: () -> Unit,
+    onLikeClick: (String) -> Unit,
+    onSaveClick: (String) -> Unit,
+    onLoadMore: () -> Unit,
+    innerPadding: PaddingValues
+) {
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(rememberTopAppBarState())
+    val lazyListState = rememberLazyListState()
+    
+    // FAB visibility logic: hide when scrolling down, show when scrolling up
+    val isScrollingDown = remember {
+        derivedStateOf {
+            lazyListState.firstVisibleItemIndex > 0 || lazyListState.firstVisibleItemScrollOffset > 0
+        }
+    }
+    
+    // We'll use a more sophisticated way to detect direction for the FAB
+    var lastScrollOffset by remember { mutableStateOf(0) }
+    var lastScrollIndex by remember { mutableStateOf(0) }
+    var isFabVisible by remember { mutableStateOf(true) }
+
+    LaunchedEffect(lazyListState.firstVisibleItemScrollOffset, lazyListState.firstVisibleItemIndex) {
+        val currentIndex = lazyListState.firstVisibleItemIndex
+        val currentOffset = lazyListState.firstVisibleItemScrollOffset
+        
+        if (currentIndex > lastScrollIndex || (currentIndex == lastScrollIndex && currentOffset > lastScrollOffset)) {
+            if (currentOffset > 10) isFabVisible = false
+        } else if (currentIndex < lastScrollIndex || (currentIndex == lastScrollIndex && currentOffset < lastScrollOffset)) {
+            isFabVisible = true
+        }
+        
+        lastScrollIndex = currentIndex
+        lastScrollOffset = currentOffset
+    }
+
+    Scaffold(
         modifier = Modifier
             .fillMaxSize()
-            .padding(innerPadding),
-        color = MaterialTheme.colorScheme.background
-    ) {
+
+            .nestedScroll(scrollBehavior.nestedScrollConnection),
+        topBar = {
+            Column(
+                modifier = Modifier
+                    .background(MaterialTheme.colorScheme.surface)
+                    .offset { IntOffset(0, scrollBehavior.state.heightOffset.roundToInt()) }
+            ) {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = "Comunidad",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    actions = {
+                        IconButton(onClick = { /* TODO */ }) {
+                            Icon(Icons.Default.Search, contentDescription = "Buscar")
+                        }
+                    },
+                    scrollBehavior = scrollBehavior,
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        scrolledContainerColor = MaterialTheme.colorScheme.surface,
+                    )
+                )
+                // Filter chips that now move in sync with the top bar
+                Surface(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                    color = MaterialTheme.colorScheme.surface,
+                    tonalElevation = if (scrollBehavior.state.contentOffset < -1f) 2.dp else 0.dp
+                ) {
+                    FilterChipRow(
+                        selectedTab = currentTab,
+                        onTabSelected = onTabSelected,
+                        modifier = Modifier.padding(horizontal = 20.dp)
+                    )
+                }
+            }
+        },
+        floatingActionButton = {
+            AnimatedVisibility(
+                visible = isFabVisible,
+                enter = slideInVertically(initialOffsetY = { it * 2 }),
+                exit = slideOutVertically(targetOffsetY = { it * 2 })
+            ) {
+                FloatingActionButton(
+                    onClick = onNavigateToCreatePost,
+                    containerColor = RindePrimary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    shape = CircleShape
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Crear publicación")
+                }
+            }
+        }
+    ) { padding ->
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
+            state = lazyListState,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Mi Wishlist Section
-            item {
-                Column {
-                    Text(
-                        text = "Mi Wishlist",
-                        style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp),
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Row(
+            // Feed Content
+            if (posts.isEmpty()) {
+                item {
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState())
+                            .padding(top = 80.dp),
+                        contentAlignment = Alignment.Center
                     ) {
-                        WishlistAddCard()
-                        // Add some spacing to the right just in case
-                        Spacer(modifier = Modifier.width(16.dp))
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = "No hay publicaciones en esta sección.",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "¡Sé el primero en compartir una oferta!",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                            )
+                        }
                     }
+                }
+            } else {
+                items(posts) { post ->
+                    PostCard(
+                        username = post.authorName,
+                        timeLocation = post.location.name,
+                        imageUrl = post.photos.firstOrNull(),
+                        title = post.title,
+                        description = post.descriptionShort,
+                        descriptionLong = post.descriptionLong,
+                        isRecommended = post.isRecommended,
+                        votes = post.votes,
+                        likes = post.likes,
+                        commentsCount = post.commentsCount,
+                        onLikeClick = { onLikeClick(post.id) },
+                        onSaveClick = { onSaveClick(post.id) }
+                    )
                 }
             }
 
-            // Ofertas de hoy Section
+            // Bottom Spacing and Infinite Scroll trigger
             item {
-                Column {
-                    Text(
-                        text = "Ofertas de hoy",
-                        style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp),
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    
-                    // Chips Row
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState())
-                    ) {
-                        FilterChipRow()
-                        Spacer(modifier = Modifier.width(16.dp))
-                    }
+                LaunchedEffect(Unit) {
+                    onLoadMore()
                 }
-            }
-
-            // Dummy Posts Feed
-            item {
-                PostCard(
-                    username = "Carla Benavides",
-                    timeLocation = "Hace 15 min • Jumbo Providencia",
-                    imageUrl = null, // Placeholder will show red background as per original design color hint
-                    title = "Frutillas 2 x 1 en Jumbo.\n¡Están muy frescas!",
-                    description = "Solo hoy hasta agotar stock. Visto en el pasillo central, quedan unas 20 cajas aproximadamente.",
-                    isRecommended = true,
-                    votes = 42,
-                    likes = 128,
-                    commentsCount = 12
-                )
-            }
-            
-            item {
-                PostCard(
-                    username = "Pedro Soto",
-                    timeLocation = "Hace 1 hora • Líder Express",
-                    imageUrl = null, // Placeholder will show red background as per original design color hint
-                    title = "Detergente Omo 3L a precio de 1L",
-                    description = "Es un error de etiqueta pero está pasando por caja a $4.990. Aprovechen antes de que se den cuenta.",
-                    isRecommended = false,
-                    votes = 12,
-                    likes = 89,
-                    commentsCount = 4
-                )
-            }
-
-            // Add padding at bottom for FAB
-            item {
-                Spacer(modifier = Modifier.height(80.dp))
+                Spacer(modifier = Modifier.height(100.dp))
             }
         }
     }
 }
 
-@PreviewLightDark
+@Preview(showBackground = true)
 @Composable
 fun CommunityScreenPreview() {
     RindeTheme {
-        CommunityScreen()
+        CommunityContent(
+            currentTab = CommunityTab.RECENT,
+            posts = emptyList(),
+            onTabSelected = {},
+            onNavigateToCreatePost = {},
+            onLikeClick = {},
+            onSaveClick = {},
+            onLoadMore = {},
+            innerPadding = PaddingValues(0.dp)
+        )
     }
 }

@@ -8,5 +8,9 @@ data class Profile(
     val followersCount: Int = 0,
     val followingCount: Int = 0,
     val postsCount: Int = 0,
-    val isDummy: Boolean = false // Useful to show initial UI
+    val rating: Float = 0f,
+    val reviewsCount: Int = 0,
+    val isPrivate: Boolean = false,
+    val isDummy: Boolean = true,
+    val uploadStatus: String? = null
 )

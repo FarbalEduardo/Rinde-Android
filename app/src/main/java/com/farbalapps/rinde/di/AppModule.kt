@@ -19,8 +19,14 @@ import com.farbalapps.rinde.data.repository.CategoryRepositoryImpl
 import com.farbalapps.rinde.data.local.dao.ProfileDao
 import com.farbalapps.rinde.domain.repository.ProfileRepository
 import com.farbalapps.rinde.data.repository.ProfileRepositoryImpl
+import com.farbalapps.rinde.domain.repository.FeedRepository
+import com.farbalapps.rinde.data.repository.FeedRepositoryImpl
+import com.farbalapps.rinde.domain.moderation.ContentModerator
+import com.farbalapps.rinde.util.LocationService
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.storage.FirebaseStorage
+import androidx.work.WorkManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -39,6 +45,14 @@ object AppModule {
     @Provides
     @Singleton
     fun provideFirebaseFirestore(): FirebaseFirestore = FirebaseFirestore.getInstance()
+
+    @Provides
+    @Singleton
+    fun provideFirebaseStorage(): FirebaseStorage = FirebaseStorage.getInstance()
+
+    @Provides
+    @Singleton
+    fun provideWorkManager(@ApplicationContext context: Context): WorkManager = WorkManager.getInstance(context)
 
     @Provides
     @Singleton
@@ -127,8 +141,33 @@ object AppModule {
     @Provides
     @Singleton
     fun provideProfileRepository(
-        dao: ProfileDao
+        @ApplicationContext context: Context,
+        dao: ProfileDao,
+        firestore: FirebaseFirestore,
+        workManager: WorkManager
     ): ProfileRepository {
-        return ProfileRepositoryImpl(dao)
+        return ProfileRepositoryImpl(firestore, dao, context, workManager)
+    }
+
+    @Provides
+    @Singleton
+    fun provideFeedRepository(
+        @ApplicationContext context: Context,
+        firestore: FirebaseFirestore,
+        workManager: WorkManager
+    ): FeedRepository {
+        return FeedRepositoryImpl(context, firestore, workManager)
+    }
+
+    @Provides
+    @Singleton
+    fun provideContentModerator(): ContentModerator {
+        return ContentModerator()
+    }
+
+    @Provides
+    @Singleton
+    fun provideLocationService(@ApplicationContext context: Context): LocationService {
+        return LocationService(context)
     }
 }

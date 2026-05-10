@@ -65,7 +65,7 @@ fun SignUpFormFieldsPreview() {
             onFullNameChange = {},
             email = "john@example.com",
             onEmailChange = {},
-            password = "password123",
+            password = "",
             onPasswordChange = {}
         )
     }

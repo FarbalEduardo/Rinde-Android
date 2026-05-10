@@ -11,13 +11,9 @@ import com.farbalapps.rinde.data.local.entity.ShoppingItemEntity
 import com.farbalapps.rinde.data.local.entity.ProfileEntity
 import com.farbalapps.rinde.data.local.dao.ProfileDao
 
-/**
- * Main Room database for the Rinde app.
- * Currently contains the shopping_items table.
- */
 @Database(
     entities = [ShoppingItemEntity::class, CustomProductHistoryEntity::class, CategoryEntity::class, ProfileEntity::class],
-    version = 8,
+    version = 12,
     exportSchema = false
 )
 abstract class RindeDatabase : RoomDatabase() {

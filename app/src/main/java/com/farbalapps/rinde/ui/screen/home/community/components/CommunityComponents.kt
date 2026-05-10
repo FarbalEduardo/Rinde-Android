@@ -2,12 +2,15 @@ package com.farbalapps.rinde.ui.screen.home.community.components
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -21,6 +24,14 @@ import coil.compose.AsyncImage
 import com.farbalapps.rinde.ui.theme.Blue80
 import com.farbalapps.rinde.ui.theme.RindePrimary
 import com.farbalapps.rinde.ui.theme.RindeSecondary
+import androidx.compose.ui.tooling.preview.Preview
+import com.farbalapps.rinde.ui.theme.RindeTheme
+import com.farbalapps.rinde.ui.screen.home.community.CommunityTab
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.foundation.clickable
 
 @Composable
 fun WishlistAddCard(modifier: Modifier = Modifier) {
@@ -57,48 +68,52 @@ fun WishlistAddCard(modifier: Modifier = Modifier) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FilterChipRow(modifier: Modifier = Modifier) {
+fun FilterChipRow(
+    selectedTab: CommunityTab,
+    onTabSelected: (CommunityTab) -> Unit,
+    modifier: Modifier = Modifier
+) {
     Row(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         FilterChip(
-            selected = true,
-            onClick = { },
-            label = { Text("Lo más reciente", fontWeight = FontWeight.SemiBold) },
-            leadingIcon = {
-                Icon(
-                    imageVector = Icons.Default.Check,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp)
-                )
-            },
+            selected = selectedTab == CommunityTab.RECENT,
+            onClick = { onTabSelected(CommunityTab.RECENT) },
+            label = { Text("Lo más reciente", fontWeight = if (selectedTab == CommunityTab.RECENT) FontWeight.SemiBold else FontWeight.Normal) },
             colors = FilterChipDefaults.filterChipColors(
                 selectedContainerColor = Blue80,
-                selectedLabelColor = RindePrimary,
-                selectedLeadingIconColor = RindePrimary
+                selectedLabelColor = RindePrimary
             ),
             shape = RoundedCornerShape(50)
         )
         FilterChip(
-            selected = false,
-            onClick = { },
-            label = { Text("Tecnología", fontWeight = FontWeight.Normal) },
-            shape = RoundedCornerShape(50),
-            colors = FilterChipDefaults.filterChipColors(
-                containerColor = MaterialTheme.colorScheme.surface,
-                labelColor = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            selected = selectedTab == CommunityTab.FOLLOWING,
+            onClick = { onTabSelected(CommunityTab.FOLLOWING) },
+            label = { Text("Siguiendo", fontWeight = if (selectedTab == CommunityTab.FOLLOWING) FontWeight.SemiBold else FontWeight.Normal) },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.Group,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
+            },
+            shape = RoundedCornerShape(50)
         )
         FilterChip(
-            selected = false,
-            onClick = { },
-            label = { Text("Abarrotes", fontWeight = FontWeight.Normal) },
-            shape = RoundedCornerShape(50),
-            colors = FilterChipDefaults.filterChipColors(
-                containerColor = MaterialTheme.colorScheme.surface,
-                labelColor = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            selected = selectedTab == CommunityTab.SAVED,
+            onClick = { onTabSelected(CommunityTab.SAVED) },
+            label = { Text("Guardados", fontWeight = if (selectedTab == CommunityTab.SAVED) FontWeight.SemiBold else FontWeight.Normal) },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.Bookmark,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
+            },
+            shape = RoundedCornerShape(50)
         )
     }
 }
@@ -110,12 +125,19 @@ fun PostCard(
     imageUrl: String?,
     title: String,
     description: String,
+    descriptionLong: String = "",
     isRecommended: Boolean,
     votes: Int,
     likes: Int,
     commentsCount: Int,
+    profileImageUrl: String? = null,
+    onLikeClick: () -> Unit = {},
+    onSaveClick: () -> Unit = {},
+    onCommentClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    var isExpanded by remember { mutableStateOf(false) }
+
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
@@ -139,11 +161,20 @@ fun PostCard(
                         .background(Color(0xFFFFCCAA), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = "Avatar",
-                        tint = Color.White
-                    )
+                    if (profileImageUrl != null) {
+                        AsyncImage(
+                            model = profileImageUrl,
+                            contentDescription = "Avatar",
+                            modifier = Modifier.fillMaxSize().clip(CircleShape),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = "Avatar",
+                            tint = Color.White
+                        )
+                    }
                 }
                 
                 Spacer(modifier = Modifier.width(12.dp))
@@ -182,7 +213,6 @@ fun PostCard(
                     .background(MaterialTheme.colorScheme.surfaceVariant)
             ) {
                 if (imageUrl != null) {
-                    // Placeholder for actual image loading
                     AsyncImage(
                         model = imageUrl,
                         contentDescription = title,
@@ -190,7 +220,6 @@ fun PostCard(
                         contentScale = ContentScale.Crop
                     )
                 } else {
-                    // Placeholder fallback
                     Box(modifier = Modifier.fillMaxSize().background(Color(0xFFE53935)))
                 }
                 
@@ -200,11 +229,12 @@ fun PostCard(
                         .padding(12.dp)
                         .size(40.dp)
                         .background(Color.White.copy(alpha = 0.8f), CircleShape)
-                        .align(Alignment.TopEnd),
+                        .align(Alignment.TopEnd)
+                        .clickable { onSaveClick() },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Bookmark,
+                        imageVector = Icons.Default.BookmarkBorder, // Cambiar a Bookmark si ya está guardado
                         contentDescription = "Guardar",
                         tint = MaterialTheme.colorScheme.onSurface
                     )
@@ -230,7 +260,7 @@ fun PostCard(
                 
                 if (isRecommended) {
                     Surface(
-                        color = Color(0xFFFFEBEE), // Light Pink/red
+                        color = Color(0xFFFFEBEE),
                         shape = RoundedCornerShape(50),
                         modifier = Modifier.padding(start = 8.dp, top = 4.dp)
                     ) {
@@ -238,7 +268,7 @@ fun PostCard(
                             text = "RECOMENDADO",
                             style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFFC62828), // Dark Red
+                            color = Color(0xFFC62828),
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                         )
                     }
@@ -247,13 +277,24 @@ fun PostCard(
             
             Spacer(modifier = Modifier.height(8.dp))
             
-            // Description
-            Text(
-                text = description,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                lineHeight = 20.sp
-            )
+            // Description (Short + Long Toggle)
+            Column(modifier = Modifier.clickable { isExpanded = !isExpanded }) {
+                Text(
+                    text = if (isExpanded && descriptionLong.isNotEmpty()) descriptionLong else description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    lineHeight = 20.sp
+                )
+                if (descriptionLong.isNotEmpty()) {
+                    Text(
+                        text = if (isExpanded) "Ver menos" else "Ver más...",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = RindePrimary,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+            }
             
             Spacer(modifier = Modifier.height(16.dp))
             
@@ -292,26 +333,21 @@ fun PostCard(
                 }
                 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.ThumbUp,
-                        contentDescription = "Me gusta",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
+                    IconButton(onClick = onLikeClick) {
+                        Icon(
+                            imageVector = Icons.Default.ThumbUpOffAlt, // Cambiar a ThumbUp si ya tiene like
+                            contentDescription = "Me gusta",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
                     Text(
                         text = "$likes",
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Icon(
-                        imageVector = Icons.Default.ThumbDown,
-                        contentDescription = "No me gusta",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp)
-                    )
+                    Spacer(modifier = Modifier.width(4.dp))
                 }
             }
             
@@ -322,7 +358,7 @@ fun PostCard(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(50),
                 color = MaterialTheme.colorScheme.surface,
-                onClick = { }
+                onClick = onCommentClick
             ) {
                 Row(
                     modifier = Modifier
@@ -347,5 +383,44 @@ fun PostCard(
                 }
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun WishlistAddCardPreview() {
+    RindeTheme {
+        WishlistAddCard(modifier = Modifier.padding(16.dp))
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun FilterChipRowPreview() {
+    RindeTheme {
+        FilterChipRow(
+            selectedTab = CommunityTab.RECENT,
+            onTabSelected = {},
+            modifier = Modifier.padding(16.dp)
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PostCardPreview() {
+    RindeTheme {
+        PostCard(
+            username = "Eduardo Farbal",
+            timeLocation = "Hace 15 min • Jumbo Providencia",
+            imageUrl = null,
+            title = "Frutillas 2 x 1 en Jumbo",
+            description = "Solo hoy hasta agotar stock...",
+            isRecommended = true,
+            votes = 42,
+            likes = 120,
+            commentsCount = 15,
+            modifier = Modifier.padding(16.dp)
+        )
     }
 }

@@ -13,6 +13,10 @@ Asegura que la interfaz de usuario sea consistente con Material Design 3, manten
    - Sugiere el uso de `WindowSizeClasses` (`Compact`, `Medium`, `Expanded`).
    - Verifica el uso de `NavigationRail` en tablets y `NavigationBar` en móviles.
    - Asegura que el contenido no supere los 840dp de ancho en pantallas grandes.
+5. **Accesibilidad y Contrastes**: Valida tamaños mínimos de toque (48x48dp), requiere `contentDescription` explícito y sugiere contrastes accesibles.
+6. **Dark Mode Constraints**: Exige que no existan colores (blancos/negros) puros y duros incrustados, garantizando soporte dinámico para modo oscuro.
+7. **Tipografía Escalonable**: Asegura el uso estricto de `sp` en textos y detecta tamaños absolutos de texto.
+8. **Multi-Preview Constraints**: Promueve el uso de `@PreviewLightDark` o `@PreviewScreenSizes` locales o custom para validaciones completas.
 
 ## Guía Residencial (Portrait Only)
 - **Teléfonos**: Layout vertical, padding 16dp.

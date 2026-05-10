@@ -104,43 +104,11 @@ fun SignUpScreen(
                         onPasswordChange = { password = it }
                     )
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Checkbox(
-                            checked = agreeToTerms,
-                            onCheckedChange = { agreeToTerms = it }
-                        )
-
-                        val fullText = stringResource(id = R.string.terms_agreement)
-                        val highlightText = stringResource(id = R.string.personal_data_highlight)
-                        val annotatedString = buildAnnotatedString {
-                            val startIndex = fullText.indexOf(highlightText)
-                            if (startIndex != -1) {
-                                append(fullText.substring(0, startIndex))
-                                pushStringAnnotation(tag = "privacy", annotation = "policy")
-                                withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)) {
-                                    append(highlightText)
-                                }
-                                pop()
-                                append(fullText.substring(startIndex + highlightText.length))
-                            } else {
-                                append(fullText)
-                            }
-                        }
-
-                        androidx.compose.foundation.text.ClickableText(
-                            text = annotatedString,
-                            style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant),
-                            onClick = { offset ->
-                                annotatedString.getStringAnnotations(tag = "privacy", start = offset, end = offset)
-                                    .firstOrNull()?.let {
-                                        onPrivacyPolicyClick()
-                                    }
-                            }
-                        )
-                    }
+                    TermsAndPrivacyCheckbox(
+                        checked = agreeToTerms,
+                        onCheckedChange = { agreeToTerms = it },
+                        onPrivacyPolicyClick = onPrivacyPolicyClick
+                    )
 
                     Spacer(modifier = Modifier.height(dimensionResource(id = R.dimen.spacer_large)))
 
@@ -203,18 +171,7 @@ fun SignUpScreen(
 
                     Spacer(modifier = Modifier.height(dimensionResource(id = R.dimen.spacer_large)))
 
-                    Row(
-                        modifier = Modifier.align(Alignment.CenterHorizontally),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(stringResource(id = R.string.already_have_account), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        TextButton(onClick = onSignInClick, contentPadding = PaddingValues(0.dp)) {
-                            Text(stringResource(id = R.string.btn_sign_in),
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp)
-                        }
-                    }
+                    LoginRedirectSection(onSignInClick = onSignInClick)
                 }
             }
         }

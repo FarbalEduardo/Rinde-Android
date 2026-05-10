@@ -26,7 +26,7 @@ $rules = @(
         Ext = "*.kt", "*.java", "*.xml", "*.json"
     },
     @{
-        Pattern = 'Log\.(d|v|i|e)\(.*?token|password|secret.*?\)'
+        Pattern = 'Log\.(d|v|i|e)\(.*?(token|password|secret).*?\)'
         Message = "Logging sensible detectado."
         Level = "HIGH"
         Ext = "*.kt", "*.java"

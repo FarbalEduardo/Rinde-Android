@@ -39,6 +39,18 @@ foreach ($file in $domainFiles) {
     }
 }
 
+# 4. Firebase Sync: Missing .await() Check
+$repoFiles = Get-ChildItem -Path "app/src/main/java" -Filter "*Repository.kt" -Recurse -ErrorAction SilentlyContinue
+foreach ($file in $repoFiles) {
+    if ($null -eq $file) { continue }
+    $content = Get-Content $file.FullName -Raw
+    if ($content -match "\.collection\(.*?\)\.document\(.*?\)\.(set|update|delete)\(" -and $content -notmatch "\.await\(\)") {
+        if ($content -match "FirebaseFirestore") {
+            $issues += @{ type = "FirebaseSyncViolation"; file = $file.Name; message = "Firestore operation found without .await(). This leads to sync failures in coroutines." }
+        }
+    }
+}
+
 $status = if ($issues.Count -eq 0) { "PASSED" } else { "FAILED" }
 $result = @{ agent = $agentName; status = $status; issues = $issues }
 

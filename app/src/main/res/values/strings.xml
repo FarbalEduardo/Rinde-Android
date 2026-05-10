@@ -117,4 +117,33 @@
     <!-- Goals Screen -->
     <string name="goals_title">Mis Metas</string>
     <string name="goals_subtitle">Seguimiento de tu ahorro.</string>
+
+    <!-- Create Post Screen -->
+    <string name="create_post_title">Nueva Publicación</string>
+    <string name="create_post_label_photos">Fotos del producto (Máx. 4)</string>
+    <string name="create_post_hint_title">Título de la promoción</string>
+    <string name="create_post_placeholder_title">Ej: Aceite en oferta 2x1</string>
+    <string name="create_post_label_description">Descripción</string>
+    <string name="create_post_placeholder_description">Danos más detalles (pasillo, cantidad, etc.)</string>
+    <string name="create_post_label_category">Categoría</string>
+    <string name="create_post_label_location">Ubicación</string>
+    <string name="create_post_hint_location">¿Dónde está la oferta?</string>
+    <string name="create_post_placeholder_location">Ej: Líder Providencia</string>
+    <string name="create_post_location_helper">Puedes escribir el nombre o usar tu GPS.</string>
+    <string name="btn_publish">Publicar Oferta</string>
+    <string name="error_empty_title">El título no puede estar vacío</string>
+    <string name="error_empty_description">La descripción es necesaria para otros usuarios</string>
+    <string name="error_location_failed">No se pudo obtener la ubicación GPS.</string>
+    <string name="error_upload_failed">Error al subir la publicación: %s</string>
+    <string name="msg_post_published">¡Publicación compartida con éxito!</string>
+
+    <!-- Create Post Notifications -->
+    <string name="notif_channel_posts_name">Publicaciones</string>
+    <string name="notif_channel_posts_desc">Notificaciones sobre tus publicaciones</string>
+    <string name="notif_publishing_title">Publicando oferta…</string>
+    <string name="notif_publishing_desc">Subiendo contenido a la comunidad</string>
+    <string name="notif_post_success_title">¡Publicado!</string>
+    <string name="notif_post_success_desc">Tu oferta ya está disponible para la comunidad.</string>
+    <string name="notif_post_error_title">Error al publicar</string>
+    <string name="notif_post_error_desc">Hubo un problema. Lo reintentaremos más tarde.</string>
 </resources>

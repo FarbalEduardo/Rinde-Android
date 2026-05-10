@@ -5,4 +5,16 @@ data class Category(
     val userId: String = "",
     val isCustom: Boolean = true,
     val orderIndex: Int = 0
-)
+) {
+    companion object {
+        val FIXED_COMMUNITY_CATEGORIES = listOf(
+            "Abarrotes",
+            "Tecnología",
+            "Hogar",
+            "Moda",
+            "Mascotas",
+            "Salud y Belleza",
+            "Otros"
+        )
+    }
+}

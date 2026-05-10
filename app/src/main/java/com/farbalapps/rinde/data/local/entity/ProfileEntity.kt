@@ -13,7 +13,11 @@ data class ProfileEntity(
     val followersCount: Int,
     val followingCount: Int,
     val postsCount: Int,
-    val isDummy: Boolean
+    val rating: Float,
+    val reviewsCount: Int,
+    val isPrivate: Boolean,
+    val isDummy: Boolean,
+    val uploadStatus: String?
 )
 
 fun ProfileEntity.toDomainModel(): Profile {
@@ -25,7 +29,11 @@ fun ProfileEntity.toDomainModel(): Profile {
         followersCount = followersCount,
         followingCount = followingCount,
         postsCount = postsCount,
-        isDummy = isDummy
+        rating = rating,
+        reviewsCount = reviewsCount,
+        isPrivate = isPrivate,
+        isDummy = isDummy,
+        uploadStatus = uploadStatus
     )
 }
 
@@ -38,6 +46,10 @@ fun Profile.toEntity(): ProfileEntity {
         followersCount = followersCount,
         followingCount = followingCount,
         postsCount = postsCount,
-        isDummy = isDummy
+        rating = rating,
+        reviewsCount = reviewsCount,
+        isPrivate = isPrivate,
+        isDummy = isDummy,
+        uploadStatus = uploadStatus
     )
 }

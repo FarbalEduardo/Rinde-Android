@@ -4,6 +4,7 @@ import com.farbalapps.rinde.domain.model.User
 import com.farbalapps.rinde.domain.repository.UserRepository
 import com.farbalapps.rinde.domain.util.Resource
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.tasks.await
@@ -16,7 +17,23 @@ class FirebaseUserRepository @Inject constructor(
     override fun saveUserProfile(user: User): Flow<Resource<Boolean>> = flow {
         emit(Resource.Loading())
         try {
-            firestore.collection("users").document(user.id).set(user).await()
+            // Escribe todos los campos compatibles con Profile para que syncProfile pueda leerlos.
+            // Usa SetOptions.merge() para no sobreescribir datos existentes (ej: followersCount).
+            val profileData = mapOf(
+                "id" to user.id,
+                "email" to user.email,
+                "name" to (user.displayName ?: "Usuario"), // Default name fallback
+                "displayName" to (user.displayName ?: "Usuario"),
+                "photoUrl" to user.photoUrl,
+                "followersCount" to 0,
+                "followingCount" to 0,
+                "postsCount" to 0,
+                "rating" to 0.0,
+                "reviewsCount" to 0,
+                "isPrivate" to false,
+                "isDummy" to false
+            ).filterValues { it != null } // no escribir nulls
+            firestore.collection("users").document(user.id).set(profileData, SetOptions.merge()).await()
             emit(Resource.Success(true))
         } catch (e: Exception) {
             emit(Resource.Error(e.localizedMessage ?: "Failed to save profile"))
