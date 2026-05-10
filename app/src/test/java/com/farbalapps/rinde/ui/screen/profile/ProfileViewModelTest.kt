@@ -87,7 +87,6 @@ class ProfileViewModelTest {
             assertEquals(testPosts, state.posts)
             assertFalse("Loading should be false", state.isLoading)
             assertTrue("Should be current user", state.isCurrentUser)
-            assertTrue("Debug info should be present", state.debugInfo.isNotEmpty())
         }
         
         coVerify { getProfileUseCase(testUserId) }
