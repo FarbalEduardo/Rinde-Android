@@ -26,9 +26,10 @@ jobs:
         run: chmod +x gradlew
 
       - name: Create google-services.json
-        run: echo "$GOOGLE_SERVICES_JSON" > app/google-services.json
-        env:
-          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          echo "${{ secrets.GOOGLE_SERVICES_JSON }}" > app/google-services.json
+          echo "Verificando paquetes configurados en google-services.json:"
+          grep -o '"package_name": "[^"]*"' app/google-services.json || echo "No se encontraron nombres de paquete"
 
       - name: Run Unit Tests
         run: ./gradlew test --stacktrace
