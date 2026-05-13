@@ -29,6 +29,7 @@ import com.farbalapps.rinde.ui.navigation.HomeRoute
 import com.farbalapps.rinde.ui.components.BottomNavigationBar
 import com.farbalapps.rinde.ui.screen.home.list.ListViewModel
 import com.farbalapps.rinde.ui.screen.home.list.components.AddProductBottomSheet
+import com.farbalapps.rinde.ui.theme.RindeTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,7 +70,7 @@ fun HomeScreen(
         HomeRoute.Community.route -> stringResource(id = R.string.home_tab_community)
         HomeRoute.Goals.route -> stringResource(id = R.string.home_tab_goals)
         HomeRoute.Assistant.route -> stringResource(id = R.string.home_tab_chef_ai)
-        HomeRoute.Profile.route -> "Perfil"
+        HomeRoute.Profile.route -> stringResource(id = R.string.home_tab_profile)
         else -> stringResource(id = R.string.app_name)
     }
 
@@ -81,11 +82,16 @@ fun HomeScreen(
                 available: Offset,
                 source: NestedScrollSource
             ): Offset {
-                if (consumed.y < -5) isFabVisible = false
-                if (consumed.y > 5) isFabVisible = true
+                if (consumed.y < -2f) isFabVisible = false
+                if (consumed.y > 2f) isFabVisible = true
                 return Offset.Zero
             }
         }
+    }
+
+    // Reset FAB visibility when switching tabs
+    LaunchedEffect(currentRoute) {
+        isFabVisible = true
     }
 
     val isTopLevelRoute = currentRoute in listOf(
@@ -99,11 +105,11 @@ fun HomeScreen(
     Scaffold(
         modifier = Modifier.nestedScroll(nestedScrollConnection),
         topBar = {
-            if (isTopLevelRoute && currentRoute != HomeRoute.Community.route) {
+            if (currentRoute == HomeRoute.List.route || currentRoute == HomeRoute.Profile.route) {
                 HomeScreenTopBar(
                     title = appBarTitle,
-                    showSearch = currentRoute == HomeRoute.Community.route,
-                    onSearchClick = { /* TODO */ },
+                    showSearch = false,
+                    onSearchClick = {},
                     showSettings = currentRoute == HomeRoute.Profile.route,
                     onSettingsClick = { navController.navigate(HomeRoute.Settings.route) }
                 )
@@ -115,42 +121,22 @@ fun HomeScreen(
             }
         },
         floatingActionButton = {
-            AnimatedVisibility(
-                visible = isFabVisible,
-                enter = fadeIn() + scaleIn(),
-                exit = fadeOut() + scaleOut()
-            ) {
-                when (currentRoute) {
-                    HomeRoute.List.route -> {
-                        FloatingActionButton(
-                            onClick = { showAddProductSheet = true },
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        ) {
-                            Icon(Icons.Default.Add, stringResource(id = R.string.add_entry))
-                        }
-                    }
-                    HomeRoute.Goals.route -> {
-                        FloatingActionButton(
-                            onClick = { /* TODO: Crear meta */ },
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        ) {
-                            Icon(Icons.Default.Add, "Añadir meta")
-                        }
-                    }
-                }
-            }
-        }
-    ) { innerPadding ->
-        Box(modifier = Modifier.padding(innerPadding)) {
-            HomeNavHost(
-                navController = navController,
-                innerPadding = PaddingValues(0.dp),
-                listViewModel = listViewModel,
-                onLogout = onLogout
+            HomeScreenFab(
+                isVisible = isFabVisible,
+                currentRoute = currentRoute,
+                onAddProduct = { showAddProductSheet = true },
+                onAddGoal = { /* TODO: Crear meta */ },
+                onAddCommunityPost = { navController.navigate(HomeRoute.CreatePost.route) }
             )
         }
+    ) { innerPadding ->
+        HomeNavHost(
+            navController = navController,
+            innerPadding = innerPadding,
+            listViewModel = listViewModel,
+            onLogout = onLogout,
+            modifier = Modifier.fillMaxSize()
+        )
     }
 
     if (showAddProductSheet || uiState.editingItem != null) {
@@ -194,18 +180,18 @@ fun HomeScreenTopBar(
         actions = {
             if (showSearch) {
                 IconButton(onClick = onSearchClick) {
-                    Icon(Icons.Default.Search, "Buscar")
+                    Icon(Icons.Default.Search, stringResource(R.string.action_search))
                 }
             }
             if (showSettings) {
                 IconButton(onClick = onSettingsClick) {
-                    Icon(Icons.Default.Settings, "Configuración")
+                    Icon(Icons.Default.Settings, stringResource(R.string.action_settings))
                 }
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.surface,
-            titleContentColor = MaterialTheme.colorScheme.onSurface
+            containerColor = MaterialTheme.colorScheme.background,
+            titleContentColor = MaterialTheme.colorScheme.onBackground
         )
     )
 }
@@ -219,14 +205,14 @@ fun ExitConfirmationDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "¿Salir de la aplicación?",
+                text = stringResource(R.string.exit_dialog_title),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold
             )
         },
         text = {
             Text(
-                text = "Al salir se perderán los cambios no guardados en la nube. ¿Estás seguro de que deseas cerrar Rinde?",
+                text = stringResource(R.string.exit_dialog_text),
                 style = MaterialTheme.typography.bodyMedium
             )
         },
@@ -236,12 +222,12 @@ fun ExitConfirmationDialog(
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Text("Cerrar")
+                Text(stringResource(R.string.exit_dialog_confirm))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancelar")
+                Text(stringResource(R.string.btn_cancel))
             }
         },
         containerColor = MaterialTheme.colorScheme.surface,
@@ -256,10 +242,55 @@ fun ExitConfirmationDialog(
     )
 }
 
+@Composable
+fun HomeScreenFab(
+    isVisible: Boolean,
+    currentRoute: String?,
+    onAddProduct: () -> Unit,
+    onAddGoal: () -> Unit,
+    onAddCommunityPost: () -> Unit
+) {
+    AnimatedVisibility(
+        visible = isVisible,
+        enter = fadeIn() + scaleIn(),
+        exit = fadeOut() + scaleOut()
+    ) {
+        when (currentRoute) {
+            HomeRoute.List.route -> {
+                FloatingActionButton(
+                    onClick = onAddProduct,
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                ) {
+                    Icon(Icons.Default.Add, stringResource(id = R.string.add_entry))
+                }
+            }
+            HomeRoute.Community.route -> {
+                FloatingActionButton(
+                    onClick = onAddCommunityPost,
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                ) {
+                    Icon(Icons.Default.Add, stringResource(id = R.string.community_fab_desc))
+                }
+            }
+            HomeRoute.Goals.route -> {
+                FloatingActionButton(
+                    onClick = onAddGoal,
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                ) {
+                    Icon(Icons.Default.Add, stringResource(R.string.home_fab_add_goal))
+                }
+            }
+        }
+    }
+}
+
 @Preview(showBackground = true)
 @Composable
 fun HomeScreenTopBarPreview() {
-    com.farbalapps.rinde.ui.theme.RindeTheme {
+    RindeTheme {
         HomeScreenTopBar(title = "Rinde", showSearch = true, onSearchClick = {})
     }
 }

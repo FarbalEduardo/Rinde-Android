@@ -16,6 +16,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
+import com.farbalapps.rinde.R
+import com.farbalapps.rinde.ui.theme.RindeTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,117 +32,149 @@ fun SettingsScreen(
     var showLogoutDialog by remember { mutableStateOf(false) }
 
     if (showLogoutDialog) {
-        AlertDialog(
-            onDismissRequest = { showLogoutDialog = false },
-            title = { Text("¿Cerrar sesión?") },
-            text = { Text("¿Estás seguro de que deseas salir de Rinde?") },
-            confirmButton = {
-                Button(
-                    onClick = { 
-                        showLogoutDialog = false
-                        onLogout() 
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                ) { Text("Salir") }
+        LogoutDialog(
+            onConfirm = {
+                showLogoutDialog = false
+                onLogout()
             },
-            dismissButton = {
-                TextButton(onClick = { showLogoutDialog = false }) { Text("Cancelar") }
-            }
+            onDismiss = { showLogoutDialog = false }
         )
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
-                title = { Text("Configuración y actividad", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) },
+                title = { Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Atrás")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back))
                     }
                 }
             )
         }
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            item { SettingsSectionHeader("Cómo usas Rinde") }
-            item {
-                SettingsItem(
-                    icon = Icons.Default.BookmarkBorder,
-                    label = "Guardados",
-                    onClick = onNavigateToSaved
-                )
-            }
+        SettingsContent(
+            padding = padding,
+            onNavigateToSaved = onNavigateToSaved,
+            onNavigateToBlocked = onNavigateToBlocked,
+            onShowLogout = { showLogoutDialog = true }
+        )
+    }
+}
 
-            item { SettingsSectionHeader("Quién puede ver tu contenido") }
-            item {
-                SettingsItem(
-                    icon = Icons.Default.LockOpen,
-                    label = "Privacidad de la cuenta",
-                    value = "Pública",
-                    onClick = { /* TODO */ }
-                )
-            }
-            item {
-                SettingsItem(
-                    icon = Icons.Default.Block,
-                    label = "Usuarios bloqueados",
-                    onClick = onNavigateToBlocked
-                )
-            }
-
-            item { SettingsSectionHeader("Tu aplicación y medios") }
-            item {
-                SettingsItem(
-                    icon = Icons.Default.Palette,
-                    label = "Tema",
-                    value = "Oscuro",
-                    onClick = { /* TODO */ }
-                )
-            }
-            item {
-                SettingsItem(
-                    icon = Icons.Default.Language,
-                    label = "Lenguaje",
-                    value = "Español",
-                    onClick = { /* TODO */ }
-                )
-            }
-
-            item { SettingsSectionHeader("Tus pedidos y herramientas") }
-            item {
-                SettingsItem(
-                    icon = Icons.Default.CreditCard,
-                    label = "Pedidos y pagos",
-                    onClick = { /* TODO */ }
-                )
-            }
-
-            item { SettingsSectionHeader("Más información y soporte") }
-            item {
-                SettingsItem(
-                    icon = Icons.Default.Info,
-                    label = "Acerca de Rinde",
-                    onClick = { /* TODO */ }
-                )
-            }
-
-            item { Spacer(modifier = Modifier.height(24.dp)) }
-            item { SettingsSectionHeader("Inicio de sesión") }
-            item {
-                SettingsItem(
-                    icon = Icons.AutoMirrored.Filled.Logout,
-                    label = "Cerrar sesión",
-                    labelColor = MaterialTheme.colorScheme.error,
-                    showChevron = false,
-                    onClick = { showLogoutDialog = true }
-                )
-            }
-            item { Spacer(modifier = Modifier.height(40.dp)) }
+@Composable
+fun LogoutDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.settings_dialog_logout_title)) },
+        text = { Text(stringResource(R.string.settings_dialog_logout_text)) },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+            ) { Text(stringResource(R.string.settings_dialog_logout_confirm)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.btn_cancel)) }
         }
+    )
+}
+
+@Composable
+fun SettingsContent(
+    padding: PaddingValues,
+    onNavigateToSaved: () -> Unit,
+    onNavigateToBlocked: () -> Unit,
+    onShowLogout: () -> Unit
+) {
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(padding)
+    ) {
+        item { SettingsSectionHeader(stringResource(R.string.settings_section_usage)) }
+        item {
+            SettingsItem(
+                icon = Icons.Default.BookmarkBorder,
+                label = stringResource(R.string.profile_tab_saved),
+                onClick = onNavigateToSaved
+            )
+        }
+
+        item { SettingsSectionHeader(stringResource(R.string.settings_section_privacy)) }
+        item {
+            SettingsItem(
+                icon = Icons.Default.LockOpen,
+                label = stringResource(R.string.settings_item_privacy_label),
+                value = stringResource(R.string.settings_item_privacy_public),
+                onClick = { /* TODO */ }
+            )
+        }
+        item {
+            SettingsItem(
+                icon = Icons.Default.Block,
+                label = stringResource(R.string.settings_item_blocked),
+                onClick = onNavigateToBlocked
+            )
+        }
+        item {
+            SettingsItem(
+                icon = Icons.Default.Verified,
+                label = stringResource(R.string.settings_item_verify_account),
+                onClick = { /* TODO: Verification Flow */ }
+            )
+        }
+
+
+        item { SettingsSectionHeader(stringResource(R.string.settings_section_app)) }
+        item {
+            SettingsItem(
+                icon = Icons.Default.Palette,
+                label = stringResource(R.string.settings_item_theme),
+                value = stringResource(R.string.settings_item_theme_dark),
+                onClick = { /* TODO */ }
+            )
+        }
+        item {
+            SettingsItem(
+                icon = Icons.Default.Language,
+                label = stringResource(R.string.settings_item_language),
+                value = stringResource(R.string.settings_item_language_es),
+                onClick = { /* TODO */ }
+            )
+        }
+
+        item { SettingsSectionHeader(stringResource(R.string.settings_section_payments)) }
+        item {
+            SettingsItem(
+                icon = Icons.Default.CreditCard,
+                label = stringResource(R.string.settings_item_payments),
+                onClick = { /* TODO */ }
+            )
+        }
+
+        item { SettingsSectionHeader(stringResource(R.string.settings_section_more)) }
+        item {
+            SettingsItem(
+                icon = Icons.Default.Info,
+                label = stringResource(R.string.settings_item_about),
+                onClick = { /* TODO */ }
+            )
+        }
+
+        item { Spacer(modifier = Modifier.height(24.dp)) }
+        item { SettingsSectionHeader(stringResource(R.string.settings_section_login)) }
+        item {
+            SettingsItem(
+                icon = Icons.AutoMirrored.Filled.Logout,
+                label = stringResource(R.string.settings_btn_logout),
+                labelColor = MaterialTheme.colorScheme.error,
+                showChevron = false,
+                onClick = onShowLogout
+            )
+        }
+        item { Spacer(modifier = Modifier.height(40.dp)) }
     }
 }
 
@@ -197,5 +233,18 @@ fun SettingsItem(
                 modifier = Modifier.size(20.dp)
             )
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun SettingsScreenPreview() {
+    RindeTheme {
+        SettingsContent(
+            padding = PaddingValues(0.dp),
+            onNavigateToSaved = {},
+            onNavigateToBlocked = {},
+            onShowLogout = {}
+        )
     }
 }

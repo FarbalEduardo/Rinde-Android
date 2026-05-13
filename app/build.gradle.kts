@@ -87,6 +87,7 @@ dependencies {
     implementation(libs.firebase.firestore)
     implementation(libs.firebase.auth)
     implementation(libs.firebase.storage)
+    implementation(libs.firebase.database)
     implementation(libs.google.auth)
     implementation(libs.google.services.base)
     implementation(libs.google.services.location)

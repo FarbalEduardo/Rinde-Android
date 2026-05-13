@@ -1,12 +1,8 @@
 package com.farbalapps.rinde.ui.screen.home.goals
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FlightTakeoff
 import androidx.compose.material.icons.filled.Home
@@ -16,10 +12,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.farbalapps.rinde.R
 import com.farbalapps.rinde.ui.screen.home.goals.components.ChefSuggestionCard
 import com.farbalapps.rinde.ui.screen.home.goals.components.EmergencyFundCard
 import com.farbalapps.rinde.ui.screen.home.goals.components.GoalCard
@@ -36,20 +35,26 @@ fun GoalsScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
         color = MaterialTheme.colorScheme.background
     ) {
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding(),
+            contentPadding = PaddingValues(
+                horizontal = dimensionResource(id = R.dimen.padding_medium), 
+                vertical = dimensionResource(id = R.dimen.padding_medium)
+            ),
+            verticalArrangement = Arrangement.spacedBy(dimensionResource(id = R.dimen.padding_medium))
         ) {
+
             // Resumen Total Section
             item {
-                Column(modifier = Modifier.padding(bottom = 16.dp)) {
+                Column(modifier = Modifier.padding(bottom = dimensionResource(id = R.dimen.padding_medium))) {
                     Text(
-                        text = "RESUMEN TOTAL",
+                        text = stringResource(id = R.string.goals_total_summary),
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         letterSpacing = 1.sp
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(dimensionResource(id = R.dimen.padding_small)))
                     Row(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -58,23 +63,26 @@ fun GoalsScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
                             style = MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.Bold),
                             color = MaterialTheme.colorScheme.onSurface
                         )
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Spacer(modifier = Modifier.width(dimensionResource(id = R.dimen.padding_medium)))
                         Surface(
-                            color = Blue80, // Using Blue80 from theme
-                            shape = RoundedCornerShape(50),
-                            modifier = Modifier.padding(top = 4.dp)
+                            color = Blue80,
+                            shape = MaterialTheme.shapes.extraLarge,
+                            modifier = Modifier.padding(top = dimensionResource(id = R.dimen.padding_xsmall))
                         ) {
                             Text(
                                 text = "+12%",
                                 style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
                                 color = RindePrimary,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                modifier = Modifier.padding(
+                                    horizontal = dimensionResource(id = R.dimen.padding_small), 
+                                    vertical = dimensionResource(id = R.dimen.padding_xsmall)
+                                )
                             )
                         }
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(dimensionResource(id = R.dimen.padding_small)))
                     Text(
-                        text = "Has alcanzado el 45% de tus objetivos globales.",
+                        text = stringResource(id = R.string.goals_progress_msg, 45),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -85,11 +93,11 @@ fun GoalsScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    horizontalArrangement = Arrangement.spacedBy(dimensionResource(id = R.dimen.padding_medium))
                 ) {
                     GoalCard(
-                        title = "Nueva Casa",
-                        subtitle = "Ahorro para el enganche",
+                        title = stringResource(id = R.string.goal_house_title),
+                        subtitle = stringResource(id = R.string.goal_house_subtitle),
                         currentAmount = "$4,500",
                         totalAmount = "$10,000",
                         percentage = 45,
@@ -105,29 +113,29 @@ fun GoalsScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    horizontalArrangement = Arrangement.spacedBy(dimensionResource(id = R.dimen.padding_medium))
                 ) {
                     GoalCard(
-                        title = "Viaje Japón", // Need custom flight icon ideally
+                        title = stringResource(id = R.string.goal_japan_title),
                         subtitle = "$2,300 / $5,000",
                         currentAmount = "",
                         totalAmount = "",
-                        percentage = 46, // Approx based on image
+                        percentage = 46,
                         icon = Icons.Default.FlightTakeoff,
-                        progressColor = Color(0xFF8B5A62), // Brownish maroon
+                        progressColor = Color(0xFF8B5A62),
                         iconContainerColor = Color(0xFFEBE3E4),
                         iconColor = Color(0xFF8B5A62),
                         modifier = Modifier.weight(1f)
                     )
 
                     GoalCard(
-                        title = "MacBook Pro", // Need custom laptop icon
+                        title = stringResource(id = R.string.goal_macbook_title),
                         subtitle = "$1,800 / $2,500",
                         currentAmount = "",
                         totalAmount = "",
-                        percentage = 72, // Approx
+                        percentage = 72,
                         icon = Icons.Default.LaptopMac,
-                        progressColor = Color(0xFF635F70), // Grey/Purple
+                        progressColor = Color(0xFF635F70),
                         iconContainerColor = Color(0xFFE5E4E8),
                         iconColor = Color(0xFF635F70),
                         modifier = Modifier.weight(1f)
@@ -147,7 +155,7 @@ fun GoalsScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
             
             // Add padding at bottom for FAB
             item {
-                Spacer(modifier = Modifier.height(80.dp))
+                Spacer(modifier = Modifier.height(dimensionResource(id = R.dimen.padding_xxlarge)))
             }
         }
     }

@@ -20,6 +20,8 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import androidx.compose.ui.res.stringResource
+import com.farbalapps.rinde.R
 import com.farbalapps.rinde.ui.screen.profile.edit.components.EditAvatarSection
 import com.farbalapps.rinde.ui.screen.profile.edit.components.PrivacyToggleSection
 import com.farbalapps.rinde.ui.theme.RindeTheme
@@ -65,14 +67,15 @@ fun EditProfileContent(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             CenterAlignedTopAppBar(
                 title = { 
-                    Text("Editar Perfil", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) 
+                    Text(stringResource(R.string.edit_profile_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) 
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, "Atrás")
+                        Icon(Icons.Default.ArrowBack, stringResource(R.string.back))
                     }
                 }
             )
@@ -84,71 +87,96 @@ fun EditProfileContent(
                 .padding(innerPadding)
                 .padding(horizontal = 24.dp)
         ) {
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Avatar Selection
-            Box(modifier = Modifier.align(Alignment.CenterHorizontally)) {
-                EditAvatarSection(
-                    photoUrl = uiState.photoUrl,
-                    onClick = {
-                        photoLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                    }
-                )
-            }
-
-            Spacer(modifier = Modifier.height(40.dp))
-
-            Text(
-                text = "Nombre",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
+            EditProfileForm(
+                uiState = uiState,
+                onNameChange = onNameChange,
+                onPhotoChange = onPhotoChange,
+                onPrivacyToggle = onPrivacyToggle,
+                onSave = onSave
             )
-            
-            OutlinedTextField(
-                value = uiState.name,
-                onValueChange = onNameChange,
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                shape = MaterialTheme.shapes.medium
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Privacy Option
-            PrivacyToggleSection(
-                isPrivate = uiState.isPrivate,
-                onToggle = onPrivacyToggle
-            )
-
-            Spacer(modifier = Modifier.height(40.dp))
-
-            if (uiState.isLoading) {
-                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-            } else {
-                Button(
-                    onClick = onSave,
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                    shape = MaterialTheme.shapes.large
-                ) {
-                    Text("Guardar Cambios", fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                }
-            }
-
-            if (uiState.error != null) {
-                Text(
-                    text = uiState.error!!,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(top = 8.dp, start = 4.dp)
-                )
-            }
         }
     }
 }
+
+@Composable
+fun EditProfileForm(
+    uiState: EditProfileUiState,
+    onNameChange: (String) -> Unit,
+    onPhotoChange: (String) -> Unit,
+    onPrivacyToggle: (Boolean) -> Unit,
+    onSave: () -> Unit
+) {
+    val photoLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        uri?.let { onPhotoChange(it.toString()) }
+    }
+
+    Spacer(modifier = Modifier.height(16.dp))
+
+    // Avatar Selection
+    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        EditAvatarSection(
+            photoUrl = uiState.photoUrl,
+            onClick = {
+                photoLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+            }
+        )
+    }
+
+    Spacer(modifier = Modifier.height(40.dp))
+
+    Text(
+        text = stringResource(R.string.edit_profile_label_name),
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.primary,
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
+    )
+    
+    OutlinedTextField(
+        value = uiState.name,
+        onValueChange = onNameChange,
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+        shape = MaterialTheme.shapes.medium
+    )
+
+    Spacer(modifier = Modifier.height(24.dp))
+
+    // Privacy Option
+    PrivacyToggleSection(
+        isPrivate = uiState.isPrivate,
+        onToggle = onPrivacyToggle
+    )
+
+    Spacer(modifier = Modifier.height(40.dp))
+
+    if (uiState.isLoading) {
+        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+    } else {
+        Button(
+            onClick = onSave,
+            modifier = Modifier.fillMaxWidth().height(56.dp),
+            shape = MaterialTheme.shapes.large
+        ) {
+            Text(stringResource(R.string.edit_profile_btn_save), fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+
+    if (uiState.error != null) {
+        Text(
+            text = uiState.error!!,
+            color = MaterialTheme.colorScheme.error,
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(top = 8.dp, start = 4.dp)
+        )
+    }
+}
+
+
 
 @Preview(showBackground = true)
 @Composable

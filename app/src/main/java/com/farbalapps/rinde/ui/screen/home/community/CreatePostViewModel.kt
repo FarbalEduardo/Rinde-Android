@@ -20,9 +20,15 @@ import javax.inject.Inject
 data class CreatePostUiState(
     val title: String = "",
     val description: String = "",
-    val category: String = "Otros",
+    val category: String = "",
     val locationName: String = "",
     val photoUris: List<Uri> = emptyList(),
+    // New v3 fields
+    val offerType: com.farbalapps.rinde.domain.model.OfferType = com.farbalapps.rinde.domain.model.OfferType.ONLINE,
+    val websiteName: String = "",
+    val productLink: String = "",
+    val storeName: String = "",
+    val isPrivateProfile: Boolean = false,
     val isLoading: Boolean = false,
     val error: String? = null,
     val isFinished: Boolean = false
@@ -31,11 +37,44 @@ data class CreatePostUiState(
 @HiltViewModel
 class CreatePostViewModel @Inject constructor(
     private val createPostUseCase: CreatePostUseCase,
-    private val locationService: LocationService
+    private val getProfileUseCase: com.farbalapps.rinde.domain.usecase.profile.GetProfileUseCase,
+    private val locationService: LocationService,
+    private val firebaseAuth: com.google.firebase.auth.FirebaseAuth
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CreatePostUiState())
     val uiState: StateFlow<CreatePostUiState> = _uiState.asStateFlow()
+
+    init {
+        checkUserPrivacy()
+    }
+
+    private fun checkUserPrivacy() {
+        val uid = firebaseAuth.currentUser?.uid ?: return
+        viewModelScope.launch {
+            getProfileUseCase(uid).collect { profile ->
+                _uiState.update { it.copy(isPrivateProfile = profile.isPrivate) }
+            }
+        }
+    }
+
+
+    fun onOfferTypeChange(newType: com.farbalapps.rinde.domain.model.OfferType) {
+        _uiState.update { it.copy(offerType = newType) }
+    }
+
+    fun onWebsiteNameChange(newName: String) {
+        _uiState.update { it.copy(websiteName = newName) }
+    }
+
+    fun onProductLinkChange(newLink: String) {
+        _uiState.update { it.copy(productLink = newLink) }
+    }
+
+    fun onStoreNameChange(newName: String) {
+        _uiState.update { it.copy(storeName = newName) }
+    }
+
 
     /**
      * Updates the title of the post.
@@ -69,7 +108,17 @@ class CreatePostViewModel @Inject constructor(
      * Updates the photo list, limited to 4.
      */
     fun onPhotosSelected(uris: List<Uri>) {
-        _uiState.update { it.copy(photoUris = uris.take(4)) }
+        val current = _uiState.value.photoUris
+        val remaining = 4 - current.size
+        val newUris = (current + uris).distinctBy { it.toString() }.take(4)
+        _uiState.update { it.copy(photoUris = newUris) }
+    }
+
+    /**
+     * Removes a specific photo from the selection.
+     */
+    fun onPhotoRemoved(uri: Uri) {
+        _uiState.update { it.copy(photoUris = it.photoUris.filter { u -> u != uri }) }
     }
 
     /**
@@ -97,10 +146,52 @@ class CreatePostViewModel @Inject constructor(
     fun submitPost() {
         val state = _uiState.value
         
-        // Basic UI-side validation
+        // 1. Privacy Restriction
+        if (state.isPrivateProfile) {
+            _uiState.update { it.copy(error = "Tu perfil es privado. Cambia a público para publicar ofertas.") }
+            return
+        }
+
+        // 2. Full UI-side validation
+        if (state.photoUris.isEmpty()) {
+            _uiState.update { it.copy(error = "Debes agregar al menos 1 imagen (máximo 4)") }
+            return
+        }
         if (state.title.isBlank()) {
             _uiState.update { it.copy(error = "El título es obligatorio") }
             return
+        }
+        if (state.description.isBlank()) {
+            _uiState.update { it.copy(error = "La descripción es obligatoria") }
+            return
+        }
+        if (state.category.isBlank()) {
+            _uiState.update { it.copy(error = "Debes seleccionar una categoría") }
+            return
+        }
+        if (state.offerType == com.farbalapps.rinde.domain.model.OfferType.UNSPECIFIED) {
+            _uiState.update { it.copy(error = "Debes indicar si la oferta es online o física") }
+            return
+        }
+        if (state.offerType == com.farbalapps.rinde.domain.model.OfferType.ONLINE) {
+            if (state.websiteName.isBlank()) {
+                _uiState.update { it.copy(error = "La página web es obligatoria para ofertas online") }
+                return
+            }
+            if (state.productLink.isBlank()) {
+                _uiState.update { it.copy(error = "El link del producto es obligatorio") }
+                return
+            }
+        }
+        if (state.offerType == com.farbalapps.rinde.domain.model.OfferType.PHYSICAL) {
+            if (state.storeName.isBlank()) {
+                _uiState.update { it.copy(error = "El nombre de la tienda es obligatorio") }
+                return
+            }
+            if (state.locationName.isBlank()) {
+                _uiState.update { it.copy(error = "La ubicación es obligatoria para ofertas físicas") }
+                return
+            }
         }
         
         viewModelScope.launch {
@@ -111,7 +202,11 @@ class CreatePostViewModel @Inject constructor(
                 description = state.description,
                 category = state.category,
                 locationName = state.locationName,
-                photoUris = state.photoUris
+                photoUris = state.photoUris,
+                offerType = state.offerType,
+                websiteName = state.websiteName.takeIf { it.isNotBlank() },
+                productLink = state.productLink.takeIf { it.isNotBlank() },
+                storeName = state.storeName.takeIf { it.isNotBlank() }
             )
             
             if (result.isSuccess) {
@@ -124,4 +219,5 @@ class CreatePostViewModel @Inject constructor(
             }
         }
     }
+
 }

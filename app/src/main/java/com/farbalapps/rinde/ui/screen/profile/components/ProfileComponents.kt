@@ -15,9 +15,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.farbalapps.rinde.R
 import com.farbalapps.rinde.ui.screen.profile.ProfileUiState
 
 @Composable
@@ -28,17 +31,17 @@ fun ProfileHeader(
 ) {
     val profile = uiState.profile
     Column(
-        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+        modifier = Modifier.fillMaxWidth().padding(bottom = dimensionResource(id = R.dimen.padding_small))
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Avatar
-            Box(modifier = Modifier.size(86.dp)) {
+            Box(modifier = Modifier.size(dimensionResource(id = R.dimen.profile_avatar_size))) {
                 AsyncImage(
                     model = profile?.photoUrl,
-                    contentDescription = "Avatar",
+                    contentDescription = stringResource(id = R.string.profile_avatar_desc),
                     modifier = Modifier.fillMaxSize().clip(CircleShape),
                     contentScale = ContentScale.Crop,
                     error = rememberVectorPainter(Icons.Default.AccountCircle),
@@ -46,64 +49,81 @@ fun ProfileHeader(
                 )
             }
             
-            Spacer(modifier = Modifier.width(24.dp))
+            Spacer(modifier = Modifier.width(dimensionResource(id = R.dimen.padding_large)))
             
             // Stats Row
             Row(
                 modifier = Modifier.weight(1f),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                ProfileStatItem(count = profile?.postsCount ?: 0, label = "Posts")
-                ProfileStatItem(count = profile?.followersCount ?: 0, label = "Seguidores")
-                ProfileStatItem(count = profile?.followingCount ?: 0, label = "Seguidos")
+                ProfileStatItem(count = profile?.postsCount ?: 0, label = stringResource(id = R.string.profile_stat_posts))
+                ProfileStatItem(count = profile?.followersCount ?: 0, label = stringResource(id = R.string.profile_stat_followers))
+                ProfileStatItem(count = profile?.followingCount ?: 0, label = stringResource(id = R.string.profile_stat_following))
             }
         }
         
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(dimensionResource(id = R.dimen.padding_medium)))
         
-        // Name & Bio Area
-        Text(
-            text = profile?.name ?: "Usuario",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.ExtraBold
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = profile?.name ?: stringResource(id = R.string.profile_default_name),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.ExtraBold
+            )
+            if (profile?.isVerified == true) {
+                Spacer(modifier = Modifier.width(4.dp))
+                Icon(
+                    imageVector = Icons.Default.Verified,
+                    contentDescription = stringResource(id = R.string.badge_verified),
+                    tint = com.farbalapps.rinde.ui.theme.VerifiedBadgeColor,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+
         
         if (profile?.rating ?: 0f > 0f) {
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(dimensionResource(id = R.dimen.padding_xsmall)))
             StarRating(rating = profile?.rating ?: 0f, reviewsCount = profile?.reviewsCount ?: 0)
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(dimensionResource(id = R.dimen.padding_medium)))
 
         // Actions
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(dimensionResource(id = R.dimen.padding_small))
         ) {
             if (uiState.isCurrentUser) {
                 Button(
                     onClick = onEditProfile,
-                    shape = RoundedCornerShape(8.dp),
+                    shape = MaterialTheme.shapes.medium,
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                        contentColor = MaterialTheme.colorScheme.primary
+                    ),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
                 ) {
-                    Text("Editar Perfil", fontWeight = FontWeight.Bold)
+                    Text(stringResource(id = R.string.profile_btn_edit), fontWeight = FontWeight.ExtraBold)
                 }
                 
                 IconButton(
                     onClick = { /* Share profile logic */ },
-                    modifier = Modifier.background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
+                    modifier = Modifier
+                        .clip(MaterialTheme.shapes.medium)
+                        .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)),
+                    colors = IconButtonDefaults.iconButtonColors(
+                        contentColor = MaterialTheme.colorScheme.primary
+                    )
                 ) {
-                    Icon(Icons.Default.Share, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Icon(Icons.Default.Share, null, modifier = Modifier.size(20.dp))
                 }
             } else {
                 val isFollowing = uiState.isFollowing
                 Button(
                     onClick = toggleFollow,
-                    shape = RoundedCornerShape(8.dp),
+                    shape = MaterialTheme.shapes.small,
                     modifier = Modifier.weight(1f),
                     colors = if (isFollowing) {
                         ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant, contentColor = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -111,15 +131,18 @@ fun ProfileHeader(
                         ButtonDefaults.buttonColors()
                     }
                 ) {
-                    Text(if (isFollowing) "Siguiendo" else "Seguir", fontWeight = FontWeight.Bold)
+                    Text(
+                        if (isFollowing) stringResource(id = R.string.profile_btn_following) else stringResource(id = R.string.profile_btn_follow), 
+                        fontWeight = FontWeight.Bold
+                    )
                 }
                 
                 OutlinedButton(
                     onClick = { /* Message logic */ },
-                    shape = RoundedCornerShape(8.dp),
+                    shape = MaterialTheme.shapes.small,
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text("Mensaje", fontWeight = FontWeight.Bold)
+                    Text(stringResource(id = R.string.profile_btn_message), fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -150,12 +173,12 @@ fun StarRating(rating: Float, reviewsCount: Int) {
             Icon(
                 imageVector = Icons.Default.Star,
                 contentDescription = null,
-                modifier = Modifier.size(16.dp),
+                modifier = Modifier.size(dimensionResource(id = R.dimen.padding_medium)),
                 tint = color
             )
         }
         if (reviewsCount > 0) {
-            Spacer(modifier = Modifier.width(4.dp))
+            Spacer(modifier = Modifier.width(dimensionResource(id = R.dimen.padding_xsmall)))
             Text(
                 text = "($reviewsCount)",
                 style = MaterialTheme.typography.bodySmall,
@@ -164,5 +187,3 @@ fun StarRating(rating: Float, reviewsCount: Int) {
         }
     }
 }
-
-

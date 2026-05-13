@@ -17,6 +17,7 @@ import com.farbalapps.rinde.ui.theme.RindeTheme
 @Composable
 fun PrivacyPolicyScreen(onBackClick: () -> Unit) {
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = { 

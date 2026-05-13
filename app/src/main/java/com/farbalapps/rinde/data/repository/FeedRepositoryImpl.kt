@@ -12,6 +12,7 @@ import com.google.firebase.firestore.Query
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
+import com.google.firebase.database.FirebaseDatabase
 import com.farbalapps.rinde.data.worker.CreatePostWorker
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -22,39 +23,55 @@ import java.io.File
 import javax.inject.Inject
 import dagger.hilt.android.qualifiers.ApplicationContext
 
+import com.farbalapps.rinde.data.local.dao.PostDao
+import com.farbalapps.rinde.data.local.entity.toDomainModel
+import com.farbalapps.rinde.data.local.entity.toEntity
+import kotlinx.coroutines.flow.map
+import java.util.Date
+
+import com.farbalapps.rinde.data.remote.model.CommunityPostDto
+import com.farbalapps.rinde.data.mapper.toDomain
+
 class FeedRepositoryImpl @Inject constructor(
     @ApplicationContext private val context: Context,
     private val firestore: FirebaseFirestore,
-    private val workManager: WorkManager
+    private val database: FirebaseDatabase,
+    private val workManager: WorkManager,
+    private val postDao: PostDao
 ) : FeedRepository {
 
-    override fun getGlobalFeed(lastPostId: String?): Flow<List<CommunityPost>> = callbackFlow {
-        // Nota: el índice simple isActive+timestamp generalmente se auto-crea,
-        // pero si falla, aplicar filtro client-side como fallback.
-        var query = firestore.collection("posts")
-            .orderBy("timestamp", Query.Direction.DESCENDING)
-            .limit(50) // Busca más para compensar el filtro client-side
-
-        if (lastPostId != null) {
-            val lastDoc = firestore.collection("posts").document(lastPostId).get().await()
-            query = query.startAfter(lastDoc)
-        }
-
-        val listener = query.addSnapshotListener { snapshot, error ->
-            if (error != null) {
-                android.util.Log.e("FeedRepositoryImpl", "Firestore listener error in getGlobalFeed", error)
-                trySend(emptyList())
-                return@addSnapshotListener
+    override fun getGlobalFeed(lastPostId: String?): Flow<List<CommunityPost>> {
+        // 1. Iniciar sincronización en segundo plano (Incremental)
+        kotlinx.coroutines.GlobalScope.launch {
+            try {
+                syncLatestPosts()
+            } catch (e: Exception) {
+                android.util.Log.e("FeedRepositoryImpl", "Error en sync incremental", e)
             }
-            // Filtro client-side para isActive
-            val posts = snapshot?.documents
-                ?.mapNotNull { it.toObject(CommunityPost::class.java) }
-                ?.filter { it.isActive }
-                ?.take(20)
-                ?: emptyList()
-            trySend(posts)
         }
-        awaitClose { listener.remove() }
+
+        // 2. Retornar el flujo desde Room (Fuente de Verdad)
+        return postDao.getPosts().map { entities ->
+            entities.map { it.toDomainModel() }
+        }
+    }
+
+    private suspend fun syncLatestPosts() {
+        val lastTimestamp = postDao.getLatestTimestamp() ?: 0L
+        android.util.Log.d("FeedRepositoryImpl", "🔄 Sincronizando posts posteriores a: ${Date(lastTimestamp)}")
+
+        val snapshot = firestore.collection("posts")
+            .whereGreaterThan("timestamp", Date(lastTimestamp))
+            .orderBy("timestamp", Query.Direction.DESCENDING)
+            .limit(50)
+            .get()
+            .await()
+
+        if (!snapshot.isEmpty) {
+            val newPosts = snapshot.documents.mapNotNull { it.toObject(CommunityPostDto::class.java)?.toDomain() }
+            android.util.Log.i("FeedRepositoryImpl", "📥 Descargados ${newPosts.size} nuevos posts")
+            postDao.insertPosts(newPosts.map { it.toEntity() })
+        }
     }
 
     override fun getFollowingFeed(userId: String, lastPostId: String?): Flow<List<CommunityPost>> = callbackFlow {
@@ -89,7 +106,7 @@ class FeedRepositoryImpl @Inject constructor(
                             val lastDoc = firestore.collection("posts").document(lastPostId).get().await()
                             val finalQuery = query.startAfter(lastDoc)
                             finalQuery.get().addOnSuccessListener { postSnapshot ->
-                                val posts = postSnapshot.documents.mapNotNull { it.toObject(CommunityPost::class.java) }
+                                val posts = postSnapshot.documents.mapNotNull { it.toObject(CommunityPostDto::class.java)?.toDomain() }
                                 trySend(posts)
                             }
                         } catch (e: Exception) {
@@ -98,7 +115,7 @@ class FeedRepositoryImpl @Inject constructor(
                     }
                 } else {
                     query.get().addOnSuccessListener { postSnapshot ->
-                        val posts = postSnapshot.documents.mapNotNull { it.toObject(CommunityPost::class.java) }
+                        val posts = postSnapshot.documents.mapNotNull { it.toObject(CommunityPostDto::class.java)?.toDomain() }
                         trySend(posts)
                     }
                 }
@@ -127,7 +144,7 @@ class FeedRepositoryImpl @Inject constructor(
                     .whereIn(FieldPath.documentId(), postIds.take(30))
                     .get()
                     .addOnSuccessListener { postSnapshot ->
-                        val posts = postSnapshot.documents.mapNotNull { it.toObject(CommunityPost::class.java) }
+                        val posts = postSnapshot.documents.mapNotNull { it.toObject(CommunityPostDto::class.java)?.toDomain() }
                         trySend(posts)
                     }
                     .addOnFailureListener { e ->
@@ -138,33 +155,97 @@ class FeedRepositoryImpl @Inject constructor(
         awaitClose { listener.remove() }
     }
 
+    override fun getNearbyFeed(lat: Double, lon: Double, radiusKm: Double): Flow<List<CommunityPost>> = callbackFlow {
+        // Aproximación de bounding box (1 grado ~ 111km)
+        val latDelta = radiusKm / 111.0
+        val lonDelta = radiusKm / (111.0 * kotlin.math.cos(Math.toRadians(lat)))
+
+        val query = firestore.collection("posts")
+            .whereGreaterThanOrEqualTo("location.latitude", lat - latDelta)
+            .whereLessThanOrEqualTo("location.latitude", lat + latDelta)
+
+        val listener = query.addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                trySend(emptyList())
+                return@addSnapshotListener
+            }
+
+            val posts = snapshot?.documents?.mapNotNull { it.toObject(CommunityPostDto::class.java)?.toDomain() }
+                ?.filter { post ->
+                    // Filtro secundario para longitud y estado activo
+                    post.isActive && 
+                    post.location.longitude != null && 
+                    post.location.longitude!! >= (lon - lonDelta) && 
+                    post.location.longitude!! <= (lon + lonDelta)
+                } ?: emptyList()
+
+            trySend(posts.sortedByDescending { it.timestamp })
+        }
+        awaitClose { listener.remove() }
+    }
+
     override suspend fun uploadPost(post: CommunityPost, photoUris: List<String>): Result<Unit> = runCatching {
-        // 1. Optimizar imágenes localmente de inmediato
+        android.util.Log.d("FeedRepositoryImpl", "🚀 Iniciando proceso de subida para: ${post.title}")
+        
+        // 1. Validación de imágenes (Obligatorio min 1, max 4)
+        if (photoUris.isEmpty()) {
+            throw Exception("Debes incluir al menos una imagen para tu reporte")
+        }
+
+        // 2. Optimizar imágenes localmente
         val localPaths = photoUris.mapNotNull { uriString ->
             val uri = Uri.parse(uriString)
             ImageOptimizer.optimizeImage(context, uri)?.absolutePath
         }.toTypedArray()
 
-        // 2. Encolar el Worker para subida en segundo plano
-        val uploadWorkRequest = OneTimeWorkRequestBuilder<CreatePostWorker>()
+        if (localPaths.isEmpty()) {
+            throw Exception("Error procesando las imágenes seleccionadas")
+        }
+
+        android.util.Log.d("FeedRepositoryImpl", "📸 Imágenes procesadas: ${localPaths.size}")
+
+        // 2. Encolar Worker
+        workManager.enqueue(OneTimeWorkRequestBuilder<CreatePostWorker>()
             .setInputData(workDataOf(
                 "authorId" to post.authorId,
                 "authorName" to post.authorName,
+                "authorPhotoUrl" to post.authorPhotoUrl,
                 "title" to post.title,
                 "descriptionLong" to post.descriptionLong,
                 "category" to post.category,
                 "locationName" to post.location.name,
-                "localFilePaths" to localPaths
+                "localFilePaths" to localPaths,
+                
+                // v3 fields
+                "offerType" to post.offerType.name,
+                "websiteName" to post.websiteName,
+                "productLink" to post.productLink,
+                "storeName" to post.storeName,
+                "userReputationScore" to post.userReputationScore
             ))
-            .build()
+            .build())
         
-        workManager.enqueue(uploadWorkRequest)
+        android.util.Log.i("FeedRepositoryImpl", "✅ Worker de creación de post encolado con éxito")
     }
 
+
+
     override suspend fun toggleLike(userId: String, postId: String): Result<Unit> = runCatching {
+        val likeRef = firestore.collection("posts").document(postId).collection("likes").document(userId)
         val postRef = firestore.collection("posts").document(postId)
-        // Lógica simplificada: en producción usaríamos una subcolección 'likes' y Sharding para escalabilidad
-        postRef.update("likes", FieldValue.increment(1)).await()
+        
+        firestore.runTransaction { transaction ->
+            val likeSnapshot = transaction.get(likeRef)
+            if (likeSnapshot.exists()) {
+                // Ya le dio like, lo quitamos
+                transaction.delete(likeRef)
+                transaction.update(postRef, "likes", FieldValue.increment(-1))
+            } else {
+                // No le ha dado like, lo agregamos
+                transaction.set(likeRef, mapOf("timestamp" to FieldValue.serverTimestamp()))
+                transaction.update(postRef, "likes", FieldValue.increment(1))
+            }
+        }.await()
     }
 
     override suspend fun toggleSave(userId: String, postId: String): Result<Unit> = runCatching {
@@ -177,4 +258,29 @@ class FeedRepositoryImpl @Inject constructor(
             savedRef.set(mapOf("savedAt" to FieldValue.serverTimestamp())).await()
         }
     }
+
+    override suspend fun toggleVote(userId: String, postId: String, voteValue: Int): Result<Unit> = runCatching {
+        val voteRef = database.getReference("post_votes").child(postId).child(userId)
+        val postRef = firestore.collection("posts").document(postId)
+        
+        val currentVote = voteRef.get().await().getValue(Int::class.java) ?: 0
+        
+        if (currentVote == voteValue) {
+            // Toggle off (Quitar el voto)
+            voteRef.removeValue().await()
+            postRef.update("votesScore", FieldValue.increment(-voteValue.toLong())).await()
+        } else {
+            // Set/Change vote
+            voteRef.setValue(voteValue).await()
+            
+            val increment = if (currentVote == 0) {
+                voteValue.toLong()
+            } else {
+                // Cambió de Hot a Cold o viceversa
+                (voteValue - currentVote).toLong()
+            }
+            postRef.update("votesScore", FieldValue.increment(increment)).await()
+        }
+    }
+
 }

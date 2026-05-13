@@ -16,8 +16,14 @@ val Blue80 = Color(0xFFD0E4FF)
 val Blue90 = Color(0xFFE0EFFF)
 
 
-// Neutral Colors
-val SurfaceDark = Color(0xFF1A1C1E)
-val BackgroundDark = Color(0xFF111315)
+// Neutral Colors (Google M3 pure neutrals — sin tinte de color)
+val SurfaceDark = Color(0xFF1E1E1E)
+val BackgroundDark = Color(0xFF121212)
 val SurfaceLight = Color(0xFFFFFFFF)
-val BackgroundLight = Color(0xFFFFFFFF)
+val BackgroundLight = Color(0xFFFAFAFA)
+// Voting System Colors
+val VoteHotColor = Color(0xFFFF6D00)      // Naranja/Fuego para votos calientes
+val VoteColdColor = Color(0xFF42A5F5)     // Azul frío para votos negativos
+val VoteNeutralColor = Color(0xFF9E9E9E)  // Gris para neutro
+val VerifiedBadgeColor = Color(0xFF1DA1F2) // Azul verificado
+val OverlayWarningColor = Color(0x99000000) // Negro semitransparente para overlay

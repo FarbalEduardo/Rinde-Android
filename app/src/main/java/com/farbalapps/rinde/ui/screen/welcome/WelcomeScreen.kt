@@ -31,7 +31,7 @@ fun WelcomeScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .widthIn(max = 400.dp) // Responsive limit
+                .widthIn(max = dimensionResource(id = R.dimen.max_width_phone)) // Responsive limit
                 .padding(dimensionResource(id = R.dimen.padding_large)),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
@@ -91,9 +91,9 @@ private fun ColumnScope.WelcomeActionButtons(onSignUpClick: () -> Unit, onSignIn
             onClick = onSignUpClick,
             modifier = Modifier
                 .weight(1f)
-                .height(56.dp),
+                .height(dimensionResource(id = R.dimen.button_height_standard)),
             shape = MaterialTheme.shapes.large,
-            elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
+            elevation = ButtonDefaults.buttonElevation(defaultElevation = dimensionResource(id = R.dimen.elevation_none))
         ) {
             Text(
                 stringResource(id = R.string.btn_sign_up),
@@ -106,9 +106,9 @@ private fun ColumnScope.WelcomeActionButtons(onSignUpClick: () -> Unit, onSignIn
             onClick = onSignInClick,
             modifier = Modifier
                 .weight(1f)
-                .height(56.dp),
+                .height(dimensionResource(id = R.dimen.button_height_standard)),
             shape = MaterialTheme.shapes.large,
-            border = ButtonDefaults.outlinedButtonBorder.copy(width = 1.dp)
+            border = ButtonDefaults.outlinedButtonBorder.copy(width = dimensionResource(id = R.dimen.stroke_thin))
         ) {
             Text(
                 stringResource(id = R.string.btn_sign_in),

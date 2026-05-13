@@ -7,7 +7,7 @@ Asegura que la interfaz de usuario sea consistente con Material Design 3, manten
 
 ## Capabilidades
 1. **M3 Token Check**: Verifica que no se usen colores hardcodeados (ej. `Color.Red`) en lugar de `MaterialTheme.colorScheme`.
-2. **Dimens Audit**: Detecta números mágicos de padding/margin, sugiriendo el uso de un sistema de grid de 8dp.
+2. **Dimens Audit**: Prohíbe terminantemente el uso de números mágicos de padding/margin/size (`.dp`, `.sp`) directamente en el código UI. Se exige el uso de `dimensionResource(id = R.dimen...)`.
 3. **Component Audit**: Verifica el uso de componentes de M3 (`Text`, `Button`, `Card`) sobre los antiguos.
 4. **Adaptive Check**: 
    - Sugiere el uso de `WindowSizeClasses` (`Compact`, `Medium`, `Expanded`).
@@ -15,7 +15,7 @@ Asegura que la interfaz de usuario sea consistente con Material Design 3, manten
    - Asegura que el contenido no supere los 840dp de ancho en pantallas grandes.
 5. **Accesibilidad y Contrastes**: Valida tamaños mínimos de toque (48x48dp), requiere `contentDescription` explícito y sugiere contrastes accesibles.
 6. **Dark Mode Constraints**: Exige que no existan colores (blancos/negros) puros y duros incrustados, garantizando soporte dinámico para modo oscuro.
-7. **Tipografía Escalonable**: Asegura el uso estricto de `sp` en textos y detecta tamaños absolutos de texto.
+7. **Tipografía Escalonable**: Asegura el uso estricto de `sp` provenientes de `MaterialTheme.typography` o recursos de dimensión, prohibiendo valores absolutos inline.
 8. **Multi-Preview Constraints**: Promueve el uso de `@PreviewLightDark` o `@PreviewScreenSizes` locales o custom para validaciones completas.
 
 ## Guía Residencial (Portrait Only)
@@ -25,5 +25,3 @@ Asegura que la interfaz de usuario sea consistente con Material Design 3, manten
 
 ## Uso
 Ejecutar: `powershell .agents/skills/design-expert-skill/scripts/audit_ui.ps1`
-
-
