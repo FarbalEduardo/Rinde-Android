@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0-beta](https://github.com/FarbalEduardo/Rinde-Android/compare/v1.2.0-beta...v1.3.0-beta) (2026-05-22)
+
+
+### Features
+
+* **ui:** prioritize community tab as home screen and fix profile unit tests ([0404abe](https://github.com/FarbalEduardo/Rinde-Android/commit/0404abe223424c1d15dd7315731d5fbe90a0149c))
+
 ## [1.2.0-beta](https://github.com/FarbalEduardo/Rinde-Android/compare/v1.1.1-beta...v1.2.0-beta) (2026-05-10)
 
 
