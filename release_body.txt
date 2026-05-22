@@ -1,9 +1,13 @@
-¡Nos entusiasma compartir esta actualización! Este lanzamiento cambia el enfoque hacia nuestras características colaborativas principales y garantiza la estabilidad de la base de código.
+# Notas de Lanzamiento - Rinde v1.2.0
 
-### ✨ Novedades
-* **Experiencia Enfocada en la Comunidad:** La pantalla global de reportes de precios de la comunidad es ahora la pestaña predeterminada al abrir la aplicación. Accede fácilmente a tu Lista de Mandado en la segunda pestaña.
-* **Navegación de Retroceso Fluida:** Al presionar el botón "Atrás" desde la pantalla de inicio de la Comunidad, ahora se solicitará confirmar de forma limpia si deseas salir de la aplicación.
+Esta actualización introduce mejoras significativas en la experiencia del usuario final mediante una navegación más intuitiva y orientada a la colaboración, además de robustecer la infraestructura de pruebas unitarias y estabilidad del código base.
 
-### 🔧 Bajo el Capó
-* Reestructuración de los componentes `HomeNavHost` y `BottomNavigationBar` para transiciones de pestañas fluidas.
-* Corrección de pruebas unitarias desincronizadas en la suite de pruebas de `ProfileViewModel`, actualizando los mocks para soportar plenamente las nuevas arquitecturas de casos de uso y modelos.
+## 🚀 Nuevas Características
+
+* **Navegación Prioritaria Basada en Comunidad**: La sección global de reportes de precios y contribuciones comunitarias (`CommunityScreen`) se establece ahora como el punto de acceso inicial predeterminado al abrir la aplicación. La **Lista de Mandado** ha sido reubicada de forma fluida a la segunda posición de la barra de navegación.
+* **Control de Navegación de Retroceso Optimizado**: Integración de una lógica de interceptación de retroceso mediante Compose `BackHandler` en la pantalla de inicio principal (Comunidad), lo que permite un cierre controlado y nativo del ciclo de vida de la aplicación.
+
+## 🔧 Optimizaciones y Correcciones Técnicas (Bajo el Capó)
+
+* **Sincronización del Flujo de Navegación**: Reestructuración y alineación de los componentes de navegación `HomeNavHost` y `BottomNavigationBar` para garantizar una transición libre de parpadeos e ideal para el rendimiento del renderizado en Jetpack Compose.
+* **Saneamiento del Entorno de Pruebas**: Corrección de inconsistencias de compilación preexistentes en la suite de pruebas unitarias de `ProfileViewModelTest`. Se actualizaron las inyecciones mock de los casos de uso `GetSavedPostsUseCase` y `ClearUploadStatusUseCase`, y se sincronizaron las llamadas asíncronas con el tipo de retorno encapsulado `Result<Unit>` para asegurar la estabilidad del pipeline de integración local.
