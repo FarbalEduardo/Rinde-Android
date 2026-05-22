@@ -1,9 +1,9 @@
-We are excited to release **Rinde v1.1.0-beta**! This release marks a massive leap forward in our development infrastructure and application quality standards.
+We are excited to share this update! This release shifts focus to our core collaborative features and guarantees codebase stability.
 
 ### ✨ What's New
-* **Bilingual Experience:** Rinde now fully supports both Spanish (default) and English. All authentication screens and core navigation elements adapt automatically to the user's device settings.
-* **Developer Productivity (SDD Pipeline):** We've introduced a bespoke, locally orchestrated integration pipeline out of the box. 
+* **Community-First Experience:** The global, community-driven price reports screen is now the default landing tab upon opening the app. Easily navigate to your Shopping List as the second tab.
+* **Seamless Back Navigation:** Pressing back from the Community Home screen now gracefully prompts to exit the application.
 
 ### 🔧 Under the Hood
-* Upgraded to Gradle 8.9 with distinct `dev` and `prod` Gradle Build Flavors.
-* Strengthened the application's overall security posture via automated SAST that catches vulnerable `PendingIntent` configurations and unsafe Android component exports directly at compile-time.
+* Restructured the `HomeNavHost` and `BottomNavigationBar` components for seamless tab transitions.
+* Fixed desynchronized unit tests in the `ProfileViewModel` test suite, updating mocks to fully support the new use case and model architectures.
