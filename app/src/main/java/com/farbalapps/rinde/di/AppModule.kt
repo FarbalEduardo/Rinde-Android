@@ -195,4 +195,18 @@ object AppModule {
     fun provideLocationService(@ApplicationContext context: Context): LocationService {
         return LocationService(context)
     }
+
+    @Provides
+    @Singleton
+    fun provideSettingsRepository(
+        settingsManager: com.farbalapps.rinde.data.local.SettingsManager,
+        profileRepository: ProfileRepository,
+        sessionManager: com.farbalapps.rinde.data.local.SessionManager
+    ): com.farbalapps.rinde.domain.repository.SettingsRepository {
+        return com.farbalapps.rinde.data.repository.SettingsRepositoryImpl(
+            settingsManager,
+            profileRepository,
+            sessionManager
+        )
+    }
 }

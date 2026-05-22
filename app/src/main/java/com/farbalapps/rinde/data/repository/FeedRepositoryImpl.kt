@@ -40,49 +40,61 @@ class FeedRepositoryImpl @Inject constructor(
     private val postDao: PostDao
 ) : FeedRepository {
 
-    override fun getGlobalFeed(lastPostId: String?): Flow<List<CommunityPost>> {
-        // 1. Iniciar sincronización en segundo plano (Incremental)
-        kotlinx.coroutines.GlobalScope.launch {
-            try {
-                syncLatestPosts()
-            } catch (e: Exception) {
-                android.util.Log.e("FeedRepositoryImpl", "Error en sync incremental", e)
+    override fun getGlobalFeed(lastPostId: String?): Flow<List<CommunityPost>> = callbackFlow {
+        android.util.Log.d("FeedRepositoryImpl", "🛰️ Iniciando listener de tiempo real para Global Feed")
+        
+        val query = firestore.collection("posts")
+            .whereEqualTo("isActive", true)
+            .orderBy("timestamp", Query.Direction.DESCENDING)
+            .limit(50)
+
+        val snapshotListener = query.addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                android.util.Log.e("FeedRepositoryImpl", "❌ Error en listener global", error)
+                return@addSnapshotListener
+            }
+
+            snapshot?.documentChanges?.forEach { change ->
+                val postDto = change.document.toObject(CommunityPostDto::class.java)
+                val post = postDto?.toDomain() ?: return@forEach
+
+                launch {
+                    when (change.type) {
+                        com.google.firebase.firestore.DocumentChange.Type.ADDED,
+                        com.google.firebase.firestore.DocumentChange.Type.MODIFIED -> {
+                            postDao.insertPosts(listOf(post.toEntity()))
+                        }
+                        com.google.firebase.firestore.DocumentChange.Type.REMOVED -> {
+                            android.util.Log.i("FeedRepositoryImpl", "🗑️ Post eliminado detectado: ${post.id}")
+                            postDao.deletePostById(post.id)
+                        }
+                    }
+                }
             }
         }
 
-        // 2. Retornar el flujo desde Room (Fuente de Verdad)
-        return postDao.getPosts().map { entities ->
-            entities.map { it.toDomainModel() }
+        // Emitir cambios desde Room (Fuente de Verdad única para la UI)
+        val roomCollectionJob = launch {
+            postDao.getPosts().collect { entities ->
+                trySend(entities.map { it.toDomainModel() })
+            }
         }
-    }
 
-    private suspend fun syncLatestPosts() {
-        val lastTimestamp = postDao.getLatestTimestamp() ?: 0L
-        android.util.Log.d("FeedRepositoryImpl", "🔄 Sincronizando posts posteriores a: ${Date(lastTimestamp)}")
-
-        val snapshot = firestore.collection("posts")
-            .whereGreaterThan("timestamp", Date(lastTimestamp))
-            .orderBy("timestamp", Query.Direction.DESCENDING)
-            .limit(50)
-            .get()
-            .await()
-
-        if (!snapshot.isEmpty) {
-            val newPosts = snapshot.documents.mapNotNull { it.toObject(CommunityPostDto::class.java)?.toDomain() }
-            android.util.Log.i("FeedRepositoryImpl", "📥 Descargados ${newPosts.size} nuevos posts")
-            postDao.insertPosts(newPosts.map { it.toEntity() })
+        awaitClose {
+            android.util.Log.d("FeedRepositoryImpl", "🔌 Cerrando listener de Global Feed")
+            snapshotListener.remove()
+            roomCollectionJob.cancel()
         }
     }
 
     override fun getFollowingFeed(userId: String, lastPostId: String?): Flow<List<CommunityPost>> = callbackFlow {
-        // Primero obtenemos a quién sigue el usuario
+        android.util.Log.d("FeedRepositoryImpl", "🛰️ Iniciando listener Following Feed para: $userId")
+        
+        // 1. Listen to followed users
         val relationshipsListener = firestore.collection("relationships")
             .whereEqualTo("followerId", userId)
             .addSnapshotListener { relSnapshot, relError ->
-                if (relError != null) {
-                    android.util.Log.e("FeedRepositoryImpl", "Firestore listener error in getFollowingFeed", relError)
-                    return@addSnapshotListener
-                }
+                if (relError != null) return@addSnapshotListener
                 
                 val followedIds = relSnapshot?.documents?.mapNotNull { it.getString("followedId") } ?: emptyList()
                 
@@ -91,47 +103,39 @@ class FeedRepositoryImpl @Inject constructor(
                     return@addSnapshotListener
                 }
 
-                // Firestore IN query tiene un limite de 30 items.
-                val cappedIds = followedIds.take(30)
-
-                var query = firestore.collection("posts")
+                // 2. Listen to posts from those users (Limit to 30 following for Firestore IN query)
+                val postsQuery = firestore.collection("posts")
                     .whereEqualTo("isActive", true)
-                    .whereIn("authorId", cappedIds)
+                    .whereIn("authorId", followedIds.take(30))
                     .orderBy("timestamp", Query.Direction.DESCENDING)
-                    .limit(20)
+                    .limit(30)
 
-                if (lastPostId != null) {
-                    launch {
-                        try {
-                            val lastDoc = firestore.collection("posts").document(lastPostId).get().await()
-                            val finalQuery = query.startAfter(lastDoc)
-                            finalQuery.get().addOnSuccessListener { postSnapshot ->
-                                val posts = postSnapshot.documents.mapNotNull { it.toObject(CommunityPostDto::class.java)?.toDomain() }
-                                trySend(posts)
-                            }
-                        } catch (e: Exception) {
-                            android.util.Log.e("FeedRepositoryImpl", "Error fetching cursor doc", e)
-                        }
-                    }
-                } else {
-                    query.get().addOnSuccessListener { postSnapshot ->
-                        val posts = postSnapshot.documents.mapNotNull { it.toObject(CommunityPostDto::class.java)?.toDomain() }
-                        trySend(posts)
-                    }
+                val postsListener = postsQuery.addSnapshotListener { postSnapshot, postError ->
+                    if (postError != null) return@addSnapshotListener
+                    
+                    val posts = postSnapshot?.documents?.mapNotNull { 
+                        it.toObject(CommunityPostDto::class.java)?.toDomain() 
+                    } ?: emptyList()
+                    
+                    trySend(posts)
                 }
+                
+                // Cleanup nested listener on next update
             }
-        awaitClose { relationshipsListener.remove() }
+            
+        awaitClose { 
+            android.util.Log.d("FeedRepositoryImpl", "🔌 Cerrando listener Following Feed")
+            relationshipsListener.remove() 
+        }
     }
 
     override fun getSavedPosts(userId: String): Flow<List<CommunityPost>> = callbackFlow {
-        // Ordenar por 'savedAt' (ServerTimestamp que se graba al guardar)
+        android.util.Log.d("FeedRepositoryImpl", "🛰️ Iniciando listener Saved Posts para: $userId")
+
         val listener = firestore.collection("users").document(userId).collection("saved_posts")
             .orderBy("savedAt", Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    android.util.Log.e("FeedRepositoryImpl", "Firestore listener error in getSavedPosts", error)
-                    return@addSnapshotListener
-                }
+                if (error != null) return@addSnapshotListener
                 
                 val postIds = snapshot?.documents?.map { it.id } ?: emptyList()
                 if (postIds.isEmpty()) {
@@ -139,20 +143,26 @@ class FeedRepositoryImpl @Inject constructor(
                     return@addSnapshotListener
                 }
 
-                // Usar FieldPath.documentId() para filtrar por document ID en Firestore
-                firestore.collection("posts")
+                // Listen to the actual posts to detect deletions or updates
+                val postsQuery = firestore.collection("posts")
                     .whereIn(FieldPath.documentId(), postIds.take(30))
-                    .get()
-                    .addOnSuccessListener { postSnapshot ->
-                        val posts = postSnapshot.documents.mapNotNull { it.toObject(CommunityPostDto::class.java)?.toDomain() }
-                        trySend(posts)
-                    }
-                    .addOnFailureListener { e ->
-                        android.util.Log.e("FeedRepositoryImpl", "Error fetching saved posts by IDs", e)
-                        trySend(emptyList())
-                    }
+
+                val postsListener = postsQuery.addSnapshotListener { postSnapshot, postError ->
+                    if (postError != null) return@addSnapshotListener
+                    
+                    val posts = postSnapshot?.documents?.mapNotNull { 
+                        it.toObject(CommunityPostDto::class.java)?.toDomain() 
+                    } ?: emptyList()
+                    
+                    // Re-sort because whereIn doesn't preserve order of postIds
+                    val sortedPosts = posts.sortedByDescending { it.timestamp }
+                    trySend(sortedPosts)
+                }
             }
-        awaitClose { listener.remove() }
+        awaitClose { 
+            android.util.Log.d("FeedRepositoryImpl", "🔌 Cerrando listener Saved Posts")
+            listener.remove() 
+        }
     }
 
     override fun getNearbyFeed(lat: Double, lon: Double, radiusKm: Double): Flow<List<CommunityPost>> = callbackFlow {

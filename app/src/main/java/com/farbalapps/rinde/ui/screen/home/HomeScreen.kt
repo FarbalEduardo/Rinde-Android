@@ -54,7 +54,7 @@ fun HomeScreen(
     }
 
     // Intercept back button to show confirmation dialog
-    androidx.activity.compose.BackHandler(enabled = currentRoute == HomeRoute.List.route) {
+    androidx.activity.compose.BackHandler(enabled = currentRoute == HomeRoute.Community.route) {
         showExitDialog = true
     }
 

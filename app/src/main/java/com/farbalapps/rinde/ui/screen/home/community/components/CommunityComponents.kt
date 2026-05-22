@@ -84,7 +84,7 @@ fun CommunityTabRow(
     PrimaryTabRow(
         selectedTabIndex = tabs.indexOfFirst { it.first == selectedTab },
         modifier = modifier.fillMaxWidth(),
-        containerColor = MaterialTheme.colorScheme.surface,
+        containerColor = MaterialTheme.colorScheme.background,
         contentColor = MaterialTheme.colorScheme.primary,
         indicator = {
             TabRowDefaults.PrimaryIndicator(
@@ -268,41 +268,78 @@ fun PostCard(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(200.dp)
-                        .clip(RoundedCornerShape(16.dp))
+                        .aspectRatio(4f / 3f)
+                        .clip(RoundedCornerShape(24.dp))
                         .background(MaterialTheme.colorScheme.surfaceVariant)
                 ) {
                     if (post.photos.isNotEmpty()) {
-                        AsyncImage(
-                            model = post.photos.first(),
-                            contentDescription = post.title,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
+                        val pagerState = androidx.compose.foundation.pager.rememberPagerState(pageCount = { post.photos.size })
+                        
+                        androidx.compose.foundation.pager.HorizontalPager(
+                            state = pagerState,
+                            modifier = Modifier.fillMaxSize()
+                        ) { page ->
+                            AsyncImage(
+                                model = post.photos[page],
+                                contentDescription = post.title,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+
+                        // Dots Indicator (Instagram style)
+                        if (post.photos.size > 1) {
+                            Row(
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .padding(bottom = 12.dp)
+                                    .background(Color.Black.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+                                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                repeat(post.photos.size) { iteration ->
+                                    val color = if (pagerState.currentPage == iteration) Color.White else Color.White.copy(alpha = 0.5f)
+                                    val size = if (pagerState.currentPage == iteration) 7.dp else 5.dp
+                                    Box(
+                                        modifier = Modifier
+                                            .size(size)
+                                            .clip(CircleShape)
+                                            .background(color)
+                                    )
+                                }
+                            }
+                        }
                     } else {
-                        Box(modifier = Modifier.fillMaxSize().background(Color(0xFFE53935)))
+                        Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f))) {
+                            Icon(
+                                Icons.Default.Image, 
+                                contentDescription = null, 
+                                modifier = Modifier.size(48.dp).align(Alignment.Center),
+                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
+                            )
+                        }
                     }
                     
                     // Offer Type Badge
                     Surface(
-                        color = Color.Black.copy(alpha = 0.6f),
-                        shape = RoundedCornerShape(8.dp),
+                        color = Color.Black.copy(alpha = 0.7f),
+                        shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.padding(12.dp).align(Alignment.BottomStart)
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
                         ) {
                             Icon(
                                 imageVector = if (post.offerType == com.farbalapps.rinde.domain.model.OfferType.ONLINE) Icons.Default.Language else Icons.Default.Store,
                                 contentDescription = null,
                                 tint = Color.White,
-                                modifier = Modifier.size(14.dp)
+                                modifier = Modifier.size(16.dp)
                             )
-                            Spacer(modifier = Modifier.width(4.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = (if (post.offerType == com.farbalapps.rinde.domain.model.OfferType.ONLINE) post.websiteName else post.storeName) ?: "Oferta",
-                                style = MaterialTheme.typography.labelSmall,
+                                style = MaterialTheme.typography.labelMedium,
                                 color = Color.White,
                                 fontWeight = FontWeight.Bold
                             )
@@ -310,16 +347,24 @@ fun PostCard(
                     }
 
                     // Save Button
-                    Box(
+                    Surface(
+                        color = Color.White.copy(alpha = 0.9f),
+                        shape = CircleShape,
                         modifier = Modifier
                             .padding(12.dp)
-                            .size(36.dp)
-                            .background(Color.White.copy(alpha = 0.8f), CircleShape)
+                            .size(40.dp)
                             .align(Alignment.TopEnd)
                             .clickable { onSaveClick() },
-                        contentAlignment = Alignment.Center
+                        shadowElevation = 4.dp
                     ) {
-                        Icon(imageVector = Icons.Default.BookmarkBorder, contentDescription = "Guardar", tint = Color.Black, modifier = Modifier.size(20.dp))
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.BookmarkBorder, 
+                                contentDescription = "Guardar", 
+                                tint = Color.Black, 
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
                     }
                 }
                 

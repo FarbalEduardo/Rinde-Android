@@ -108,7 +108,7 @@ private fun ColumnScope.WelcomeActionButtons(onSignUpClick: () -> Unit, onSignIn
                 .weight(1f)
                 .height(dimensionResource(id = R.dimen.button_height_standard)),
             shape = MaterialTheme.shapes.large,
-            border = ButtonDefaults.outlinedButtonBorder.copy(width = dimensionResource(id = R.dimen.stroke_thin))
+            border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(width = dimensionResource(id = R.dimen.stroke_thin))
         ) {
             Text(
                 stringResource(id = R.string.btn_sign_in),

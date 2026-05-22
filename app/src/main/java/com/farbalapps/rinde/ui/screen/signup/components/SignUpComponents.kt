@@ -9,7 +9,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.withLink
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.farbalapps.rinde.R
@@ -35,26 +37,29 @@ fun TermsAndPrivacyCheckbox(
             val startIndex = fullText.indexOf(highlightText)
             if (startIndex != -1) {
                 append(fullText.substring(0, startIndex))
-                pushStringAnnotation(tag = "privacy", annotation = "policy")
-                withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)) {
+                withLink(
+                    LinkAnnotation.Clickable(
+                        tag = "privacy",
+                        styles = TextLinkStyles(
+                            style = SpanStyle(
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold
+                            )
+                        ),
+                        linkInteractionListener = { _ -> onPrivacyPolicyClick() }
+                    )
+                ) {
                     append(highlightText)
                 }
-                pop()
                 append(fullText.substring(startIndex + highlightText.length))
             } else {
                 append(fullText)
             }
         }
 
-        androidx.compose.foundation.text.ClickableText(
+        Text(
             text = annotatedString,
-            style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant),
-            onClick = { offset ->
-                annotatedString.getStringAnnotations(tag = "privacy", start = offset, end = offset)
-                    .firstOrNull()?.let {
-                        onPrivacyPolicyClick()
-                    }
-            }
+            style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
         )
     }
 }

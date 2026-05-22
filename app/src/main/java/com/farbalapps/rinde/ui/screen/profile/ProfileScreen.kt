@@ -32,10 +32,12 @@ import com.farbalapps.rinde.ui.screen.home.community.components.PostCard
 import com.farbalapps.rinde.ui.screen.profile.components.ProfileHeader
 import com.farbalapps.rinde.ui.theme.RindeTheme
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
     innerPadding: PaddingValues = PaddingValues(0.dp),
     onEditProfile: () -> Unit = {},
+    onNavigateToSettings: () -> Unit = {},
     onLogout: () -> Unit = {},
     onNavigateToSaved: () -> Unit = {},
     onNavigateToBlocked: () -> Unit = {},
@@ -62,6 +64,21 @@ fun ProfileScreen(
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
+        topBar = {
+            if (uiState.isCurrentUser) {
+                TopAppBar(
+                    title = { },
+                    actions = {
+                        IconButton(onClick = onNavigateToSettings) {
+                            Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings_title))
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background
+                    )
+                )
+            }
+        },
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         modifier = Modifier.fillMaxSize()
     ) { padding ->

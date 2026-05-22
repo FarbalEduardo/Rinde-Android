@@ -18,6 +18,9 @@ interface PostDao {
     @Query("DELETE FROM community_posts WHERE timestamp < :threshold")
     suspend fun deleteOldPosts(threshold: Long)
 
+    @Query("DELETE FROM community_posts WHERE id = :postId")
+    suspend fun deletePostById(postId: String)
+
     @Query("DELETE FROM community_posts")
     suspend fun clearAll()
 }

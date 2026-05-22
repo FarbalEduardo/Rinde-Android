@@ -362,14 +362,50 @@ class ProfileRepositoryImpl @Inject constructor(
                     return@addSnapshotListener
                 }
 
-                firestore.collection("posts")
+                val postsQuery = firestore.collection("posts")
                     .whereIn(FieldPath.documentId(), postIds.take(30))
+
+                val postsListener = postsQuery.addSnapshotListener { postSnapshot, postError ->
+                    if (postError != null) return@addSnapshotListener
+                    
+                    val posts = postSnapshot?.documents?.mapNotNull { doc ->
+                        doc.toObject(CommunityPostDto::class.java)?.toDomain()
+                    } ?: emptyList()
+                    
+                    trySend(posts.sortedByDescending { it.timestamp })
+                }
+            }
+        awaitClose { listener.remove() }
+    }
+
+    override fun getBlockedUsers(userId: String): Flow<List<Profile>> = callbackFlow {
+        val listener = firestore.collection("users").document(userId).collection("blocked_users")
+            .orderBy("blockedAt", Query.Direction.DESCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    trySend(emptyList())
+                    return@addSnapshotListener
+                }
+                
+                val blockedIds = snapshot?.documents?.map { it.id } ?: emptyList()
+                if (blockedIds.isEmpty()) {
+                    trySend(emptyList())
+                    return@addSnapshotListener
+                }
+
+                firestore.collection("users")
+                    .whereIn(FieldPath.documentId(), blockedIds.take(30))
                     .get()
-                    .addOnSuccessListener { postSnapshot ->
-                        val posts = postSnapshot.documents.mapNotNull { doc ->
-                            doc.toObject(CommunityPostDto::class.java)?.toDomain()
+                    .addOnSuccessListener { userSnapshot ->
+                        val users = userSnapshot.documents.mapNotNull { doc ->
+                            val data = doc.data ?: return@mapNotNull null
+                            Profile(
+                                id = doc.id,
+                                name = data["name"] as? String ?: "Usuario",
+                                photoUrl = data["photoUrl"] as? String
+                            )
                         }
-                        trySend(posts)
+                        trySend(users)
                     }
                     .addOnFailureListener {
                         trySend(emptyList())
