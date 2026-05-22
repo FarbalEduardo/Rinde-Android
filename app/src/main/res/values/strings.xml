@@ -49,6 +49,7 @@
     <string name="dialog_delete_group_text">¿Deseas borrar el grupo \"%s\"? Se eliminarán todos los productos de este grupo.</string>
     <string name="dialog_delete_group_confirm">Borrar</string>
     <string name="dialog_delete_group_cancel">Cancelar</string>
+    <string name="dialog_delete_title">¿Borrar?</string>
 
     <!-- Categories -->
     <string name="cat_groceries">Despensa</string>
@@ -67,8 +68,6 @@
 
 
     <!-- Home Screen -->
-
-    <!-- Home Screen -->
     <string name="home_tab_home">Lista</string>
     <string name="home_tab_community">Comunidad</string>
     <string name="home_tab_goals">Metas</string>
@@ -81,7 +80,7 @@
     <string name="personal_data_highlight">datos personales</string>
     <string name="personal_data_title">Tratamiento de Datos</string>
     <string name="privacy_policy_content">En Rinde, nos tomamos muy en serio la seguridad de tus datos. La información personal que recolectamos (como nombre y correo) se utiliza exclusivamente para gestionar tu cuenta y mejorar tu experiencia. No compartimos tus datos con terceros sin tu consentimiento explícito.</string>
-    <string name="default_web_client_id">491472128600-bcq3patk208hqtjhphi8igr7gid46vn0.apps.googleusercontent.com</string>
+
     
     <!-- Bottom Sheet -->
     <string name="add_items_title">Agregar Ítems</string>
@@ -113,10 +112,19 @@
     <!-- Community Screen -->
     <string name="community_title">Comunidad Rinde</string>
     <string name="community_subtitle">Explora ofertas de otros usuarios.</string>
+    <string name="community_empty_title">No hay publicaciones en esta sección.</string>
+    <string name="community_empty_subtitle">¡Sé el primero en compartir una oferta!</string>
+    <string name="community_fab_desc">Crear publicación</string>
     
     <!-- Goals Screen -->
     <string name="goals_title">Mis Metas</string>
     <string name="goals_subtitle">Seguimiento de tu ahorro.</string>
+    <string name="goals_total_summary">RESUMEN TOTAL</string>
+    <string name="goals_progress_msg">Has alcanzado el %d%% de tus objetivos globales.</string>
+    <string name="goal_house_title">Nueva Casa</string>
+    <string name="goal_house_subtitle">Ahorro para el enganche</string>
+    <string name="goal_japan_title">Viaje Japón</string>
+    <string name="goal_macbook_title">MacBook Pro</string>
 
     <!-- Create Post Screen -->
     <string name="create_post_title">Nueva Publicación</string>
@@ -131,6 +139,7 @@
     <string name="create_post_placeholder_location">Ej: Líder Providencia</string>
     <string name="create_post_location_helper">Puedes escribir el nombre o usar tu GPS.</string>
     <string name="btn_publish">Publicar Oferta</string>
+    <string name="action_gps">Usar GPS</string>
     <string name="error_empty_title">El título no puede estar vacío</string>
     <string name="error_empty_description">La descripción es necesaria para otros usuarios</string>
     <string name="error_location_failed">No se pudo obtener la ubicación GPS.</string>
@@ -146,4 +155,79 @@
     <string name="notif_post_success_desc">Tu oferta ya está disponible para la comunidad.</string>
     <string name="notif_post_error_title">Error al publicar</string>
     <string name="notif_post_error_desc">Hubo un problema. Lo reintentaremos más tarde.</string>
+
+    <!-- Profile & Settings -->
+    <string name="profile_btn_retry">Reintentar carga</string>
+    <string name="profile_tab_posts">Publicaciones</string>
+    <string name="profile_tab_saved">Guardados</string>
+    <string name="profile_empty_my_posts">Aún no has publicado nada</string>
+    <string name="profile_empty_user_posts">Este usuario no tiene publicaciones</string>
+    <string name="profile_empty_saved">Aquí aparecerán las ofertas que guardes</string>
+    <string name="settings_title">Configuración y actividad</string>
+    <string name="settings_dialog_logout_title">¿Cerrar sesión?</string>
+    <string name="settings_dialog_logout_text">¿Estás seguro de que deseas salir de Rinde?</string>
+    <string name="settings_dialog_logout_confirm">Salir</string>
+    <string name="settings_section_usage">Cómo usas Rinde</string>
+    <string name="settings_section_privacy">Quién puede ver tu contenido</string>
+    <string name="settings_item_privacy_label">Privacidad de la cuenta</string>
+    <string name="settings_item_privacy_public">Pública</string>
+    <string name="settings_item_blocked">Usuarios bloqueados</string>
+    <string name="settings_section_app">Tu aplicación y medios</string>
+    <string name="settings_item_theme">Tema</string>
+    <string name="settings_item_theme_dark">Oscuro</string>
+    <string name="settings_item_language">Lenguaje</string>
+    <string name="settings_item_language_es">Español</string>
+    <string name="settings_section_payments">Tus pedidos y herramientas</string>
+    <string name="settings_item_payments">Pedidos y pagos</string>
+    <string name="settings_section_more">Más información y soporte</string>
+    <string name="settings_item_about">Acerca de Rinde</string>
+    <string name="settings_section_login">Inicio de sesión</string>
+    <string name="settings_btn_logout">Cerrar sesión</string>
+
+    <!-- Edit Profile -->
+    <string name="edit_profile_title">Editar Perfil</string>
+    <string name="edit_profile_label_name">Nombre</string>
+    <string name="edit_profile_btn_save">Guardar Cambios</string>
+
+    <!-- Home & Navigation -->
+    <string name="home_tab_profile">Perfil</string>
+    <string name="home_fab_add_goal">Añadir meta</string>
+    <string name="action_search">Buscar</string>
+    <string name="action_settings">Configuración</string>
+    
+    <!-- Exit Dialog -->
+    <string name="exit_dialog_title">¿Salir de la aplicación?</string>
+    <string name="exit_dialog_text">Al salir se perderán los cambios no guardados en la nube. ¿Estás seguro de que deseas cerrar Rinde?</string>
+    <string name="exit_dialog_confirm">Cerrar</string>
+
+    <!-- Login Feedback -->
+    <string name="login_msg_reset_sent">¡Correo de restablecimiento enviado con éxito!</string>
+    <string name="login_msg_reset_failed">Error al enviar correo de restablecimiento</string>
+    <string name="login_msg_google_failed">Error en el inicio de sesión con Google: %s</string>
+
+    <!-- Profile Components -->
+    <string name="profile_avatar_desc">Avatar del usuario</string>
+    <string name="profile_stat_posts">Posts</string>
+    <string name="profile_stat_followers">Seguidores</string>
+    <string name="profile_stat_following">Seguidos</string>
+    <string name="profile_default_name">Usuario</string>
+    <string name="profile_btn_edit">Editar Perfil</string>
+    <string name="profile_btn_following">Siguiendo</string>
+    <string name="profile_btn_follow">Seguir</string>
+    <string name="profile_btn_message">Message</string>
+    <!-- Offer Type (v3) -->
+    <string name="offer_type_label">Tipo de oferta</string>
+    <string name="offer_type_online">🌐 Online</string>
+    <string name="offer_type_physical">🏪 Tienda Física</string>
+    <string name="create_post_hint_website">Nombre de la página (ej: Amazon, Mercadolibre)</string>
+    <string name="create_post_hint_link">Enlace del producto (URL)</string>
+    <string name="create_post_hint_store">Nombre de la tienda (ej: Jumbo, Líder)</string>
+
+    <!-- Voting & Trust (v3) -->
+    <string name="vote_hot">Caliente</string>
+    <string name="vote_cold">Frío</string>
+    <string name="offer_expired_overlay">Oferta posiblemente caducada o falsa</string>
+    <string name="badge_verified">Usuario verificado</string>
+    <string name="settings_item_verify_account">Verificar mi cuenta</string>
+    <string name="privacy_restriction_msg">Tu perfil es privado. Solo puedes votar por la veracidad de las ofertas.</string>
 </resources>

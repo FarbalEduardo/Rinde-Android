@@ -82,7 +82,7 @@ fun SignUpScreen(
             ) {
                 Column(
                     modifier = Modifier
-                        .widthIn(max = 400.dp)
+                        .widthIn(max = dimensionResource(id = R.dimen.max_width_phone))
                         .padding(horizontal = dimensionResource(id = R.dimen.padding_large))
                         .fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
@@ -123,15 +123,15 @@ fun SignUpScreen(
                         },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(56.dp),
+                            .height(dimensionResource(id = R.dimen.button_height_standard)),
                         enabled = !state.isLoading,
                         shape = MaterialTheme.shapes.large
                     ) {
                         if (state.isLoading) {
                             CircularProgressIndicator(
                                 color = MaterialTheme.colorScheme.onPrimary,
-                                modifier = Modifier.size(24.dp),
-                                strokeWidth = 2.dp
+                                modifier = Modifier.size(dimensionResource(id = R.dimen.icon_size_medium)),
+                                strokeWidth = dimensionResource(id = R.dimen.stroke_medium)
                             )
                         } else {
                             Text(
@@ -147,7 +147,7 @@ fun SignUpScreen(
                             text = state.error ?: "",
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(top = 8.dp)
+                            modifier = Modifier.padding(top = dimensionResource(id = R.dimen.padding_small))
                         )
                     }
 
@@ -159,7 +159,7 @@ fun SignUpScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                         modifier = Modifier.fillMaxWidth(),
-                        fontSize = 14.sp
+                        fontSize = dimensionResource(id = R.dimen.text_size_small).value.sp
                     )
 
                     Spacer(modifier = Modifier.height(dimensionResource(id = R.dimen.spacer_medium)))

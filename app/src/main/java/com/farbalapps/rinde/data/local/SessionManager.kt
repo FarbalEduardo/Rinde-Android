@@ -25,6 +25,10 @@ class SessionManager @Inject constructor(@ApplicationContext private val context
     val isUserLoggedIn: Flow<Boolean> = context.dataStore.data.map { preferences ->
         preferences[IS_LOGGED_IN] ?: false
     }
+
+    val userId: Flow<String> = context.dataStore.data.map { preferences ->
+        preferences[USER_ID] ?: ""
+    }
     
     suspend fun saveSession(userId: String, email: String) {
         context.dataStore.edit { preferences ->

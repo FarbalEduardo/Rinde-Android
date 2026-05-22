@@ -44,9 +44,8 @@ private val LightColorScheme = lightColorScheme(
 
 @Composable
 fun RindeTheme(
-    darkTheme: Boolean = false, // Forced to false per user request, while keeping status bar fix
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = false, // Disabled for now to keep branding colors consistent
+    darkTheme: Boolean = isSystemInDarkTheme(),
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {

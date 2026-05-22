@@ -30,8 +30,8 @@ import com.farbalapps.rinde.ui.navigation.HomeRoute
 @Composable
 fun BottomNavigationBar(navController: NavController) {
     val items = listOf(
-        Pair(HomeRoute.List, Pair(stringResource(id = R.string.home_tab_home), Icons.Default.ShoppingCart)),
         Pair(HomeRoute.Community, Pair(stringResource(id = R.string.home_tab_community), Icons.Default.Public)),
+        Pair(HomeRoute.List, Pair(stringResource(id = R.string.home_tab_home), Icons.Default.ShoppingCart)),
         Pair(HomeRoute.Goals, Pair(stringResource(id = R.string.home_tab_goals), Icons.Default.Flag)),
         Pair(HomeRoute.Assistant, Pair(stringResource(id = R.string.social_google), Icons.Default.AutoAwesome)),
         Pair(HomeRoute.Profile, Pair("Perfil", Icons.Default.AccountCircle))

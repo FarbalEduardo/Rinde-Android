@@ -1,9 +1,13 @@
-We are excited to release **Rinde v1.1.0-beta**! This release marks a massive leap forward in our development infrastructure and application quality standards.
+# Notas de Lanzamiento - Rinde v1.2.0
 
-### ✨ What's New
-* **Bilingual Experience:** Rinde now fully supports both Spanish (default) and English. All authentication screens and core navigation elements adapt automatically to the user's device settings.
-* **Developer Productivity (SDD Pipeline):** We've introduced a bespoke, locally orchestrated integration pipeline out of the box. 
+Esta actualización introduce mejoras significativas en la experiencia del usuario final mediante una navegación más intuitiva y orientada a la colaboración, además de robustecer la infraestructura de pruebas unitarias y estabilidad del código base.
 
-### 🔧 Under the Hood
-* Upgraded to Gradle 8.9 with distinct `dev` and `prod` Gradle Build Flavors.
-* Strengthened the application's overall security posture via automated SAST that catches vulnerable `PendingIntent` configurations and unsafe Android component exports directly at compile-time.
+## 🚀 Nuevas Características
+
+* **Navegación Prioritaria Basada en Comunidad**: La sección global de reportes de precios y contribuciones comunitarias (`CommunityScreen`) se establece ahora como el punto de acceso inicial predeterminado al abrir la aplicación. La **Lista de Mandado** ha sido reubicada de forma fluida a la segunda posición de la barra de navegación.
+* **Control de Navegación de Retroceso Optimizado**: Integración de una lógica de interceptación de retroceso mediante Compose `BackHandler` en la pantalla de inicio principal (Comunidad), lo que permite un cierre controlado y nativo del ciclo de vida de la aplicación.
+
+## 🔧 Optimizaciones y Correcciones Técnicas (Bajo el Capó)
+
+* **Sincronización del Flujo de Navegación**: Reestructuración y alineación de los componentes de navegación `HomeNavHost` y `BottomNavigationBar` para garantizar una transición libre de parpadeos e ideal para el rendimiento del renderizado en Jetpack Compose.
+* **Saneamiento del Entorno de Pruebas**: Corrección de inconsistencias de compilación preexistentes en la suite de pruebas unitarias de `ProfileViewModelTest`. Se actualizaron las inyecciones mock de los casos de uso `GetSavedPostsUseCase` y `ClearUploadStatusUseCase`, y se sincronizaron las llamadas asíncronas con el tipo de retorno encapsulado `Result<Unit>` para asegurar la estabilidad del pipeline de integración local.

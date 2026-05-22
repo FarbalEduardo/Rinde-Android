@@ -3,7 +3,7 @@ package com.farbalapps.rinde.ui.screen.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.farbalapps.rinde.domain.model.Profile
-import com.farbalapps.rinde.domain.model.ProfilePost
+import com.farbalapps.rinde.domain.model.CommunityPost
 import com.farbalapps.rinde.domain.usecase.profile.GetProfilePostsUseCase
 import com.farbalapps.rinde.domain.usecase.profile.GetProfileUseCase
 import com.farbalapps.rinde.domain.usecase.profile.FollowUserUseCase
@@ -11,6 +11,8 @@ import com.farbalapps.rinde.domain.usecase.profile.UnfollowUserUseCase
 import com.farbalapps.rinde.domain.usecase.profile.IsFollowingUseCase
 import com.farbalapps.rinde.domain.usecase.profile.UpdatePrivacyUseCase
 import com.farbalapps.rinde.domain.usecase.profile.SyncProfileUseCase
+import com.farbalapps.rinde.domain.usecase.profile.ClearUploadStatusUseCase
+import com.farbalapps.rinde.domain.usecase.profile.GetSavedPostsUseCase
 import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -19,7 +21,8 @@ import javax.inject.Inject
 
 data class ProfileUiState(
     val profile: Profile? = null,
-    val posts: List<ProfilePost> = emptyList(),
+    val posts: List<CommunityPost> = emptyList(),
+    val savedPosts: List<CommunityPost> = emptyList(),
     val isLoading: Boolean = true,
     val isFollowing: Boolean = false,
     val isCurrentUser: Boolean = false,
@@ -30,11 +33,13 @@ data class ProfileUiState(
 class ProfileViewModel @Inject constructor(
     private val getProfileUseCase: GetProfileUseCase,
     private val getProfilePostsUseCase: GetProfilePostsUseCase,
+    private val getSavedPostsUseCase: GetSavedPostsUseCase,
     private val followUserUseCase: FollowUserUseCase,
     private val unfollowUserUseCase: UnfollowUserUseCase,
     private val isFollowingUseCase: IsFollowingUseCase,
     private val updatePrivacyUseCase: UpdatePrivacyUseCase,
     private val syncProfileUseCase: SyncProfileUseCase,
+    private val clearUploadStatusUseCase: ClearUploadStatusUseCase,
     private val firebaseAuth: FirebaseAuth
 ) : ViewModel() {
 
@@ -105,6 +110,17 @@ class ProfileViewModel @Inject constructor(
                     _uiState.update { it.copy(posts = posts) }
                 }
         }
+
+        // 4. Obtener posts guardados
+        viewModelScope.launch {
+            getSavedPostsUseCase(uid)
+                .catch { e ->
+                    android.util.Log.e("ProfileViewModel", "Error fetching saved posts", e)
+                }
+                .collect { savedPosts ->
+                    _uiState.update { it.copy(savedPosts = savedPosts) }
+                }
+        }
     }
 
     fun toggleFollow() {
@@ -123,5 +139,12 @@ class ProfileViewModel @Inject constructor(
 
     fun retry() {
         startDataObserving()
+    }
+
+    fun clearUploadStatus() {
+        val uid = firebaseAuth.currentUser?.uid ?: return
+        viewModelScope.launch {
+            clearUploadStatusUseCase(uid)
+        }
     }
 }

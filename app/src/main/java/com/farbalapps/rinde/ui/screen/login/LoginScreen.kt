@@ -53,12 +53,12 @@ fun LoginScreen(
         resetState?.let {
             when (it) {
                 is Resource.Success -> {
-                    Toast.makeText(context, "Reset email sent successfully!", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, context.getString(R.string.login_msg_reset_sent), Toast.LENGTH_LONG).show()
                     showResetDialog = false
                     viewModel.clearResetPasswordState()
                 }
                 is Resource.Error -> {
-                    Toast.makeText(context, it.message ?: "Failed to send reset email", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, it.message ?: context.getString(R.string.login_msg_reset_failed), Toast.LENGTH_LONG).show()
                     viewModel.clearResetPasswordState()
                 }
                 else -> {}
@@ -87,7 +87,7 @@ fun LoginScreen(
                     val idToken = com.google.android.libraries.identity.googleid.GoogleIdTokenCredential.createFrom(result.credential.data).idToken
                     viewModel.onGoogleSignInResult(idToken)
                 } catch (e: Exception) {
-                    Toast.makeText(context, "Google sign in failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.login_msg_google_failed, e.message ?: ""), Toast.LENGTH_SHORT).show()
                 }
             }
         },

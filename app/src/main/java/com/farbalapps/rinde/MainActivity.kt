@@ -32,6 +32,7 @@ class MainActivity : ComponentActivity() {
 
     @Inject lateinit var sessionManager: SessionManager
     @Inject lateinit var authRepository: AuthRepository
+    @Inject lateinit var settingsManager: com.farbalapps.rinde.data.local.SettingsManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
@@ -39,7 +40,14 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         
         setContent {
-            RindeTheme {
+            val themeMode by settingsManager.themeMode.collectAsState(initial = com.farbalapps.rinde.data.local.ThemeMode.SYSTEM)
+            val isDarkTheme = when (themeMode) {
+                com.farbalapps.rinde.data.local.ThemeMode.LIGHT -> false
+                com.farbalapps.rinde.data.local.ThemeMode.DARK -> true
+                com.farbalapps.rinde.data.local.ThemeMode.SYSTEM -> androidx.compose.foundation.isSystemInDarkTheme()
+            }
+
+            RindeTheme(darkTheme = isDarkTheme) {
                 val navController = rememberNavController()
                 val isLoggedByFirebase = authRepository.isUserLoggedIn()
                 val isLoggedBySessionManager by sessionManager.isUserLoggedIn.collectAsState(initial = false)

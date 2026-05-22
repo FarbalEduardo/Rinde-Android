@@ -10,7 +10,9 @@ data class Profile(
     val postsCount: Int = 0,
     val rating: Float = 0f,
     val reviewsCount: Int = 0,
+    val isVerified: Boolean = false,
     val isPrivate: Boolean = false,
     val isDummy: Boolean = true,
     val uploadStatus: String? = null
 )
+

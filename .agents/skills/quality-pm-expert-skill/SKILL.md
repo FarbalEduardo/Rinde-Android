@@ -8,7 +8,9 @@ Herramienta integral para medir la salud técnica y la cobertura de pruebas del 
 ## Capabilidades
 1. **Tech Debt Scanner**: Busca `TODO`s o `FIXME` abandonados.
 2. **Missing Tests Audit**: Detecta clases en `main` que no tienen su correspondiente clase de prueba en `test` o `androidTest`.
-3. **Hardcoded Strings**: Detecta strings fuera de `strings.xml`.
+3. **Hardcoded Strings & Multi-Language**: 
+   - Prohíbe terminantemente los strings fuera de `strings.xml`.
+   - Exige la existencia de recursos en Español (`values/strings.xml`) e Inglés (`values-en/strings.xml`).
 4. **Complexity & SOLID Audit**: Identifica violaciones de responsabilidad única o archivos excesivamente largos.
 5. **Template Generator**: Genera esqueletos de tests para ViewModels, UseCases y Repositorios.
 6. **Test Case Documentation**: Asegura que cada suite de pruebas tenga documentación clara de los escenarios cubiertos.
@@ -21,5 +23,3 @@ Herramienta integral para medir la salud técnica y la cobertura de pruebas del 
 
 ## Uso
 Ejecutar: `powershell .agents/skills/quality-pm-expert-skill/scripts/audit_quality.ps1`
-
-

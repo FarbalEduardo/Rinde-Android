@@ -21,11 +21,14 @@ import com.farbalapps.rinde.domain.repository.ProfileRepository
 import com.farbalapps.rinde.data.repository.ProfileRepositoryImpl
 import com.farbalapps.rinde.domain.repository.FeedRepository
 import com.farbalapps.rinde.data.repository.FeedRepositoryImpl
+import com.farbalapps.rinde.domain.repository.CommentRepository
+import com.farbalapps.rinde.data.repository.CommentRepositoryImpl
 import com.farbalapps.rinde.domain.moderation.ContentModerator
 import com.farbalapps.rinde.util.LocationService
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.database.FirebaseDatabase
 import androidx.work.WorkManager
 import dagger.Module
 import dagger.Provides
@@ -49,6 +52,10 @@ object AppModule {
     @Provides
     @Singleton
     fun provideFirebaseStorage(): FirebaseStorage = FirebaseStorage.getInstance()
+
+    @Provides
+    @Singleton
+    fun provideFirebaseDatabase(): FirebaseDatabase = FirebaseDatabase.getInstance()
 
     @Provides
     @Singleton
@@ -151,12 +158,30 @@ object AppModule {
 
     @Provides
     @Singleton
+    fun providePostDao(db: RindeDatabase): com.farbalapps.rinde.data.local.dao.PostDao {
+        return db.postDao()
+    }
+
+    @Provides
+    @Singleton
     fun provideFeedRepository(
         @ApplicationContext context: Context,
         firestore: FirebaseFirestore,
-        workManager: WorkManager
+        database: FirebaseDatabase,
+        workManager: WorkManager,
+        postDao: com.farbalapps.rinde.data.local.dao.PostDao
     ): FeedRepository {
-        return FeedRepositoryImpl(context, firestore, workManager)
+        return FeedRepositoryImpl(context, firestore, database, workManager, postDao)
+    }
+
+    @Provides
+    @Singleton
+    fun provideCommentRepository(
+        @ApplicationContext context: Context,
+        database: FirebaseDatabase,
+        firestore: FirebaseFirestore
+    ): CommentRepository {
+        return CommentRepositoryImpl(context, database, firestore)
     }
 
     @Provides
@@ -169,5 +194,19 @@ object AppModule {
     @Singleton
     fun provideLocationService(@ApplicationContext context: Context): LocationService {
         return LocationService(context)
+    }
+
+    @Provides
+    @Singleton
+    fun provideSettingsRepository(
+        settingsManager: com.farbalapps.rinde.data.local.SettingsManager,
+        profileRepository: ProfileRepository,
+        sessionManager: com.farbalapps.rinde.data.local.SessionManager
+    ): com.farbalapps.rinde.domain.repository.SettingsRepository {
+        return com.farbalapps.rinde.data.repository.SettingsRepositoryImpl(
+            settingsManager,
+            profileRepository,
+            sessionManager
+        )
     }
 }

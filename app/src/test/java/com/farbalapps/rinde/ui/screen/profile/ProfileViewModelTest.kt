@@ -2,7 +2,10 @@ package com.farbalapps.rinde.ui.screen.profile
 
 import app.cash.turbine.test
 import com.farbalapps.rinde.domain.model.Profile
-import com.farbalapps.rinde.domain.model.ProfilePost
+import com.farbalapps.rinde.domain.model.CommunityPost
+import com.farbalapps.rinde.domain.model.PostLocation
+import com.farbalapps.rinde.domain.model.OfferType
+import com.farbalapps.rinde.domain.model.VerificationStatus
 import com.farbalapps.rinde.domain.usecase.profile.*
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
@@ -27,11 +30,13 @@ class ProfileViewModelTest {
     
     private val getProfileUseCase = mockk<GetProfileUseCase>()
     private val getProfilePostsUseCase = mockk<GetProfilePostsUseCase>()
+    private val getSavedPostsUseCase = mockk<GetSavedPostsUseCase>()
     private val followUserUseCase = mockk<FollowUserUseCase>()
     private val unfollowUserUseCase = mockk<UnfollowUserUseCase>()
     private val isFollowingUseCase = mockk<IsFollowingUseCase>()
     private val updatePrivacyUseCase = mockk<UpdatePrivacyUseCase>()
     private val syncProfileUseCase = mockk<SyncProfileUseCase>()
+    private val clearUploadStatusUseCase = mockk<ClearUploadStatusUseCase>()
     private val firebaseAuth = mockk<FirebaseAuth>()
     private val firebaseUser = mockk<FirebaseUser>()
 
@@ -43,7 +48,35 @@ class ProfileViewModelTest {
         isDummy = false
     )
     private val testPosts = listOf(
-        ProfilePost(id = "1", title = "Post 1", description = "Desc 1", timeLocation = "Today", imageUrl = null)
+        CommunityPost(
+            id = "1",
+            authorId = "author1",
+            authorName = "Author One",
+            authorPhotoUrl = null,
+            timestamp = null,
+            title = "Post 1",
+            descriptionShort = "Short 1",
+            descriptionLong = "Long 1",
+            photos = emptyList(),
+            category = "Tech",
+            location = PostLocation("Store", null, null),
+            isActive = true,
+            likesCount = 0,
+            commentsCount = 0,
+            truthCount = 0,
+            falseCount = 0,
+            votesScore = 0,
+            verificationStatus = VerificationStatus.PENDING,
+            reportCount = 0,
+            userReputationScore = 0f,
+            isAuthorVerified = false,
+            offerType = OfferType.PHYSICAL,
+            websiteName = null,
+            productLink = null,
+            storeName = null,
+            isRecommended = false,
+            expiresAt = null
+        )
     )
 
     @Before
@@ -56,16 +89,20 @@ class ProfileViewModelTest {
         
         coEvery { getProfileUseCase(testUserId) } returns flowOf(testProfile)
         coEvery { getProfilePostsUseCase(testUserId) } returns flowOf(testPosts)
+        coEvery { getSavedPostsUseCase(testUserId) } returns flowOf(emptyList())
         coEvery { syncProfileUseCase(testUserId) } returns Unit
+        coEvery { clearUploadStatusUseCase(testUserId) } returns Result.success(Unit)
         
         viewModel = ProfileViewModel(
             getProfileUseCase,
             getProfilePostsUseCase,
+            getSavedPostsUseCase,
             followUserUseCase,
             unfollowUserUseCase,
             isFollowingUseCase,
             updatePrivacyUseCase,
             syncProfileUseCase,
+            clearUploadStatusUseCase,
             firebaseAuth
         )
     }
@@ -103,11 +140,13 @@ class ProfileViewModelTest {
         viewModel = ProfileViewModel(
             getProfileUseCase,
             getProfilePostsUseCase,
+            getSavedPostsUseCase,
             followUserUseCase,
             unfollowUserUseCase,
             isFollowingUseCase,
             updatePrivacyUseCase,
             syncProfileUseCase,
+            clearUploadStatusUseCase,
             firebaseAuth
         )
         

@@ -16,7 +16,7 @@ import com.farbalapps.rinde.ui.theme.RindeTheme
 @Composable
 fun AssistantScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
     Surface(
-        modifier = Modifier.fillMaxSize().padding(innerPadding),
+        modifier = Modifier.fillMaxSize().padding(innerPadding).statusBarsPadding(),
         color = MaterialTheme.colorScheme.background
     ) {
         Column(

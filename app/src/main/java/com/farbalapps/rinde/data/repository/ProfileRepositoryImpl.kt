@@ -12,7 +12,6 @@ import com.farbalapps.rinde.data.local.entity.toEntity
 import com.farbalapps.rinde.data.worker.UploadProfileWorker
 import com.farbalapps.rinde.domain.model.CommunityPost
 import com.farbalapps.rinde.domain.model.Profile
-import com.farbalapps.rinde.domain.model.ProfilePost
 import com.farbalapps.rinde.domain.repository.ProfileRepository
 import com.farbalapps.rinde.util.ImageOptimizer
 
@@ -20,6 +19,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.Query
+import com.google.firebase.firestore.FieldPath
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -30,6 +30,9 @@ import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.*
 import javax.inject.Inject
 import com.farbalapps.rinde.util.CloudinaryHelper
+
+import com.farbalapps.rinde.data.remote.model.CommunityPostDto
+import com.farbalapps.rinde.data.mapper.toDomain
 
 class ProfileRepositoryImpl @Inject constructor(
     private val firestore: FirebaseFirestore,
@@ -54,11 +57,9 @@ class ProfileRepositoryImpl @Inject constructor(
         }
     }
 
-    override fun getProfilePosts(userId: String): Flow<List<ProfilePost>> = callbackFlow {
+    override fun getProfilePosts(userId: String): Flow<List<CommunityPost>> = callbackFlow {
         // Nota: Se eliminó el filtro .whereEqualTo("isActive", true) para evitar
-        // requerir un índice compuesto en Firestore (authorId + isActive + timestamp).
-        // El filtro se aplica en el cliente. El índice correcto a crear en Firebase Console es:
-        // Colección: posts | Campos: authorId (ASC), isActive (ASC), timestamp (DESC)
+        // requerir un índice compuesto en Firestore.
         val query = firestore.collection("posts")
             .whereEqualTo("authorId", userId)
             .orderBy("timestamp", Query.Direction.DESCENDING)
@@ -70,27 +71,8 @@ class ProfileRepositoryImpl @Inject constructor(
                 return@addSnapshotListener
             }
 
-            // Filtrado en cliente: omitir posts inactivos (se quitó el filtro de Firestore para evitar el índice compuesto)
             val posts = snapshot?.documents?.mapNotNull { doc ->
-                val post = doc.toObject(CommunityPost::class.java) ?: return@mapNotNull null
-                if (!post.isActive) return@mapNotNull null  // filtro client-side de isActive
-                
-                // Formatear tiempo y ubicación para el modelo ProfilePost
-                val timeAgo = formatTimeAgo(post.timestamp)
-                val locationStr = post.location.name
-                val timeLocation = if (locationStr.isNotBlank()) "$timeAgo • $locationStr" else timeAgo
-
-                ProfilePost(
-                    id = post.id,
-                    title = post.title,
-                    description = post.descriptionLong,
-                    timeLocation = timeLocation,
-                    imageUrl = post.photos.firstOrNull(),
-                    isRecommended = post.isRecommended,
-                    votes = post.votes,
-                    likes = post.likes,
-                    commentsCount = post.commentsCount
-                )
+                doc.toObject(CommunityPostDto::class.java)?.toDomain()?.takeIf { it.isActive }
             } ?: emptyList()
             
             trySend(posts)
@@ -98,15 +80,6 @@ class ProfileRepositoryImpl @Inject constructor(
         awaitClose { listener.remove() }
     }
 
-    private fun formatTimeAgo(timestamp: Long): String {
-        val diff = System.currentTimeMillis() - timestamp
-        return when {
-            diff < 60_000 -> "Ahora"
-            diff < 3600_000 -> "Hace ${diff / 60_000} min"
-            diff < 86400_000 -> "Hace ${diff / 3600_000} h"
-            else -> "Hace ${diff / 86400_000} d"
-        }
-    }
 
     override suspend fun syncProfile(userId: String) {
         android.util.Log.i("ProfileRepositoryImpl", "🚀 INICIANDO SYNC FORZADO (SERVER) para: $userId")
@@ -360,5 +333,84 @@ class ProfileRepositoryImpl @Inject constructor(
             .collection("blocked_users").document(targetUserId)
             .delete()
             .await()
+    }
+
+    override suspend fun clearUploadStatus(userId: String): Result<Unit> = runCatching {
+        firestore.collection("users").document(userId)
+            .update("uploadStatus", "")
+            .await()
+        
+        // Actualización local para evitar el parpadeo en la UI
+        val current = profileDao.getProfile(userId).firstOrNull()
+        current?.let {
+            profileDao.insertProfile(it.copy(uploadStatus = ""))
+        }
+    }
+
+    override fun getSavedProfilePosts(userId: String): Flow<List<CommunityPost>> = callbackFlow {
+        val listener = firestore.collection("users").document(userId).collection("saved_posts")
+            .orderBy("savedAt", Query.Direction.DESCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    trySend(emptyList())
+                    return@addSnapshotListener
+                }
+                
+                val postIds = snapshot?.documents?.map { it.id } ?: emptyList()
+                if (postIds.isEmpty()) {
+                    trySend(emptyList())
+                    return@addSnapshotListener
+                }
+
+                val postsQuery = firestore.collection("posts")
+                    .whereIn(FieldPath.documentId(), postIds.take(30))
+
+                val postsListener = postsQuery.addSnapshotListener { postSnapshot, postError ->
+                    if (postError != null) return@addSnapshotListener
+                    
+                    val posts = postSnapshot?.documents?.mapNotNull { doc ->
+                        doc.toObject(CommunityPostDto::class.java)?.toDomain()
+                    } ?: emptyList()
+                    
+                    trySend(posts.sortedByDescending { it.timestamp })
+                }
+            }
+        awaitClose { listener.remove() }
+    }
+
+    override fun getBlockedUsers(userId: String): Flow<List<Profile>> = callbackFlow {
+        val listener = firestore.collection("users").document(userId).collection("blocked_users")
+            .orderBy("blockedAt", Query.Direction.DESCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    trySend(emptyList())
+                    return@addSnapshotListener
+                }
+                
+                val blockedIds = snapshot?.documents?.map { it.id } ?: emptyList()
+                if (blockedIds.isEmpty()) {
+                    trySend(emptyList())
+                    return@addSnapshotListener
+                }
+
+                firestore.collection("users")
+                    .whereIn(FieldPath.documentId(), blockedIds.take(30))
+                    .get()
+                    .addOnSuccessListener { userSnapshot ->
+                        val users = userSnapshot.documents.mapNotNull { doc ->
+                            val data = doc.data ?: return@mapNotNull null
+                            Profile(
+                                id = doc.id,
+                                name = data["name"] as? String ?: "Usuario",
+                                photoUrl = data["photoUrl"] as? String
+                            )
+                        }
+                        trySend(users)
+                    }
+                    .addOnFailureListener {
+                        trySend(emptyList())
+                    }
+            }
+        awaitClose { listener.remove() }
     }
 }

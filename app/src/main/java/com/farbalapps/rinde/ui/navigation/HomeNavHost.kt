@@ -28,7 +28,7 @@ fun HomeNavHost(
 ) {
     NavHost(
         navController = navController,
-        startDestination = HomeRoute.List.route,
+        startDestination = HomeRoute.Community.route,
         modifier = modifier
     ) {
         composable(HomeRoute.List.route) {
@@ -49,7 +49,8 @@ fun HomeNavHost(
         composable(HomeRoute.Profile.route) {
             ProfileScreen(
                 innerPadding = innerPadding,
-                onEditProfile = { navController.navigate(HomeRoute.EditProfile.route) }
+                onEditProfile = { navController.navigate(HomeRoute.EditProfile.route) },
+                onNavigateToSettings = { navController.navigate(HomeRoute.Settings.route) }
             )
         }
         composable(HomeRoute.Settings.route) {
