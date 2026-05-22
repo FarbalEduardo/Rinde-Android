@@ -1,9 +1,9 @@
-We are excited to share this update! This release shifts focus to our core collaborative features and guarantees codebase stability.
+¡Nos entusiasma compartir esta actualización! Este lanzamiento cambia el enfoque hacia nuestras características colaborativas principales y garantiza la estabilidad de la base de código.
 
-### ✨ What's New
-* **Community-First Experience:** The global, community-driven price reports screen is now the default landing tab upon opening the app. Easily navigate to your Shopping List as the second tab.
-* **Seamless Back Navigation:** Pressing back from the Community Home screen now gracefully prompts to exit the application.
+### ✨ Novedades
+* **Experiencia Enfocada en la Comunidad:** La pantalla global de reportes de precios de la comunidad es ahora la pestaña predeterminada al abrir la aplicación. Accede fácilmente a tu Lista de Mandado en la segunda pestaña.
+* **Navegación de Retroceso Fluida:** Al presionar el botón "Atrás" desde la pantalla de inicio de la Comunidad, ahora se solicitará confirmar de forma limpia si deseas salir de la aplicación.
 
-### 🔧 Under the Hood
-* Restructured the `HomeNavHost` and `BottomNavigationBar` components for seamless tab transitions.
-* Fixed desynchronized unit tests in the `ProfileViewModel` test suite, updating mocks to fully support the new use case and model architectures.
+### 🔧 Bajo el Capó
+* Reestructuración de los componentes `HomeNavHost` y `BottomNavigationBar` para transiciones de pestañas fluidas.
+* Corrección de pruebas unitarias desincronizadas en la suite de pruebas de `ProfileViewModel`, actualizando los mocks para soportar plenamente las nuevas arquitecturas de casos de uso y modelos.

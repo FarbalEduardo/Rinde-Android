@@ -1,10 +1,10 @@
-## 📝 Details
-This PR restructures the core navigation experience by prioritizing the collaborative Community tab as the new application home screen. It also resolves a pre-existing compilation bottleneck in unit testing.
+## 📝 Detalles
+Este PR reestructura la experiencia de navegación principal al priorizar la pestaña colaborativa de Comunidad (Community) como la nueva pantalla de inicio de la aplicación. También resuelve un cuello de botella preexistente en la compilación de pruebas unitarias.
 
-### 🚀 Key Features & Improvements
-* **🌐 Community-First Navigation:** Re-architected `HomeScreen` and navigation components to set the `CommunityScreen` as the starting destination, moving the Shopping List tab to the second position.
-* **📱 Unified Back Navigation:** Updated the Compose `BackHandler` logic to trigger the exit dialog natively from the new home screen (Community).
-* **🧪 Test Suite Stability:** Resolved pre-existing compilation errors in `ProfileViewModelTest.kt` caused by constructor and model signature mismatches.
+### 🚀 Características Clave y Mejoras
+* **🌐 Navegación con Prioridad de Comunidad:** Se rearquitecturaron los componentes de navegación y `HomeScreen` para establecer `CommunityScreen` como el destino inicial de la app, desplazando la pestaña de la Lista de Compras a la segunda posición.
+* **📱 Navegación de Retroceso Unificada:** Se actualizó la lógica del `BackHandler` de Compose para activar el diálogo de salida de forma nativa desde la nueva pantalla de inicio (Comunidad).
+* **🧪 Estabilidad del Conjunto de Pruebas:** Se resolvieron los errores de compilación preexistentes en `ProfileViewModelTest.kt` causados por discrepancias en las firmas del constructor y del modelo.
 
-## 🧪 How Has This Been Tested?
-* Compiled cleanly via dev unit tests: `.\gradlew.bat :app:compileDevDebugUnitTestKotlin`. All 24 tasks executed and compiled successfully.
+## 🧪 ¿Cómo se ha probado?
+* Compilación limpia mediante pruebas unitarias de desarrollo: `.\gradlew.bat :app:compileDevDebugUnitTestKotlin`. Las 24 tareas se ejecutaron y compilaron con éxito.
