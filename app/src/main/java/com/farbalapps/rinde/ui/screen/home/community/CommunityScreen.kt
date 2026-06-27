@@ -45,35 +45,54 @@ import com.farbalapps.rinde.ui.screen.home.community.components.CommentsBottomSh
 import com.farbalapps.rinde.ui.theme.RindePrimary
 import com.farbalapps.rinde.ui.theme.RindeTheme
 import kotlin.math.roundToInt
+import androidx.compose.foundation.clickable
 import androidx.compose.ui.zIndex
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CommunityScreen(
     onNavigateToCreatePost: () -> Unit = {},
+    onNavigateToUserProfile: (String) -> Unit = {},
+    onNavigateToPostDetail: (String) -> Unit = {},
+    onEditPost: (String) -> Unit = {},
     viewModel: CommunityViewModel = hiltViewModel(),
     commentsViewModel: CommentsViewModel = hiltViewModel(),
     innerPadding: PaddingValues = PaddingValues(0.dp)
 ) {
-    val currentTab by viewModel.currentTab.collectAsStateWithLifecycle()
-    val posts by viewModel.posts.collectAsStateWithLifecycle()
-    val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     var showCommentsSheet by remember { mutableStateOf(false) }
     var activePostId by remember { mutableStateOf<String?>(null) }
-    
+
     val commentsState by commentsViewModel.uiState.collectAsStateWithLifecycle()
 
+    // Observar ciclo de vida para verificar nuevas publicaciones al reanudar la app
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.checkForNewPostsOnResume()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
     CommunityContent(
-        currentTab = currentTab,
-        posts = posts,
-        isRefreshing = isRefreshing,
+        currentTab = uiState.currentTab,
+        posts = uiState.posts,
+        isRefreshing = uiState.isRefreshing,
+        newPostsCount = uiState.newPostsCount,
         onRefresh = { viewModel.refresh() },
         onTabSelected = { viewModel.setTab(it) },
         onNavigateToCreatePost = onNavigateToCreatePost,
-        onLikeClick = { viewModel.toggleLike(it) },
+        onLikeClick = { viewModel.toggleVote(it, 1) },
         onSaveClick = { viewModel.toggleSave(it) },
         onLoadMore = { viewModel.loadMore() },
+        onShowNewPosts = { viewModel.showPendingPosts() },
         onCommentClick = { postId ->
             activePostId = postId
             commentsViewModel.loadComments(postId)
@@ -110,6 +129,7 @@ fun CommunityContent(
     currentTab: CommunityTab,
     posts: List<CommunityPost>,
     isRefreshing: Boolean,
+    newPostsCount: Int = 0,
     onRefresh: () -> Unit,
     onTabSelected: (CommunityTab) -> Unit,
     onNavigateToCreatePost: () -> Unit,
@@ -119,6 +139,7 @@ fun CommunityContent(
     onVoteHot: (String) -> Unit,
     onVoteCold: (String) -> Unit,
     onLoadMore: () -> Unit,
+    onShowNewPosts: () -> Unit = {},
     innerPadding: PaddingValues
 ) {
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
@@ -228,11 +249,8 @@ fun CommunityContent(
                             PostCard(
                                 post = post,
                                 isAuthorVerified = post.isAuthorVerified,
-                                onLikeClick = { onLikeClick(post.id) },
                                 onSaveClick = { onSaveClick(post.id) },
-                                onCommentClick = { onCommentClick(post.id) },
-                                onVoteHot = { onVoteHot(post.id) },
-                                onVoteCold = { onVoteCold(post.id) },
+                                onPostClick = { onCommentClick(post.id) },
                                 modifier = Modifier.padding(horizontal = paddingMedium, vertical = dimensionResource(id = R.dimen.padding_small))
                             )
                         }
@@ -324,6 +342,29 @@ fun CommunityContent(
                         onTabSelected = onTabSelected,
                         modifier = Modifier.fillMaxWidth()
                     )
+
+                    // Banner animado de nuevas ofertas
+                    AnimatedVisibility(
+                        visible = newPostsCount > 20,
+                        enter = slideInVertically(initialOffsetY = { -it }),
+                        exit = slideOutVertically(targetOffsetY = { -it })
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(MaterialTheme.colorScheme.primaryContainer)
+                                .clickable { onShowNewPosts() }
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Hay $newPostsCount nuevas ofertas",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                    }
                 }
             }
 
@@ -349,6 +390,7 @@ fun CommunityScreenPreview() {
             currentTab = CommunityTab.DISCOVER,
             posts = emptyList(),
             isRefreshing = false,
+            newPostsCount = 0,
             onRefresh = {},
             onTabSelected = {},
             onNavigateToCreatePost = {},
@@ -358,6 +400,7 @@ fun CommunityScreenPreview() {
             onVoteHot = {},
             onVoteCold = {},
             onLoadMore = {},
+            onShowNewPosts = {},
             innerPadding = PaddingValues(0.dp)
         )
     }

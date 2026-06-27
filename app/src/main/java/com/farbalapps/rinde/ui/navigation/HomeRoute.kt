@@ -1,14 +1,26 @@
 package com.farbalapps.rinde.ui.navigation
 
-sealed class HomeRoute(val route: String) {
-    object List : HomeRoute("home_list")
-    object Community : HomeRoute("home_community")
-    object Goals : HomeRoute("home_goals")
-    object Assistant : HomeRoute("home_assistant")
-    object Profile : HomeRoute("home_profile")
-    object EditProfile : HomeRoute("home_edit_profile")
-    object SavedPosts : HomeRoute("saved_posts")
-    object BlockedUsers : HomeRoute("blocked_users")
-    object CreatePost : HomeRoute("create_post")
-    object Settings : HomeRoute("home_settings")
+import kotlinx.serialization.Serializable
+
+@Serializable
+sealed interface HomeRoute {
+    @Serializable data object List : HomeRoute
+    @Serializable data object Community : HomeRoute
+    @Serializable data object Goals : HomeRoute
+    @Serializable data object Assistant : HomeRoute
+    @Serializable data object Profile : HomeRoute
+    @Serializable data object EditProfile : HomeRoute
+    @Serializable data object SavedPosts : HomeRoute
+    @Serializable data object BlockedUsers : HomeRoute
+    @Serializable data object CreatePost : HomeRoute
+    @Serializable data object Settings : HomeRoute
+
+    @Serializable
+    data class UserProfile(val userId: String) : HomeRoute
+
+    @Serializable
+    data class PostDetail(val postId: String) : HomeRoute
+
+    @Serializable
+    data class EditPost(val postId: String) : HomeRoute
 }

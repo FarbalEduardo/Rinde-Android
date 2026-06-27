@@ -22,12 +22,14 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.farbalapps.rinde.R
 import com.farbalapps.rinde.ui.screen.profile.ProfileUiState
+import com.farbalapps.rinde.ui.screen.home.community.components.TrustStarRating
 
 @Composable
 fun ProfileHeader(
     uiState: ProfileUiState,
     onEditProfile: () -> Unit,
-    toggleFollow: () -> Unit
+    toggleFollow: () -> Unit,
+    onShareProfile: () -> Unit
 ) {
     val profile = uiState.profile
     Column(
@@ -81,10 +83,17 @@ fun ProfileHeader(
             }
         }
 
-        
-        if (profile?.rating ?: 0f > 0f) {
+        if ((profile?.trustScore ?: 0f) > 0f) {
             Spacer(modifier = Modifier.height(dimensionResource(id = R.dimen.padding_xsmall)))
-            StarRating(rating = profile?.rating ?: 0f, reviewsCount = profile?.reviewsCount ?: 0)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TrustStarRating(score = profile?.trustScore ?: 0f, level = profile?.trustLevel ?: "NEW")
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "${"%.1f".format(profile?.trustScore ?: 0f)} • Nivel ${profile?.trustLevel ?: "NEW"}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(dimensionResource(id = R.dimen.padding_medium)))
@@ -109,7 +118,7 @@ fun ProfileHeader(
                 }
                 
                 IconButton(
-                    onClick = { /* Share profile logic */ },
+                    onClick = onShareProfile,
                     modifier = Modifier
                         .clip(MaterialTheme.shapes.medium)
                         .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)),

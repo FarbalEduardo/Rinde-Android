@@ -17,23 +17,34 @@ class FirebaseUserRepository @Inject constructor(
     override fun saveUserProfile(user: User): Flow<Resource<Boolean>> = flow {
         emit(Resource.Loading())
         try {
-            // Escribe todos los campos compatibles con Profile para que syncProfile pueda leerlos.
-            // Usa SetOptions.merge() para no sobreescribir datos existentes (ej: followersCount).
-            val profileData = mapOf(
-                "id" to user.id,
-                "email" to user.email,
-                "name" to (user.displayName ?: "Usuario"), // Default name fallback
-                "displayName" to (user.displayName ?: "Usuario"),
-                "photoUrl" to user.photoUrl,
-                "followersCount" to 0,
-                "followingCount" to 0,
-                "postsCount" to 0,
-                "rating" to 0.0,
-                "reviewsCount" to 0,
-                "isPrivate" to false,
-                "isDummy" to false
-            ).filterValues { it != null } // no escribir nulls
-            firestore.collection("users").document(user.id).set(profileData, SetOptions.merge()).await()
+            val userRef = firestore.collection("users").document(user.id)
+            val document = userRef.get().await()
+
+            if (!document.exists()) {
+                // Es la primera vez que inicia sesión (Registro).
+                // Creamos el perfil con los datos por defecto (de Google o de Email/Pass)
+                val profileData = mapOf(
+                    "id" to user.id,
+                    "email" to user.email,
+                    "name" to (user.displayName ?: "Usuario"),
+                    "displayName" to (user.displayName ?: "Usuario"),
+                    "photoUrl" to user.photoUrl,
+                    "followersCount" to 0,
+                    "followingCount" to 0,
+                    "postsCount" to 0,
+                    "rating" to 0.0,
+                    "reviewsCount" to 0,
+                    "isPrivate" to false,
+                    "isDummy" to false
+                ).filterValues { it != null }
+                
+                userRef.set(profileData).await()
+            } else {
+                // Si ya existe, NO sobreescribimos el 'name' ni 'photoUrl' para no borrar 
+                // los cambios que el usuario haya hecho en la app.
+                // Podríamos actualizar el email o dejarlo intacto.
+                userRef.set(mapOf("email" to user.email), SetOptions.merge()).await()
+            }
             emit(Resource.Success(true))
         } catch (e: Exception) {
             emit(Resource.Error(e.localizedMessage ?: "Failed to save profile"))

@@ -25,7 +25,8 @@ class FirebaseAuthRepository(
                     val user = User(
                         id = fbUser.uid,
                         email = fbUser.email ?: "",
-                        displayName = fbUser.displayName
+                        displayName = fbUser.displayName,
+                        photoUrl = fbUser.photoUrl?.toString()
                     )
                     trySend(Resource.Success(user))
                 } else {
@@ -49,7 +50,8 @@ class FirebaseAuthRepository(
                     val user = User(
                         id = fbUser.uid,
                         email = fbUser.email ?: "",
-                        displayName = fbUser.displayName
+                        displayName = fbUser.displayName,
+                        photoUrl = fbUser.photoUrl?.toString()
                     )
                     trySend(Resource.Success(user))
                 } else {
@@ -80,7 +82,8 @@ class FirebaseAuthRepository(
                 val user = User(
                     id = fbUser.uid,
                     email = fbUser.email ?: "",
-                    displayName = fbUser.displayName
+                    displayName = fbUser.displayName,
+                    photoUrl = fbUser.photoUrl?.toString()
                 )
                 producerScope.trySend(Resource.Success(user))
             } else {
@@ -101,7 +104,8 @@ class FirebaseAuthRepository(
             User(
                 id = it.uid,
                 email = it.email ?: "",
-                displayName = it.displayName
+                displayName = it.displayName,
+                photoUrl = it.photoUrl?.toString()
             )
         }
     }

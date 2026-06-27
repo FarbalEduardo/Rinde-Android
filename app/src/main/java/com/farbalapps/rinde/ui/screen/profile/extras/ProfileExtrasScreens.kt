@@ -13,7 +13,6 @@ import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -23,6 +22,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.farbalapps.rinde.R
 import com.farbalapps.rinde.ui.screen.home.community.components.PostCard
@@ -33,7 +33,7 @@ fun SavedPostsScreen(
     onBack: () -> Unit,
     viewModel: ProfileExtrasViewModel = hiltViewModel()
 ) {
-    val savedPosts by viewModel.savedPosts.collectAsState()
+    val savedPosts by viewModel.savedPosts.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -55,8 +55,8 @@ fun SavedPostsScreen(
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                contentPadding = PaddingValues(vertical = 0.dp),
+                verticalArrangement = Arrangement.spacedBy(1.dp)
             ) {
                 items(savedPosts) { post ->
                     PostCard(
@@ -75,7 +75,7 @@ fun BlockedUsersScreen(
     onBack: () -> Unit,
     viewModel: ProfileExtrasViewModel = hiltViewModel()
 ) {
-    val blockedUsers by viewModel.blockedUsers.collectAsState()
+    val blockedUsers by viewModel.blockedUsers.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {

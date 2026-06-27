@@ -31,7 +31,14 @@ class CreatePostUseCase @Inject constructor(
         offerType: com.farbalapps.rinde.domain.model.OfferType = com.farbalapps.rinde.domain.model.OfferType.UNSPECIFIED,
         websiteName: String? = null,
         productLink: String? = null,
-        storeName: String? = null
+        storeName: String? = null,
+        normalPrice: Double? = null,
+        discountPrice: Double? = null,
+        currency: String = "MXN",
+        couponCode: String? = null,
+        discountPercentage: Int? = null,
+        isAvailable: Boolean = true,
+        condition: String = "Nuevo"
     ): Result<Unit> {
         // 1. Basic Validation
         if (title.isBlank()) return Result.failure(Exception("El título es obligatorio"))
@@ -72,7 +79,14 @@ class CreatePostUseCase @Inject constructor(
             productLink = productLink,
             storeName = storeName,
             isRecommended = false,
-            expiresAt = null
+            expiresAt = null,
+            normalPrice = normalPrice,
+            discountPrice = discountPrice,
+            currency = currency,
+            couponCode = couponCode,
+            discountPercentage = discountPercentage,
+            isAvailable = isAvailable,
+            condition = condition
         )
 
         return feedRepository.uploadPost(post, photoUris.map { it.toString() })

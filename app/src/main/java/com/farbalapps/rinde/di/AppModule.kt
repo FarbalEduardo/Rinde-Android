@@ -1,7 +1,7 @@
 package com.farbalapps.rinde.di
 
 import android.content.Context
-import androidx.room.Room
+import kotlinx.coroutines.CoroutineDispatcher
 import com.farbalapps.rinde.data.local.dao.CustomProductHistoryDao
 import com.farbalapps.rinde.data.local.dao.ShoppingItemDao
 import com.farbalapps.rinde.data.local.db.RindeDatabase
@@ -30,6 +30,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.database.FirebaseDatabase
 import androidx.work.WorkManager
+import androidx.room.Room
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -116,9 +117,11 @@ object AppModule {
     fun provideListRepository(
         dao: ShoppingItemDao,
         firestore: FirebaseFirestore,
-        auth: FirebaseAuth
+        auth: FirebaseAuth,
+        workManager: WorkManager,
+        @IoDispatcher ioDispatcher: CoroutineDispatcher
     ): ListRepository {
-        return FirebaseListRepository(dao, firestore, auth)
+        return FirebaseListRepository(dao, firestore, auth, workManager, ioDispatcher)
     }
 
     @Provides
@@ -150,10 +153,12 @@ object AppModule {
     fun provideProfileRepository(
         @ApplicationContext context: Context,
         dao: ProfileDao,
+        postDao: com.farbalapps.rinde.data.local.dao.PostDao,
         firestore: FirebaseFirestore,
-        workManager: WorkManager
+        workManager: WorkManager,
+        votesMemoryCache: com.farbalapps.rinde.data.util.VotesMemoryCache
     ): ProfileRepository {
-        return ProfileRepositoryImpl(firestore, dao, context, workManager)
+        return ProfileRepositoryImpl(firestore, dao, postDao, context, workManager, votesMemoryCache)
     }
 
     @Provides
@@ -164,14 +169,23 @@ object AppModule {
 
     @Provides
     @Singleton
+    fun provideSyncMetadataDao(db: RindeDatabase): com.farbalapps.rinde.data.local.dao.SyncMetadataDao {
+        return db.syncMetadataDao()
+    }
+
+    @Provides
+    @Singleton
     fun provideFeedRepository(
         @ApplicationContext context: Context,
         firestore: FirebaseFirestore,
         database: FirebaseDatabase,
         workManager: WorkManager,
-        postDao: com.farbalapps.rinde.data.local.dao.PostDao
+        postDao: com.farbalapps.rinde.data.local.dao.PostDao,
+        syncMetadataDao: com.farbalapps.rinde.data.local.dao.SyncMetadataDao,
+        votesMemoryCache: com.farbalapps.rinde.data.util.VotesMemoryCache,
+        savedPostsMemoryCache: com.farbalapps.rinde.data.util.SavedPostsMemoryCache
     ): FeedRepository {
-        return FeedRepositoryImpl(context, firestore, database, workManager, postDao)
+        return FeedRepositoryImpl(context, firestore, database, workManager, postDao, syncMetadataDao, votesMemoryCache, savedPostsMemoryCache)
     }
 
     @Provides

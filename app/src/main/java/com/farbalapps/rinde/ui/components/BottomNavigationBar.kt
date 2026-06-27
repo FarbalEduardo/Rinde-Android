@@ -27,6 +27,8 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import com.farbalapps.rinde.R
 import com.farbalapps.rinde.ui.navigation.HomeRoute
 
+import androidx.navigation.NavDestination.Companion.hasRoute
+
 @Composable
 fun BottomNavigationBar(navController: NavController) {
     val items = listOf(
@@ -38,7 +40,7 @@ fun BottomNavigationBar(navController: NavController) {
     )
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = navBackStackEntry?.destination?.route
+    val destination = navBackStackEntry?.destination
 
     Column(modifier = Modifier.fillMaxWidth()) {
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 1.dp)
@@ -49,7 +51,7 @@ fun BottomNavigationBar(navController: NavController) {
             items.forEach { (route, data) ->
                 val title = data.first
                 val icon = data.second
-                val selected = currentRoute == route.route
+                val selected = destination?.hasRoute(route::class) == true
 
                 CustomNavigationBarItem(
                     title = title,
@@ -57,7 +59,7 @@ fun BottomNavigationBar(navController: NavController) {
                     selected = selected,
                     onClick = {
                         if (!selected) {
-                            navController.navigate(route.route) {
+                            navController.navigate(route) {
                                 popUpTo(navController.graph.findStartDestination().id) {
                                     saveState = true
                                 }

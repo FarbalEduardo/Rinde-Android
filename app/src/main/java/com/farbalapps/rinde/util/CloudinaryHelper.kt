@@ -28,7 +28,7 @@ object CloudinaryHelper {
     private val client = OkHttpClient()
 
     /**
-     * Sube una imagen a Cloudinary usando Signed Upload (API REST directa).
+     * Sube una imagen a Cloudinary usando Unsigned Upload (API REST directa).
      *
      * @param filePath Ruta absoluta del archivo local a subir.
      * @param folder Carpeta destino en Cloudinary (ej: "USERS", "PUBLICATIONS").
@@ -36,23 +36,14 @@ object CloudinaryHelper {
      * @throws Exception Si la subida falla.
      */
     suspend fun uploadImage(filePath: String, folder: String): String = withContext(Dispatchers.IO) {
-        android.util.Log.d("CloudinaryHelper", "📤 Iniciando subida SIGNED: $filePath → carpeta: $folder")
+        android.util.Log.d("CloudinaryHelper", "📤 Iniciando subida UNSIGNED: $filePath → carpeta: $folder")
 
         val file = File(filePath)
         if (!file.exists()) {
             throw Exception("Cloudinary Error: El archivo no existe: $filePath")
         }
 
-        val timestamp = (System.currentTimeMillis() / 1000).toString()
-
-        // Generar firma (signature) para Signed Upload
-        // La firma se calcula como: SHA1("folder=X&timestamp=T" + API_SECRET)
-        val paramsToSign = "folder=$folder&timestamp=$timestamp"
-        val signature = sha1("$paramsToSign${Config.CLOUDINARY_API_SECRET}")
-
-        android.util.Log.d("CloudinaryHelper", "🔑 Firma generada para timestamp=$timestamp")
-
-        // Construir la petición multipart
+        // Construir la petición multipart para UNSIGNED upload
         val requestBody = MultipartBody.Builder()
             .setType(MultipartBody.FORM)
             .addFormDataPart(
@@ -60,9 +51,7 @@ object CloudinaryHelper {
                 file.name,
                 file.asRequestBody("image/*".toMediaTypeOrNull())
             )
-            .addFormDataPart("api_key", Config.CLOUDINARY_API_KEY)
-            .addFormDataPart("timestamp", timestamp)
-            .addFormDataPart("signature", signature)
+            .addFormDataPart("upload_preset", "rinde_unsigned_preset")
             .addFormDataPart("folder", folder)
             .build()
 
@@ -98,6 +87,12 @@ object CloudinaryHelper {
     /**
      * Elimina una imagen de Cloudinary usando Signed Destroy (API REST).
      *
+     * TRADE-OFF DE SEGURIDAD / LIMITACIÓN:
+     * - Cloudinary NO permite "Unsigned Destroy" desde clientes móviles por seguridad.
+     * - Mantener deleteImage en el cliente requiere tener CLOUDINARY_API_SECRET en el APK.
+     * - En esta fase, las imágenes de publicaciones NO se eliminan física de Cloudinary al borrar posts
+     *   (quedan huérfanas). Solo se mantiene para perfiles de usuario como trade-off temporal.
+     *
      * @param cloudinaryUrl La URL completa de la imagen en Cloudinary.
      * @return true si se eliminó correctamente, false si falló.
      */
@@ -108,7 +103,7 @@ object CloudinaryHelper {
             return@withContext false
         }
 
-        android.util.Log.d("CloudinaryHelper", "🗑️ Eliminando imagen: $publicId")
+        android.util.Log.d("CloudinaryHelper", "🗑️ Eliminando imagen (Signed): $publicId")
 
         val timestamp = (System.currentTimeMillis() / 1000).toString()
         val paramsToSign = "public_id=$publicId&timestamp=$timestamp"

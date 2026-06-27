@@ -16,6 +16,8 @@ Este skill proporciona capacidades de auditoría automática para identificar ri
 5.  **Almacenamiento Seguro (Data at Rest)**: Exige expresamente que los tokens o datos sensibles locales utilicen `EncryptedSharedPreferences` o DataStore encriptado bajo Android Keystore.
 6.  **Detección de Dependencias Vulnerables**: Sugiere auditorías sistemáticas de versiones y dependencias en `build.gradle` para aislar librerías con CVE conocidas.
 7.  **Ofuscación y Minificación (R8)**: Requiere revisar que las reglas de ProGuard/R8 ofusquen adecuadamente la capa de datos/dominio y eviten exponer estructuras base previo a la compilación release.
+8.  **Firestore Rules Denormalization Audit**: Verificar que las reglas de seguridad en `firestore.rules` contemplen la protección y restricciones de escritura en las nuevas colecciones y snapshots desnormalizados (ej. `postSnapshot` en `saved_posts`), evitando que clientes inyecten datos maliciosos o corruptos.
+
 
 ## Cómo usar este Skill
 

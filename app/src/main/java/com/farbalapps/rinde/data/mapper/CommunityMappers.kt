@@ -35,7 +35,16 @@ fun CommunityPostDto.toDomain(): CommunityPost {
         productLink = productLink,
         storeName = storeName,
         isRecommended = isRecommended,
-        expiresAt = expiresAt
+        expiresAt = expiresAt,
+        normalPrice = normalPrice,
+        discountPrice = discountPrice,
+        currency = currency,
+        couponCode = couponCode,
+        discountPercentage = discountPercentage,
+        isAvailable = isAvailable,
+        condition = condition,
+        authorTrustScore = authorTrustScore,
+        authorTrustLevel = authorTrustLevel
     )
 }
 
@@ -75,7 +84,16 @@ fun CommunityPost.toDto(): CommunityPostDto {
         productLink = productLink,
         storeName = storeName,
         isRecommended = isRecommended,
-        expiresAt = expiresAt
+        expiresAt = expiresAt,
+        normalPrice = normalPrice,
+        discountPrice = discountPrice,
+        currency = currency,
+        couponCode = couponCode,
+        discountPercentage = discountPercentage,
+        isAvailable = isAvailable,
+        condition = condition,
+        authorTrustScore = authorTrustScore,
+        authorTrustLevel = authorTrustLevel
     )
 }
 

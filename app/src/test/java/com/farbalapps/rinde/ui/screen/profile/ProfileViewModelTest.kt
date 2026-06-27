@@ -6,6 +6,8 @@ import com.farbalapps.rinde.domain.model.CommunityPost
 import com.farbalapps.rinde.domain.model.PostLocation
 import com.farbalapps.rinde.domain.model.OfferType
 import com.farbalapps.rinde.domain.model.VerificationStatus
+import com.farbalapps.rinde.domain.repository.FeedRepository
+import com.farbalapps.rinde.domain.usecase.ToggleVoteUseCase
 import com.farbalapps.rinde.domain.usecase.profile.*
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
@@ -37,6 +39,8 @@ class ProfileViewModelTest {
     private val updatePrivacyUseCase = mockk<UpdatePrivacyUseCase>()
     private val syncProfileUseCase = mockk<SyncProfileUseCase>()
     private val clearUploadStatusUseCase = mockk<ClearUploadStatusUseCase>()
+    private val toggleVoteUseCase = mockk<ToggleVoteUseCase>()
+    private val feedRepository = mockk<FeedRepository>()
     private val firebaseAuth = mockk<FirebaseAuth>()
     private val firebaseUser = mockk<FirebaseUser>()
 
@@ -75,7 +79,14 @@ class ProfileViewModelTest {
             productLink = null,
             storeName = null,
             isRecommended = false,
-            expiresAt = null
+            expiresAt = null,
+            normalPrice = 100.0,
+            discountPrice = 80.0,
+            currency = "MXN",
+            couponCode = null,
+            discountPercentage = 20,
+            isAvailable = true,
+            condition = "New"
         )
     )
 
@@ -92,6 +103,8 @@ class ProfileViewModelTest {
         coEvery { getSavedPostsUseCase(testUserId) } returns flowOf(emptyList())
         coEvery { syncProfileUseCase(testUserId) } returns Unit
         coEvery { clearUploadStatusUseCase(testUserId) } returns Result.success(Unit)
+        coEvery { feedRepository.syncUserVotes(any()) } returns Result.success(Unit)
+        coEvery { feedRepository.syncUserSavedPosts(any()) } returns Result.success(Unit)
         
         viewModel = ProfileViewModel(
             getProfileUseCase,
@@ -103,7 +116,9 @@ class ProfileViewModelTest {
             updatePrivacyUseCase,
             syncProfileUseCase,
             clearUploadStatusUseCase,
-            firebaseAuth
+            toggleVoteUseCase,
+            firebaseAuth,
+            feedRepository
         )
     }
 
@@ -114,6 +129,7 @@ class ProfileViewModelTest {
 
     @Test
     fun `when viewmodel starts, it should load profile and posts`() = runTest {
+        viewModel.loadProfile(testUserId)
         viewModel.uiState.test {
             // Wait for all updates to settle
             testScheduler.advanceUntilIdle()
@@ -147,9 +163,12 @@ class ProfileViewModelTest {
             updatePrivacyUseCase,
             syncProfileUseCase,
             clearUploadStatusUseCase,
-            firebaseAuth
+            toggleVoteUseCase,
+            firebaseAuth,
+            feedRepository
         )
         
+        viewModel.loadProfile(testUserId)
         viewModel.uiState.test {
             testScheduler.advanceUntilIdle()
             val state = expectMostRecentItem()

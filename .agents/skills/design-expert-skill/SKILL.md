@@ -17,6 +17,8 @@ Asegura que la interfaz de usuario sea consistente con Material Design 3, manten
 6. **Dark Mode Constraints**: Exige que no existan colores (blancos/negros) puros y duros incrustados, garantizando soporte dinámico para modo oscuro.
 7. **Tipografía Escalonable**: Asegura el uso estricto de `sp` provenientes de `MaterialTheme.typography` o recursos de dimensión, prohibiendo valores absolutos inline.
 8. **Multi-Preview Constraints**: Promueve el uso de `@PreviewLightDark` o `@PreviewScreenSizes` locales o custom para validaciones completas.
+9. **Snapshot-Aware UI State**: Asegurar que las interfaces optimicen la carga de listas (ej. favoritos) consumiendo directamente los snapshots desnormalizados provistos por el estado local/Room, de modo que la UI sea instantánea ("Wow Factor") y responda sin bloqueos.
+
 
 ## Guía Residencial (Portrait Only)
 - **Teléfonos**: Layout vertical, padding 16dp.

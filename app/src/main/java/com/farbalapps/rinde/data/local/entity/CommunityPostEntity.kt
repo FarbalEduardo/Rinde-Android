@@ -7,8 +7,12 @@ import com.farbalapps.rinde.domain.model.PostLocation
 import com.farbalapps.rinde.domain.model.OfferType
 import com.farbalapps.rinde.domain.model.VerificationStatus
 import java.util.Date
+import androidx.room.Index
 
-@Entity(tableName = "community_posts")
+@Entity(
+    tableName = "community_posts",
+    indices = [Index(value = ["isActive", "timestamp"])]
+)
 data class CommunityPostEntity(
     @PrimaryKey val id: String,
     val authorId: String,
@@ -18,7 +22,8 @@ data class CommunityPostEntity(
     val title: String,
     val descriptionShort: String,
     val descriptionLong: String,
-    val photosJson: String, // Lista de URLs serializada
+    /** Photo URL list stored as a JSON array by [com.farbalapps.rinde.data.local.db.Converters]. */
+    val photos: List<String>,
     val category: String,
     val locationName: String,
     val latitude: Double?,
@@ -38,11 +43,21 @@ data class CommunityPostEntity(
     val productLink: String?,
     val storeName: String?,
     val isRecommended: Boolean,
-    val expiresAt: Long?
+    val expiresAt: Long?,
+    val normalPrice: Double?,
+    val discountPrice: Double?,
+    val currency: String,
+    val couponCode: String?,
+    val discountPercentage: Int?,
+    val isAvailable: Boolean,
+    val condition: String,
+    val myVoteValue: Int,
+    val isSavedByMe: Boolean,
+    val authorTrustScore: Float,
+    val authorTrustLevel: String
 )
 
 fun CommunityPostEntity.toDomainModel(): CommunityPost {
-    val photos = if (photosJson.isBlank()) emptyList() else photosJson.split(",")
     return CommunityPost(
         id = id,
         authorId = authorId,
@@ -70,7 +85,18 @@ fun CommunityPostEntity.toDomainModel(): CommunityPost {
         productLink = productLink,
         storeName = storeName,
         isRecommended = isRecommended,
-        expiresAt = expiresAt?.let { Date(it) }
+        expiresAt = expiresAt?.let { Date(it) },
+        normalPrice = normalPrice,
+        discountPrice = discountPrice,
+        currency = currency,
+        couponCode = couponCode,
+        discountPercentage = discountPercentage,
+        isAvailable = isAvailable,
+        condition = condition,
+        myVoteValue = myVoteValue,
+        isSavedByMe = isSavedByMe,
+        authorTrustScore = authorTrustScore,
+        authorTrustLevel = authorTrustLevel
     )
 }
 
@@ -84,7 +110,7 @@ fun CommunityPost.toEntity(): CommunityPostEntity {
         title = title,
         descriptionShort = descriptionShort,
         descriptionLong = descriptionLong,
-        photosJson = photos.joinToString(","),
+        photos = photos,
         category = category,
         locationName = location.name,
         latitude = location.latitude,
@@ -104,6 +130,18 @@ fun CommunityPost.toEntity(): CommunityPostEntity {
         productLink = productLink,
         storeName = storeName,
         isRecommended = isRecommended,
-        expiresAt = expiresAt?.time
+        expiresAt = expiresAt?.time,
+        normalPrice = normalPrice,
+        discountPrice = discountPrice,
+        currency = currency,
+        couponCode = couponCode,
+        discountPercentage = discountPercentage,
+        isAvailable = isAvailable,
+        condition = condition,
+        myVoteValue = myVoteValue,
+        isSavedByMe = isSavedByMe,
+        authorTrustScore = authorTrustScore,
+        authorTrustLevel = authorTrustLevel
     )
 }
+

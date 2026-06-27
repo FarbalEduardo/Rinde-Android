@@ -17,7 +17,9 @@ data class ProfileEntity(
     val reviewsCount: Int,
     val isPrivate: Boolean,
     val isDummy: Boolean,
-    val uploadStatus: String?
+    val uploadStatus: String?,
+    val interestsCsv: String = "",
+    val zonasDeCazaCsv: String = ""
 )
 
 fun ProfileEntity.toDomainModel(): Profile {
@@ -33,7 +35,9 @@ fun ProfileEntity.toDomainModel(): Profile {
         reviewsCount = reviewsCount,
         isPrivate = isPrivate,
         isDummy = isDummy,
-        uploadStatus = uploadStatus
+        uploadStatus = uploadStatus,
+        interests = if (interestsCsv.isBlank()) emptyList() else interestsCsv.split(","),
+        zonasDeCaza = if (zonasDeCazaCsv.isBlank()) emptyList() else zonasDeCazaCsv.split(",")
     )
 }
 
@@ -50,6 +54,9 @@ fun Profile.toEntity(): ProfileEntity {
         reviewsCount = reviewsCount,
         isPrivate = isPrivate,
         isDummy = isDummy,
-        uploadStatus = uploadStatus
+        uploadStatus = uploadStatus,
+        interestsCsv = interests.joinToString(","),
+        zonasDeCazaCsv = zonasDeCaza.joinToString(",")
     )
 }
+

@@ -21,4 +21,6 @@ interface ProfileRepository {
     suspend fun clearUploadStatus(userId: String): Result<Unit>
     fun getSavedProfilePosts(userId: String): Flow<List<CommunityPost>>
     fun getBlockedUsers(userId: String): Flow<List<Profile>>
+    suspend fun updateInterests(userId: String, interests: List<String>): Result<Unit>
+    suspend fun updateZonasDeCaza(userId: String, zonas: List<String>): Result<Unit>
 }

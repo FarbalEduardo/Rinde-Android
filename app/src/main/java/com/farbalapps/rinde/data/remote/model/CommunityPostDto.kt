@@ -37,7 +37,16 @@ data class CommunityPostDto(
     val productLink: String? = null,
     val storeName: String? = null,
     val isRecommended: Boolean = false,
-    val expiresAt: Date? = null
+    val expiresAt: Date? = null,
+    val normalPrice: Double? = null,
+    val discountPrice: Double? = null,
+    val currency: String = "MXN",
+    val couponCode: String? = null,
+    val discountPercentage: Int? = null,
+    val isAvailable: Boolean = true,
+    val condition: String = "Nuevo",
+    val authorTrustScore: Float = 0f,
+    val authorTrustLevel: String = "NEW"
 )
 
 data class PostLocationDto(

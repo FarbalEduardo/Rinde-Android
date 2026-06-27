@@ -28,6 +28,13 @@ data class CreatePostUiState(
     val websiteName: String = "",
     val productLink: String = "",
     val storeName: String = "",
+    val normalPriceInput: String = "",
+    val discountPriceInput: String = "",
+    val currency: String = "MXN",
+    val hasCoupon: Boolean = false,
+    val couponCode: String = "",
+    val isAvailable: Boolean = true,
+    val condition: String = "Nuevo",
     val isPrivateProfile: Boolean = false,
     val isLoading: Boolean = false,
     val error: String? = null,
@@ -73,6 +80,34 @@ class CreatePostViewModel @Inject constructor(
 
     fun onStoreNameChange(newName: String) {
         _uiState.update { it.copy(storeName = newName) }
+    }
+
+    fun onNormalPriceChange(price: String) {
+        _uiState.update { it.copy(normalPriceInput = price) }
+    }
+
+    fun onDiscountPriceChange(price: String) {
+        _uiState.update { it.copy(discountPriceInput = price) }
+    }
+
+    fun onCurrencyChange(newCurrency: String) {
+        _uiState.update { it.copy(currency = newCurrency) }
+    }
+
+    fun onHasCouponChange(has: Boolean) {
+        _uiState.update { it.copy(hasCoupon = has) }
+    }
+
+    fun onCouponCodeChange(code: String) {
+        _uiState.update { it.copy(couponCode = code) }
+    }
+
+    fun onIsAvailableChange(isAvailable: Boolean) {
+        _uiState.update { it.copy(isAvailable = isAvailable) }
+    }
+
+    fun onConditionChange(condition: String) {
+        _uiState.update { it.copy(condition = condition) }
     }
 
 
@@ -197,6 +232,29 @@ class CreatePostViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             
+            val normalPriceDouble = state.normalPriceInput.toDoubleOrNull()
+            val discountPriceDouble = state.discountPriceInput.toDoubleOrNull()
+
+            if (state.normalPriceInput.isNotBlank() && normalPriceDouble == null) {
+                _uiState.update { it.copy(error = "El precio normal no es válido", isLoading = false) }
+                return@launch
+            }
+            if (state.discountPriceInput.isNotBlank() && discountPriceDouble == null) {
+                _uiState.update { it.copy(error = "El precio con descuento no es válido", isLoading = false) }
+                return@launch
+            }
+
+            var discountPercentage: Int? = null
+            if (normalPriceDouble != null && discountPriceDouble != null && normalPriceDouble > 0) {
+                discountPercentage = (((normalPriceDouble - discountPriceDouble) / normalPriceDouble) * 100).toInt()
+            }
+
+            val finalCoupon = if (state.offerType == com.farbalapps.rinde.domain.model.OfferType.ONLINE && state.hasCoupon) {
+                state.couponCode.takeIf { it.isNotBlank() }
+            } else {
+                null
+            }
+
             val result = createPostUseCase(
                 title = state.title,
                 description = state.description,
@@ -206,7 +264,14 @@ class CreatePostViewModel @Inject constructor(
                 offerType = state.offerType,
                 websiteName = state.websiteName.takeIf { it.isNotBlank() },
                 productLink = state.productLink.takeIf { it.isNotBlank() },
-                storeName = state.storeName.takeIf { it.isNotBlank() }
+                storeName = state.storeName.takeIf { it.isNotBlank() },
+                normalPrice = normalPriceDouble,
+                discountPrice = discountPriceDouble,
+                currency = state.currency,
+                couponCode = finalCoupon,
+                discountPercentage = discountPercentage,
+                isAvailable = state.isAvailable,
+                condition = state.condition
             )
             
             if (result.isSuccess) {
