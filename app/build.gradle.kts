@@ -117,7 +117,7 @@ dependencies {
 
     // Firebase App Check
     implementation(libs.firebase.appcheck.playintegrity)
-    debugImplementation(libs.firebase.appcheck.debug)
+    implementation(libs.firebase.appcheck.debug)
 
     implementation(libs.kotlinx.coroutines.play.services)
     implementation(libs.coil.compose)
