@@ -25,6 +25,7 @@ class SettingsRepositoryImpl @Inject constructor(
     override fun getAppLanguage(): Flow<AppLanguage> = settingsManager.appLanguage
     override suspend fun setAppLanguage(language: AppLanguage) = settingsManager.setAppLanguage(language)
 
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     override fun isProfilePrivate(): Flow<Boolean> {
         return sessionManager.userId.flatMapLatest { userId ->
             if (userId.isNotEmpty()) {

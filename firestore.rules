@@ -3,71 +3,152 @@ rules_version = '2';
 // ============================================================
 // RINDE APP — Firestore Security Rules
 // Proyecto: rinde-fab60
-// Última actualización: 2026-04-26
+// Última actualización: 2026-05-30
 //
-// Política: Solo usuarios autenticados pueden leer/escribir.
-// Cada usuario solo puede modificar sus propios datos.
-// Los posts son de lectura pública (para usuarios autenticados).
+// Política:
+//   - Solo usuarios autenticados pueden leer/escribir.
+//   - Cada usuario solo puede modificar sus propios datos.
+//   - Los posts son de lectura pública (para usuarios autenticados).
+//   - Los contadores (likesCount, votesScore, etc.) pueden ser actualizados
+//     por cualquier usuario autenticado (a través de transacciones del cliente).
 // ============================================================
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ─── Función de utilidad ───────────────────────────────────────────────────
-    // Verifica que el usuario está autenticado
+    // ─── Funciones de utilidad ────────────────────────────────────────────────
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    // Verifica que el usuario autenticado es el dueño del recurso
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
 
-    // ─── Colección: users ──────────────────────────────────────────────────────
-    // Cada usuario puede leer cualquier perfil público,
-    // pero solo modificar el suyo propio.
+    function isAuthor(resource) {
+      return request.auth.uid == resource.data.authorId;
+    }
+
+    // ─── users ────────────────────────────────────────────────────────────────
+    // Lectura pública (entre usuarios autenticados), escritura solo del dueño.
     match /users/{userId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() && isOwner(userId);
-      allow update: if isAuthenticated() && isOwner(userId);
+      allow update: if isAuthenticated() && (
+        isOwner(userId) || 
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['trustScore', 'trustLevel'])
+      );
       allow delete: if false; // No se permite borrar perfiles
 
-      // Subcolección: saved_posts
-      // Solo el dueño puede ver y gestionar sus posts guardados
+      // Subcollección: following — quiénes sigo (el dueño escribe, todos leen)
+      match /following/{targetId} {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated() && isOwner(userId);
+      }
+
+      // Subcollección: followers — quiénes me siguen
+      // El follow lo escribe el que sigue (isOwner sobre el followerId)
+      match /followers/{followerId} {
+        allow read: if isAuthenticated();
+        // Solo el seguidor puede agregar/quitar su propia entrada
+        allow write: if isAuthenticated() && isOwner(followerId);
+      }
+
+      // Subcollección: saved_posts — solo el dueño
       match /saved_posts/{postId} {
         allow read, write: if isAuthenticated() && isOwner(userId);
       }
 
-      // Subcolección: blocked_users
-      // Solo el dueño puede ver y gestionar sus usuarios bloqueados
+      // Subcollección: liked_posts — solo el dueño
+      match /liked_posts/{postId} {
+        allow read, write: if isAuthenticated() && isOwner(userId);
+      }
+
+      // Subcollección: blocked_users — solo el dueño
       match /blocked_users/{blockedUserId} {
+        allow read, write: if isAuthenticated() && isOwner(userId);
+      }
+
+      // Subcollección: voted_posts — solo el dueño
+      match /voted_posts/{postId} {
         allow read, write: if isAuthenticated() && isOwner(userId);
       }
     }
 
-    // ─── Colección: posts ──────────────────────────────────────────────────────
-    // Todos los usuarios autenticados pueden leer posts activos.
-    // Solo el autor puede crear/modificar sus propios posts.
+    // ─── posts ────────────────────────────────────────────────────────────────
     match /posts/{postId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated() && (
+        resource.data.isActive == true ||
+        isAuthor(resource)
+      );
+
       allow create: if isAuthenticated()
-                    && request.resource.data.authorId == request.auth.uid;
+                    && request.resource.data.authorId == request.auth.uid
+                    && isValidPostWrite(request.resource.data);
+
       allow update: if isAuthenticated()
                     && (
-                      // El autor puede editar su post
-                      resource.data.authorId == request.auth.uid
-                      // Cualquier usuario autenticado puede incrementar likes/votes
-                      || (request.resource.data.diff(resource.data).affectedKeys()
-                          .hasOnly(['likes', 'votes']))
+                      // El autor puede editar su post completo
+                      (isAuthor(resource) && isValidPostWrite(request.resource.data))
+                      // Cualquier usuario autenticado puede actualizar solo contadores de interacción
+                      // (likes, votos, comentarios — se hace via transacciones del cliente)
+                      || request.resource.data.diff(resource.data).affectedKeys()
+                          .hasOnly(['likesCount', 'votesScore', 'commentsCount', 'truthCount', 'falseCount', 'reportCount', 'authorTrustScore', 'authorTrustLevel'])
                     );
-      allow delete: if isAuthenticated()
-                    && resource.data.authorId == request.auth.uid;
+
+      allow delete: if isAuthenticated() && isAuthor(resource);
+
+      function isValidPostWrite(data) {
+        return data.title is string && data.title.size() >= 5 && data.title.size() <= 200
+          && data.descriptionLong is string && data.descriptionLong.size() <= 2000
+          && (data.normalPrice == null || (data.normalPrice is number && data.normalPrice >= 0))
+          && (data.discountPrice == null || (data.discountPrice is number && data.discountPrice >= 0))
+          && (data.discountPercentage == null || (data.discountPercentage is int && data.discountPercentage >= 0 && data.discountPercentage <= 100))
+          && data.title.matches('[A-ZÁÉÍÓÚÑÜ].*');
+      }
+
+      // Subcollección: likes — quién dio like a este post
+      match /likes/{userId} {
+        allow read: if isAuthenticated();
+        // Solo el usuario dueño del like puede escribirlo/borrarlo
+        allow write: if isAuthenticated() && isOwner(userId);
+      }
+
+      // Subcollección: votes — votos de verdad/falso por usuario
+      match /votes/{userId} {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated() && isOwner(userId);
+      }
+
+      // Subcollección: comments — comentarios del post
+      match /comments/{commentId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated()
+                      && request.resource.data.authorId == request.auth.uid;
+        allow update: if isAuthenticated()
+                      && (
+                        resource.data.authorId == request.auth.uid
+                        // Cualquiera puede incrementar el likesCount del comentario
+                        || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likesCount'])
+                      );
+        allow delete: if isAuthenticated()
+                      && resource.data.authorId == request.auth.uid;
+
+        // Subcolección: replies — respuestas a comentarios
+        match /replies/{replyId} {
+          allow read: if isAuthenticated();
+          allow create: if isAuthenticated()
+                        && request.resource.data.authorId == request.auth.uid;
+          allow update: if isAuthenticated()
+                        && resource.data.authorId == request.auth.uid;
+          allow delete: if isAuthenticated()
+                        && resource.data.authorId == request.auth.uid;
+        }
+      }
     }
 
-    // ─── Colección: relationships ──────────────────────────────────────────────
-    // Gestiona follows entre usuarios.
-    // El followerId debe coincidir con el uid del usuario autenticado.
+    // ─── relationships ────────────────────────────────────────────────────────
+    // Colección raíz mantenida por compatibilidad.
     match /relationships/{relationshipId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated()
@@ -77,8 +158,15 @@ service cloud.firestore {
       allow update: if false; // Las relaciones no se editan, se crean/borran
     }
 
-    // ─── Colección: shopping_lists ─────────────────────────────────────────────
-    // Acceso exclusivo del propietario
+    // ─── expiration_reports ──────────────────────────────────────────────────
+    match /expiration_reports/{reportId} {
+      allow create: if isAuthenticated()
+                    && request.resource.data.reportedBy == request.auth.uid
+                    && request.resource.data.postId is string;
+      allow read: if false; // Solo Cloud Functions u otros admin
+    }
+
+    // ─── shopping_lists ───────────────────────────────────────────────────────
     match /shopping_lists/{listId} {
       allow read, write: if isAuthenticated()
                          && resource.data.userId == request.auth.uid;
@@ -86,7 +174,7 @@ service cloud.firestore {
                     && request.resource.data.userId == request.auth.uid;
     }
 
-    // ─── Denegar todo lo demás por defecto ────────────────────────────────────
+    // ─── Denegar todo lo demás por defecto ───────────────────────────────────
     match /{document=**} {
       allow read, write: if false;
     }

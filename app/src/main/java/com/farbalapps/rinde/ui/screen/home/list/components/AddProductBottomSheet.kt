@@ -120,7 +120,7 @@ fun AddProductBottomSheet(
             val isEditing = initialItem != null
 
             if (!isEditing) {
-                TabRow(
+                PrimaryTabRow(
                     selectedTabIndex = selectedTab,
                     containerColor = Color.Transparent,
                     contentColor = MaterialTheme.colorScheme.primary,
@@ -196,11 +196,13 @@ fun AddProductBottomSheet(
                 )
             }
 
-            // Configuration Section
-            val isItemSelected = (selectedTab == 0 && selectedItem != null) || (selectedTab == 1 && customName.isNotBlank()) || initialItem != null
-            
+            // Configuration Section — siempre visible, botón habilitado según selección
+            val isItemSelected = (selectedTab == 0 && selectedItem != null) ||
+                                 (selectedTab == 1 && customName.isNotBlank()) ||
+                                 initialItem != null
+
             BottomSheetConfigSection(
-                visible = isItemSelected,
+                enabled = isItemSelected,
                 quantity = quantity,
                 onQuantityChange = { quantity = it },
                 selectedUnit = selectedUnit,
@@ -215,7 +217,6 @@ fun AddProductBottomSheet(
                     } ?: run {
                         if (selectedTab == 0) {
                             selectedItem?.let {
-                                // Usa targetGroup (el grupo activo en la pantalla principal)
                                 onProductAdded(it.nombre, it.categoria, targetGroup, quantity, selectedUnit, it.emoji, false)
                                 onShowMessage(msgAdded.format(it.nombre))
                                 selectedItem = null
@@ -224,7 +225,6 @@ fun AddProductBottomSheet(
                             }
                         } else {
                             if (customName.isNotBlank()) {
-                                // Usa la categoría seleccionada en el Bottom Sheet para items personalizados
                                 val categoryToUse = if (selectedProductCategory == defaultCategory) defaultCustomCategory else selectedProductCategory
                                 onProductAdded(customName, categoryToUse, targetGroup, quantity, selectedUnit, "", true)
                                 onShowMessage(msgAdded.format(customName))
@@ -385,7 +385,7 @@ private fun CustomTabContent(
 
 @Composable
 private fun BottomSheetConfigSection(
-    visible: Boolean,
+    enabled: Boolean,
     quantity: Double,
     onQuantityChange: (Double) -> Unit,
     selectedUnit: String,
@@ -394,57 +394,45 @@ private fun BottomSheetConfigSection(
     onActionClick: () -> Unit,
     isUpdate: Boolean
 ) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(84.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        AnimatedVisibility(
-            visible = visible,
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically()
+    Column {
+        HorizontalDivider(modifier = Modifier.padding(horizontal = 24.dp))
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Column {
-                HorizontalDivider(modifier = Modifier.padding(horizontal = 24.dp))
-                
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    QuantitySelector(
-                        value = quantity,
-                        onValueChange = onQuantityChange
-                    )
+            QuantitySelector(
+                value = quantity,
+                onValueChange = onQuantityChange
+            )
 
-                    UnitSelectorCompact(
-                        options = units,
-                        selectedOption = selectedUnit,
-                        onOptionSelected = onUnitSelected
-                    )
+            UnitSelectorCompact(
+                options = units,
+                selectedOption = selectedUnit,
+                onOptionSelected = onUnitSelected
+            )
 
-                    Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.weight(1f))
 
-                    Button(
-                        onClick = onActionClick,
-                        modifier = Modifier.height(48.dp),
-                        contentPadding = PaddingValues(horizontal = 16.dp),
-                        shape = RoundedCornerShape(24.dp)
-                    ) {
-                        val icon = if (isUpdate) Icons.Default.Save else Icons.Default.Add
-                        val labelRes = if (isUpdate) R.string.btn_save_changes else R.string.btn_add_to_list
-                        Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = stringResource(id = labelRes), 
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
+            Button(
+                onClick = onActionClick,
+                enabled = enabled,
+                modifier = Modifier.height(48.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                shape = RoundedCornerShape(24.dp)
+            ) {
+                val icon = if (isUpdate) Icons.Default.Save else Icons.Default.Add
+                val labelRes = if (isUpdate) R.string.btn_save_changes else R.string.btn_add_to_list
+                Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = stringResource(id = labelRes),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
     }

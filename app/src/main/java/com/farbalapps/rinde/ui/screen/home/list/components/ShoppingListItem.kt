@@ -38,21 +38,15 @@ fun ShoppingListItem(
     onDelete: () -> Unit
 ) {
     val uiCategory = item.category.toProductCategory()
-    val dismissState = rememberSwipeToDismissBoxState(
-        confirmValueChange = { newValue ->
-            when (newValue) {
-                SwipeToDismissBoxValue.EndToStart -> {
-                    onSwipeStateChange(true)
-                    true
-                }
-                SwipeToDismissBoxValue.Settled -> {
-                    onSwipeStateChange(false)
-                    true
-                }
-                else -> false
-            }
+    val dismissState = rememberSwipeToDismissBoxState()
+
+    LaunchedEffect(dismissState.currentValue) {
+        when (dismissState.currentValue) {
+            SwipeToDismissBoxValue.EndToStart -> onSwipeStateChange(true)
+            SwipeToDismissBoxValue.Settled -> onSwipeStateChange(false)
+            else -> {}
         }
-    )
+    }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(isSwiped) {

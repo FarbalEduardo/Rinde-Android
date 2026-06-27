@@ -1,7 +1,14 @@
 package com.farbalapps.rinde.ui.screen.home.community.components
 
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -12,28 +19,41 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.farbalapps.rinde.ui.theme.Blue80
 import com.farbalapps.rinde.ui.theme.RindePrimary
-import com.farbalapps.rinde.ui.theme.RindeSecondary
-import androidx.compose.ui.tooling.preview.Preview
+import com.farbalapps.rinde.ui.theme.VoteFalseContainerDark
+import com.farbalapps.rinde.ui.theme.VoteFalseContentDark
+import com.farbalapps.rinde.ui.theme.VoteTrueContainerDark
+import com.farbalapps.rinde.ui.theme.VoteTrueContentDark
 import com.farbalapps.rinde.ui.theme.RindeTheme
 import com.farbalapps.rinde.ui.screen.home.community.CommunityTab
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-import androidx.compose.foundation.clickable
-import androidx.compose.ui.draw.alpha
+import com.farbalapps.rinde.ui.screen.home.community.PostImageCarousel
 import com.farbalapps.rinde.util.DateUtils
+import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 @Composable
 fun WishlistAddCard(modifier: Modifier = Modifier) {
@@ -42,7 +62,7 @@ fun WishlistAddCard(modifier: Modifier = Modifier) {
             .size(96.dp),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Blue80.copy(alpha = 0.5f) // Light blueish/purple
+            containerColor = Blue80.copy(alpha = 0.5f)
         ),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
@@ -179,319 +199,466 @@ fun FilterChipRow(
     }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// POST CARD — Diseño compacto tipo Promodescuentos/Hotukdeals
+// Layout horizontal: imagen cuadrada izquierda + info a la derecha
+// Muestra: título, precios, % descuento, tipo oferta, votos, comentarios
+// ─────────────────────────────────────────────────────────────────────────────
+
 @Composable
 fun PostCard(
     post: com.farbalapps.rinde.domain.model.CommunityPost,
     isAuthorVerified: Boolean = false,
-    userVote: Int = 0, // 1 for hot, -1 for cold, 0 for none
-    onVoteHot: () -> Unit = {},
-    onVoteCold: () -> Unit = {},
-    onLikeClick: () -> Unit = {},
+    currentUserId: String = "",
+    onAuthorClick: () -> Unit = {},
     onSaveClick: () -> Unit = {},
-    onCommentClick: () -> Unit = {},
+    onPostClick: () -> Unit = {},
+    onDeletePost: () -> Unit = {},
+    onEditPost: () -> Unit = {},
+    onSharePost: () -> Unit = {},
+    onReportExpired: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    var isExpanded by remember { mutableStateOf(false) }
-    val isUnreliable = post.verificationStatus == com.farbalapps.rinde.domain.model.VerificationStatus.EXPIRED || 
-                       post.verificationStatus == com.farbalapps.rinde.domain.model.VerificationStatus.DISPUTED
-
+    // ── Derivados memoizados: se calculan UNA VEZ por post, no en cada frame ──
+    var showMenu by remember { mutableStateOf(false) }
+    val isOnline = remember(post.id) {
+        post.offerType == com.farbalapps.rinde.domain.model.OfferType.ONLINE
+    }
+    val isUnreliable = remember(post.id) {
+        post.verificationStatus == com.farbalapps.rinde.domain.model.VerificationStatus.EXPIRED ||
+        post.verificationStatus == com.farbalapps.rinde.domain.model.VerificationStatus.DISPUTED
+    }
+    val hasDiscount = remember(post.discountPrice, post.normalPrice) {
+        post.discountPrice != null && post.normalPrice != null && post.discountPrice < post.normalPrice
+    }
+    val hasAnyPrice = remember(post.discountPrice, post.normalPrice) {
+        post.discountPrice != null || post.normalPrice != null
+    }
+    val formattedDate = remember(post.timestamp) {
+        DateUtils.formatTimeAgo(post.timestamp?.time ?: 0L)
+    }
+    val formattedNormalPrice = remember(post.normalPrice, post.currency) {
+        post.normalPrice?.let { "${post.currency} ${"%.2f".format(it)}" }
+    }
+    val formattedDiscountPrice = remember(post.discountPrice, post.currency) {
+        post.discountPrice?.let { "${post.currency} ${"%.2f".format(it)}" }
+    }
+    val displayPrice = remember(post.discountPrice, post.normalPrice, post.currency) {
+        (post.discountPrice ?: post.normalPrice)?.let { "${post.currency} ${"%.2f".format(it)}" } ?: ""
+    }
+    val storeName = remember(post.id) {
+        if (post.offerType == com.farbalapps.rinde.domain.model.OfferType.ONLINE) post.websiteName else post.storeName
+    }
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .alpha(if (isUnreliable) 0.6f else 1f),
-        shape = RoundedCornerShape(24.dp),
+            .padding(bottom = 8.dp)
+            .alpha(if (isUnreliable) 0.55f else 1f)
+            .clickable { onPostClick() },
+        shape = RectangleShape,
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+            containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Box {
-            Column(modifier = Modifier.padding(16.dp)) {
-                // Header
+            Column {
+                // ── HEADER COMPACTO ───────────────────────────────────────────
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onAuthorClick() }
+                        .padding(start = 12.dp, end = 4.dp, top = 10.dp, bottom = 6.dp)
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(40.dp)
-                            .background(Color(0xFFFFCCAA), CircleShape),
+                            .size(24.dp)
+                            .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         if (post.authorPhotoUrl != null) {
                             AsyncImage(
                                 model = post.authorPhotoUrl,
-                                contentDescription = "Avatar",
+                                contentDescription = null,
                                 modifier = Modifier.fillMaxSize().clip(CircleShape),
                                 contentScale = ContentScale.Crop
                             )
                         } else {
-                            Icon(imageVector = Icons.Default.Person, contentDescription = "Avatar", tint = Color.White)
+                            Icon(
+                                Icons.Default.Person, null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(14.dp)
+                            )
                         }
                     }
-                    
-                    Spacer(modifier = Modifier.width(12.dp))
-                    
-                    Column(modifier = Modifier.weight(1f)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = post.authorName,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            if (isAuthorVerified) {
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Icon(
-                                    imageVector = Icons.Default.Verified,
-                                    contentDescription = "Verificado",
-                                    tint = com.farbalapps.rinde.ui.theme.VerifiedBadgeColor,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            }
-                        }
-                        Text(
-                            text = "Reputación: ${"%.1f".format(post.userReputationScore)} • ${DateUtils.formatTimeAgo(post.timestamp?.time ?: 0L)}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                    Spacer(Modifier.width(8.dp))
+
+                    Text(
+                        text = post.authorName,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+
+                    if (isAuthorVerified) {
+                        Spacer(Modifier.width(4.dp))
+                        Icon(
+                            Icons.Default.Verified, null,
+                            tint = com.farbalapps.rinde.ui.theme.VerifiedBadgeColor,
+                            modifier = Modifier.size(12.dp)
                         )
                     }
-                    
-                    IconButton(onClick = { }) {
-                        Icon(imageVector = Icons.Default.MoreVert, contentDescription = "Opciones", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-                
-                Spacer(modifier = Modifier.height(12.dp))
-                
-                // Image & Type Badge
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(4f / 3f)
-                        .clip(RoundedCornerShape(24.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                ) {
-                    if (post.photos.isNotEmpty()) {
-                        val pagerState = androidx.compose.foundation.pager.rememberPagerState(pageCount = { post.photos.size })
-                        
-                        androidx.compose.foundation.pager.HorizontalPager(
-                            state = pagerState,
-                            modifier = Modifier.fillMaxSize()
-                        ) { page ->
-                            AsyncImage(
-                                model = post.photos[page],
-                                contentDescription = post.title,
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
+
+                    Text(
+                        text = " · ",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    )
+
+                    Text(
+                        text = formattedDate,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        maxLines = 1
+                    )
+
+                    Spacer(Modifier.weight(1f))
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = onSaveClick, modifier = Modifier.size(32.dp)) {
+                            Icon(
+                                if (post.isSavedByMe) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                                contentDescription = "Guardar",
+                                tint = if (post.isSavedByMe) RindePrimary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                modifier = Modifier.size(20.dp)
                             )
                         }
 
-                        // Dots Indicator (Instagram style)
-                        if (post.photos.size > 1) {
-                            Row(
-                                modifier = Modifier
-                                    .align(Alignment.BottomCenter)
-                                    .padding(bottom = 12.dp)
-                                    .background(Color.Black.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
-                                    .padding(horizontal = 8.dp, vertical = 4.dp),
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                repeat(post.photos.size) { iteration ->
-                                    val color = if (pagerState.currentPage == iteration) Color.White else Color.White.copy(alpha = 0.5f)
-                                    val size = if (pagerState.currentPage == iteration) 7.dp else 5.dp
-                                    Box(
-                                        modifier = Modifier
-                                            .size(size)
-                                            .clip(CircleShape)
-                                            .background(color)
+                        var showDeleteConfirm by remember { mutableStateOf(false) }
+                        var showReportConfirm by remember { mutableStateOf(false) }
+
+                        if (showDeleteConfirm) {
+                            AlertDialog(
+                                onDismissRequest = { showDeleteConfirm = false },
+                                title = { Text("Eliminar publicación") },
+                                text = { Text("¿Estás seguro que deseas eliminar esta publicación? Esta acción no se puede deshacer.") },
+                                confirmButton = {
+                                    TextButton(onClick = {
+                                        showDeleteConfirm = false
+                                        onDeletePost()
+                                    }) { Text("Eliminar", color = MaterialTheme.colorScheme.error) }
+                                },
+                                dismissButton = {
+                                    TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancelar") }
+                                }
+                            )
+                        }
+
+                        if (showReportConfirm) {
+                            val isAuthor = post.authorId == currentUserId
+                            AlertDialog(
+                                onDismissRequest = { showReportConfirm = false },
+                                title = { Text(if (isAuthor) "Marcar como expirada" else "Reportar expirada") },
+                                text = { Text(if (isAuthor) "¿Estás seguro que deseas marcar esta oferta como expirada?" else "¿Estás seguro que deseas reportar esta oferta como expirada?") },
+                                confirmButton = {
+                                    TextButton(onClick = {
+                                        showReportConfirm = false
+                                        onReportExpired()
+                                    }) { Text("Confirmar") }
+                                },
+                                dismissButton = {
+                                    TextButton(onClick = { showReportConfirm = false }) { Text("Cancelar") }
+                                }
+                            )
+                        }
+
+                        Box {
+                            IconButton(onClick = { showMenu = true }, modifier = Modifier.size(32.dp)) {
+                                Icon(
+                                    Icons.Default.MoreVert,
+                                    contentDescription = "Opciones",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                                if (post.authorId == currentUserId && currentUserId.isNotEmpty()) {
+                                    DropdownMenuItem(
+                                        text = { Text("Editar") },
+                                        leadingIcon = { Icon(Icons.Default.Edit, null) },
+                                        onClick = { showMenu = false; onEditPost() }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Eliminar") },
+                                        leadingIcon = { Icon(Icons.Default.Delete, null) },
+                                        onClick = { showMenu = false; showDeleteConfirm = true }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Compartir") },
+                                        leadingIcon = { Icon(Icons.Default.Share, null) },
+                                        onClick = { showMenu = false; onSharePost() }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Marcar expirada") },
+                                        leadingIcon = { Icon(Icons.Default.Warning, null) },
+                                        onClick = { showMenu = false; showReportConfirm = true }
+                                    )
+                                } else {
+                                    DropdownMenuItem(
+                                        text = { Text("Compartir") },
+                                        leadingIcon = { Icon(Icons.Default.Share, null) },
+                                        onClick = { showMenu = false; onSharePost() }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Reportar expirada") },
+                                        leadingIcon = { Icon(Icons.Default.Warning, null) },
+                                        onClick = { showMenu = false; showReportConfirm = true }
                                     )
                                 }
                             }
                         }
-                    } else {
-                        Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f))) {
+                    }
+                }
+
+                // ── CUERPO CENTRAL (Imagen + Info) ─────────────────────────────
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(110.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                    ) {
+                        // En el feed mostramos solo la primera imagen (AsyncImage simple)
+                        // para evitar lag en el scroll. El carousel completo está en PostDetailScreen.
+                        if (post.photos.isNotEmpty()) {
+                            AsyncImage(
+                                model = com.farbalapps.rinde.util.CloudinaryUrlBuilder.feedThumbnail(post.photos.first()),
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
                             Icon(
-                                Icons.Default.Image, 
-                                contentDescription = null, 
-                                modifier = Modifier.size(48.dp).align(Alignment.Center),
-                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
+                                Icons.Default.Image, null,
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .align(Alignment.Center),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
                             )
                         }
+
+                        val offerBadgeColor = if (isOnline) Color(0xFF1565C0) else Color(0xFF2E7D32)
+                        val offerBadgeIcon = if (isOnline) Icons.Default.Language else Icons.Default.Store
+                        val offerBadgeLabel = if (isOnline) "Online" else "Física"
+
+                        Surface(
+                            color = offerBadgeColor,
+                            shape = RoundedCornerShape(bottomEnd = 8.dp),
+                            modifier = Modifier.align(Alignment.TopStart)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp)
+                            ) {
+                                Icon(
+                                    offerBadgeIcon, null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(10.dp)
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text(
+                                    text = offerBadgeLabel,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontSize = 10.sp,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
                     }
-                    
-                    // Offer Type Badge
-                    Surface(
-                        color = Color.Black.copy(alpha = 0.7f),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.padding(12.dp).align(Alignment.BottomStart)
+
+                    Spacer(Modifier.width(16.dp))
+
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
+                        Text(
+                            text = post.title,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            lineHeight = 22.sp
+                        )
+
+                        // Descripción corta — máximo 2 líneas
+                        if (post.descriptionShort.isNotBlank()) {
+                            Text(
+                                text = post.descriptionShort,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f),
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                                lineHeight = 18.sp
+                            )
+                        }
+
+                        if (hasAnyPrice) {
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                if (hasDiscount && formattedNormalPrice != null) {
+                                    Text(
+                                        text = formattedNormalPrice,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        textDecoration = TextDecoration.LineThrough
+                                    )
+                                }
+
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    val priceColor = if (hasDiscount) VoteTrueContainerDark else MaterialTheme.colorScheme.onSurface
+
+                                    Text(
+                                        text = displayPrice,
+                                        style = MaterialTheme.typography.headlineSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = priceColor
+                                    )
+
+                                    if (hasDiscount && post.discountPercentage != null && post.discountPercentage > 0) {
+                                        Surface(
+                                            color = Color(0xFFE53935),
+                                            shape = RoundedCornerShape(6.dp)
+                                        ) {
+                                            Text(
+                                                text = "-${post.discountPercentage}%",
+                                                style = MaterialTheme.typography.labelMedium,
+                                                fontWeight = FontWeight.ExtraBold,
+                                                color = Color.White,
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // ── NUEVO FOOTER (Votos, Comentarios, Tienda) ───────────────────
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    // Controles de Votos y Comentarios
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        // Votos reales ("Píldora")
+                        Surface(
+                            shape = RoundedCornerShape(50),
+                            color = VoteTrueContainerDark.copy(alpha = 0.1f)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Whatshot, null,
+                                    tint = VoteTrueContainerDark,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Text(
+                                    text = "${post.truthCount}°",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = VoteTrueContainerDark,
+                                    fontWeight = FontWeight.ExtraBold
+                                )
+                            }
+                        }
+
+                        // Comentarios
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
                         ) {
                             Icon(
-                                imageVector = if (post.offerType == com.farbalapps.rinde.domain.model.OfferType.ONLINE) Icons.Default.Language else Icons.Default.Store,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(16.dp)
+                                Icons.Default.ChatBubbleOutline, null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(18.dp)
                             )
-                            Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = (if (post.offerType == com.farbalapps.rinde.domain.model.OfferType.ONLINE) post.websiteName else post.storeName) ?: "Oferta",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = Color.White,
+                                text = "${post.commentsCount}",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontWeight = FontWeight.Bold
                             )
                         }
                     }
 
-                    // Save Button
-                    Surface(
-                        color = Color.White.copy(alpha = 0.9f),
-                        shape = CircleShape,
-                        modifier = Modifier
-                            .padding(12.dp)
-                            .size(40.dp)
-                            .align(Alignment.TopEnd)
-                            .clickable { onSaveClick() },
-                        shadowElevation = 4.dp
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
+                    // Tienda a la derecha (memoizada arriba)
+                    if (!storeName.isNullOrBlank()) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
-                                imageVector = Icons.Default.BookmarkBorder, 
-                                contentDescription = "Guardar", 
-                                tint = Color.Black, 
-                                modifier = Modifier.size(22.dp)
+                                if (isOnline) Icons.Default.Language else Icons.Default.Store,
+                                null, tint = RindePrimary.copy(alpha = 0.8f), modifier = Modifier.size(16.dp)
                             )
-                        }
-                    }
-                }
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                // Title & Status
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = post.title,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.ExtraBold,
-                        modifier = Modifier.weight(1f)
-                    )
-                    if (post.verificationStatus == com.farbalapps.rinde.domain.model.VerificationStatus.VERIFIED) {
-                        Icon(
-                            imageVector = Icons.Default.GppGood,
-                            contentDescription = "Verificado por comunidad",
-                            tint = Color(0xFF4CAF50),
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                }
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                // Description
-                Column(modifier = Modifier.clickable { isExpanded = !isExpanded }) {
-                    Text(
-                        text = if (isExpanded) post.descriptionLong else post.descriptionShort,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    if (post.descriptionLong.length > post.descriptionShort.length) {
-                        Text(
-                            text = if (isExpanded) "Ver menos" else "Ver más...",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = com.farbalapps.rinde.ui.theme.RindePrimary,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                // Interaction Bar
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    // Thermal Voting System
-                    Surface(
-                        color = MaterialTheme.colorScheme.surface,
-                        shape = RoundedCornerShape(50),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 4.dp)) {
-                            IconToggleButton(
-                                checked = userVote == 1,
-                                onCheckedChange = { onVoteHot() }
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Whatshot,
-                                    contentDescription = "Caliente",
-                                    tint = if (userVote == 1) com.farbalapps.rinde.ui.theme.VoteHotColor else com.farbalapps.rinde.ui.theme.VoteNeutralColor
-                                )
-                            }
+                            Spacer(Modifier.width(5.dp))
                             Text(
-                                text = "${post.votesScore}",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Black,
-                                color = when {
-                                    post.votesScore > 0 -> com.farbalapps.rinde.ui.theme.VoteHotColor
-                                    post.votesScore < 0 -> com.farbalapps.rinde.ui.theme.VoteColdColor
-                                    else -> com.farbalapps.rinde.ui.theme.VoteNeutralColor
-                                }
+                                text = storeName,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = RindePrimary,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.widthIn(max = 140.dp)
                             )
-                            IconToggleButton(
-                                checked = userVote == -1,
-                                onCheckedChange = { onVoteCold() }
-                            ) {
-
-                                Icon(
-                                    imageVector = Icons.Default.AcUnit,
-                                    contentDescription = "Frío",
-                                    tint = if (userVote == -1) com.farbalapps.rinde.ui.theme.VoteColdColor else com.farbalapps.rinde.ui.theme.VoteNeutralColor
-                                )
-                            }
                         }
-                    }
-
-                    // Comments and Likes
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = onCommentClick) {
-                            Icon(imageVector = Icons.Default.ModeComment, contentDescription = "Comentarios", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
-                        }
-                        Text("${post.commentsCount}", style = MaterialTheme.typography.labelLarge)
-                        
-                        Spacer(modifier = Modifier.width(8.dp))
-                        
-                        IconButton(onClick = onLikeClick) {
-                            Icon(imageVector = Icons.Default.FavoriteBorder, contentDescription = "Like", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
-                        }
-                        Text("${post.likesCount}", style = MaterialTheme.typography.labelLarge)
                     }
                 }
             }
 
-            // Trust Overlay
+            // Overlay de oferta no confiable
             if (isUnreliable) {
                 Box(
                     modifier = Modifier
                         .matchParentSize()
-                        .background(com.farbalapps.rinde.ui.theme.OverlayWarningColor.copy(alpha = 0.4f))
-                        .clip(RoundedCornerShape(24.dp)),
+                        .background(com.farbalapps.rinde.ui.theme.OverlayWarningColor.copy(alpha = 0.45f))
+                        .clip(RectangleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Surface(
-                        color = Color.Black.copy(alpha = 0.7f),
-                        shape = RoundedCornerShape(50)
-                    ) {
-                        Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(imageVector = Icons.Default.Warning, contentDescription = null, tint = Color.Yellow, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
+                    Surface(color = Color.Black.copy(alpha = 0.75f), shape = RoundedCornerShape(50)) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.Warning, null, Modifier.size(12.dp), Color.Yellow)
+                            Spacer(Modifier.width(5.dp))
                             Text(
-                                text = if (post.verificationStatus == com.farbalapps.rinde.domain.model.VerificationStatus.EXPIRED) "OFERTA EXPIRADA" else "BAJA VERACIDAD",
-                                style = MaterialTheme.typography.labelLarge,
+                                if (post.verificationStatus == com.farbalapps.rinde.domain.model.VerificationStatus.EXPIRED)
+                                    "OFERTA EXPIRADA" else "BAJA VERACIDAD",
+                                style = MaterialTheme.typography.labelSmall,
                                 color = Color.White,
                                 fontWeight = FontWeight.Bold
                             )
@@ -500,67 +667,252 @@ fun PostCard(
                 }
             }
         }
-    }
-}
 
-
-@Preview(showBackground = true)
-@Composable
-fun WishlistAddCardPreview() {
-    RindeTheme {
-        WishlistAddCard(modifier = Modifier.padding(16.dp))
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun FilterChipRowPreview() {
-    RindeTheme {
-        FilterChipRow(
-            selectedTab = CommunityTab.DISCOVER,
-            onTabSelected = {},
-            modifier = Modifier.padding(16.dp)
+        HorizontalDivider(
+            thickness = 0.5.dp,
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
         )
     }
 }
 
-@Preview(showBackground = true)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FEED VERACITY BADGE — Versión estática para el card del feed
+// ─────────────────────────────────────────────────────────────────────────────
+
 @Composable
-fun PostCardPreview() {
-    RindeTheme {
-        PostCard(
-            post = com.farbalapps.rinde.domain.model.CommunityPost(
-                id = "1",
-                authorId = "user1",
-                authorName = "Eduardo Farbal",
-                authorPhotoUrl = null,
-                timestamp = java.util.Date(),
-                title = "Frutillas 2 x 1 en Jumbo",
-                descriptionShort = "Solo hoy hasta agotar stock...",
-                descriptionLong = "Descripción larga aquí...",
-                photos = listOf(""),
-                category = "Frutas",
-                location = com.farbalapps.rinde.domain.model.PostLocation("Jumbo Providencia", null, null),
-                isActive = true,
-                likesCount = 120,
-                commentsCount = 15,
-                truthCount = 10,
-                falseCount = 2,
-                votesScore = 42,
-                verificationStatus = com.farbalapps.rinde.domain.model.VerificationStatus.VERIFIED,
-                reportCount = 0,
-                userReputationScore = 4.8f,
-                isAuthorVerified = true,
-                offerType = com.farbalapps.rinde.domain.model.OfferType.PHYSICAL,
-                websiteName = null,
-                productLink = null,
-                storeName = "Jumbo Providencia",
-                isRecommended = false,
-                expiresAt = null
-            ),
-            isAuthorVerified = true,
-            modifier = Modifier.padding(16.dp)
+fun FeedVeracityBadge(
+    truthCount: Int,
+    falseCount: Int
+) {
+    val totalVotes = truthCount + falseCount
+    val showResults = totalVotes >= 30
+    
+    if (showResults && totalVotes > 0) {
+        val truthRatio = truthCount.toFloat() / totalVotes
+        val isMostlyTrue = truthRatio >= 0.5f
+        
+        Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = if (isMostlyTrue) VoteTrueContainerDark.copy(alpha = 0.2f) else VoteFalseContainerDark.copy(alpha = 0.2f),
+            modifier = Modifier.height(28.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(horizontal = 8.dp)
+            ) {
+                Icon(
+                    imageVector = if (isMostlyTrue) Icons.Default.ThumbUp else Icons.Default.ThumbDown,
+                    contentDescription = null,
+                    modifier = Modifier.size(12.dp),
+                    tint = if (isMostlyTrue) VoteTrueContentDark else VoteFalseContentDark
+                )
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    text = "${(truthRatio * 100).roundToInt()}% de usuarios dicen que es ${if (isMostlyTrue) "Real" else "Falsa"}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (isMostlyTrue) VoteTrueContentDark else VoteFalseContentDark,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    } else {
+        Text(
+            text = "En validación comunitaria...",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// VOTING SYSTEM — Material Design 3
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+fun VotingActions(
+    userVote: Int,
+    truthCount: Int,
+    falseCount: Int,
+    onVoteTrue: () -> Unit,
+    onVoteFalse: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val totalVotes = truthCount + falseCount
+    val showResults = totalVotes >= 30
+    val truthRatio: Float? = if (showResults && totalVotes > 0) {
+        truthCount.toFloat() / totalVotes
+    } else null
+
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            VoteActionButton(
+                label = if (showResults) "Falsa · $falseCount" else "Falsa",
+                icon = Icons.Default.ThumbDown,
+                isSelected = userVote == -1,
+                selectedContainerColor = VoteFalseContainerDark,
+                selectedContentColor = VoteFalseContentDark,
+                modifier = Modifier.weight(1f),
+                onClick = onVoteFalse
+            )
+
+            if (truthRatio != null) {
+                VotePercentBadge(truthPercent = truthRatio)
+            }
+
+            VoteActionButton(
+                label = if (showResults) "Real · $truthCount" else "Real",
+                icon = Icons.Default.ThumbUp,
+                isSelected = userVote == 1,
+                selectedContainerColor = VoteTrueContainerDark,
+                selectedContentColor = VoteTrueContentDark,
+                modifier = Modifier.weight(1f),
+                onClick = onVoteTrue
+            )
+        }
+
+        if (truthRatio != null) {
+            VoteProgressIndicator(truthRatio = truthRatio, userVote = userVote)
+        } else {
+            Text(
+                text = "Se necesitan ${30 - totalVotes} votos más para ver resultados",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+}
+
+@Composable
+fun VoteActionButton(
+    label: String,
+    icon: ImageVector,
+    isSelected: Boolean,
+    selectedContainerColor: Color,
+    selectedContentColor: Color,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    val bounceScale = remember { Animatable(1f) }
+    val scope = rememberCoroutineScope()
+
+    val containerColor = if (isSelected) selectedContainerColor
+                         else MaterialTheme.colorScheme.surfaceVariant
+    val contentColor = if (isSelected) selectedContentColor
+                       else MaterialTheme.colorScheme.onSurfaceVariant
+
+    Surface(
+        onClick = {
+            scope.launch {
+                bounceScale.animateTo(targetValue = 0.85f, animationSpec = tween(durationMillis = 80))
+                bounceScale.animateTo(
+                    targetValue = 1f,
+                    animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow)
+                )
+            }
+            onClick()
+        },
+        modifier = modifier
+            .heightIn(min = 48.dp)
+            .graphicsLayer { scaleX = bounceScale.value; scaleY = bounceScale.value },
+        shape = RoundedCornerShape(12.dp),
+        color = containerColor,
+        contentColor = contentColor,
+        tonalElevation = if (isSelected) 0.dp else 1.dp
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(16.dp))
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Medium,
+                maxLines = 1
+            )
+        }
+    }
+}
+
+@Composable
+fun VotePercentBadge(truthPercent: Float) {
+    val displayPercent = (truthPercent * 100).roundToInt()
+    Surface(
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        modifier = Modifier.size(44.dp)
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Text(
+                text = "$displayPercent%",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
+
+@Composable
+fun VoteProgressIndicator(
+    truthRatio: Float,
+    userVote: Int
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(4.dp)
+            .clip(RoundedCornerShape(50))
+    ) {
+        val falseRatio = (1f - truthRatio).coerceAtLeast(0f)
+        if (falseRatio > 0f) {
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .weight(falseRatio)
+                    .background(VoteFalseContainerDark.copy(alpha = if (userVote == -1) 1f else 0.4f))
+            )
+        }
+        if (truthRatio > 0f) {
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .weight(truthRatio)
+                    .background(VoteTrueContainerDark.copy(alpha = if (userVote == 1) 1f else 0.4f))
+            )
+        }
+    }
+}
+
+@Composable
+fun TrustStarRating(score: Float, level: String) {
+    Row {
+        repeat(5) { index ->
+            val filled = index < score.roundToInt()
+            Icon(
+                imageVector = Icons.Default.Star,
+                contentDescription = null,
+                tint = when {
+                    !filled -> MaterialTheme.colorScheme.outlineVariant
+                    level == "GOLD" || level == "PLATINUM" -> Color(0xFFFFD700)
+                    level == "SILVER" -> Color(0xFFC0C0C0)
+                    else -> Color(0xFFCD7F32)
+                },
+                modifier = Modifier.size(14.dp)
+            )
+        }
+    }
+}

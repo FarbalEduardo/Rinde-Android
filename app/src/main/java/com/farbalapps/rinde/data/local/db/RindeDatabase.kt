@@ -2,6 +2,7 @@ package com.farbalapps.rinde.data.local.db
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
 import com.farbalapps.rinde.data.local.dao.CategoryDao
 import com.farbalapps.rinde.data.local.dao.CustomProductHistoryDao
 import com.farbalapps.rinde.data.local.dao.ShoppingItemDao
@@ -13,6 +14,8 @@ import com.farbalapps.rinde.data.local.dao.ProfileDao
 
 import com.farbalapps.rinde.data.local.entity.CommunityPostEntity
 import com.farbalapps.rinde.data.local.dao.PostDao
+import com.farbalapps.rinde.data.local.entity.SyncMetadataEntity
+import com.farbalapps.rinde.data.local.dao.SyncMetadataDao
 
 @Database(
     entities = [
@@ -20,15 +23,18 @@ import com.farbalapps.rinde.data.local.dao.PostDao
         CustomProductHistoryEntity::class, 
         CategoryEntity::class, 
         ProfileEntity::class,
-        CommunityPostEntity::class
+        CommunityPostEntity::class,
+        SyncMetadataEntity::class
     ],
-    version = 13,
+    version = 17,
     exportSchema = false
 )
+@TypeConverters(Converters::class)
 abstract class RindeDatabase : RoomDatabase() {
     abstract fun shoppingItemDao(): ShoppingItemDao
     abstract fun customProductHistoryDao(): CustomProductHistoryDao
     abstract fun categoryDao(): CategoryDao
     abstract fun profileDao(): ProfileDao
     abstract fun postDao(): PostDao
+    abstract fun syncMetadataDao(): SyncMetadataDao
 }

@@ -2,8 +2,10 @@ package com.farbalapps.rinde.ui.screen.profile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.farbalapps.rinde.domain.repository.FeedRepository
 import com.farbalapps.rinde.domain.model.Profile
 import com.farbalapps.rinde.domain.model.CommunityPost
+import com.farbalapps.rinde.domain.usecase.ToggleVoteUseCase
 import com.farbalapps.rinde.domain.usecase.profile.GetProfilePostsUseCase
 import com.farbalapps.rinde.domain.usecase.profile.GetProfileUseCase
 import com.farbalapps.rinde.domain.usecase.profile.FollowUserUseCase
@@ -26,7 +28,8 @@ data class ProfileUiState(
     val isLoading: Boolean = true,
     val isFollowing: Boolean = false,
     val isCurrentUser: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val snackbarMessage: String? = null
 )
 
 @HiltViewModel
@@ -40,7 +43,9 @@ class ProfileViewModel @Inject constructor(
     private val updatePrivacyUseCase: UpdatePrivacyUseCase,
     private val syncProfileUseCase: SyncProfileUseCase,
     private val clearUploadStatusUseCase: ClearUploadStatusUseCase,
-    private val firebaseAuth: FirebaseAuth
+    private val toggleVoteUseCase: ToggleVoteUseCase,
+    private val firebaseAuth: FirebaseAuth,
+    private val feedRepository: FeedRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileUiState())
@@ -53,36 +58,47 @@ class ProfileViewModel @Inject constructor(
     }
 
     private fun startDataObserving() {
-        val currentUser = firebaseAuth.currentUser
-        if (currentUser != null) {
-            loadAllData(currentUser.uid)
-        } else {
-            var listener: FirebaseAuth.AuthStateListener? = null
-            listener = FirebaseAuth.AuthStateListener { auth ->
-                auth.currentUser?.let { user ->
-                    loadAllData(user.uid)
-                    listener?.let { firebaseAuth.removeAuthStateListener(it) }
-                }
-            }
-            firebaseAuth.addAuthStateListener(listener)
-        }
+        // Will be called from UI layer with the targetUserId
     }
 
-    private fun loadAllData(uid: String) {
-        this.targetUserId = uid
-        _uiState.update { it.copy(isCurrentUser = true, isLoading = true, error = null) }
+    fun loadProfile(targetUid: String?) {
+        val currentUserId = firebaseAuth.currentUser?.uid
+        val finalUid = targetUid ?: currentUserId ?: return
+
+        this.targetUserId = finalUid
+        val isMe = (currentUserId == finalUid)
+        
+        _uiState.update { it.copy(isCurrentUser = isMe, isLoading = true, error = null) }
+
+        // Sincronizar votos si es mi propio perfil para asegurar que el caché esté fresco
+        if (isMe) {
+            viewModelScope.launch {
+                feedRepository.syncUserVotes(finalUid)
+                feedRepository.syncUserSavedPosts(finalUid)
+            }
+        }
+
+        // Start observing following state if it's not me
+        if (!isMe && currentUserId != null) {
+            viewModelScope.launch {
+                isFollowingUseCase(currentUserId, finalUid).collect { following ->
+                    _uiState.update { it.copy(isFollowing = following) }
+                }
+            }
+        }
 
         // 1. Single Source of Truth: Observamos Room (Capa de Dominio)
         viewModelScope.launch {
-            getProfileUseCase(uid)
+            getProfileUseCase(finalUid)
                 .catch { e ->
                     _uiState.update { it.copy(error = "Error local: ${e.message}", isLoading = false) }
                 }
                 .collect { profile ->
-                    _uiState.update { 
-                        it.copy(
+                    _uiState.update { state ->
+                        state.copy(
                             profile = profile, 
-                            isLoading = profile.isDummy // Si es dummy, sigue cargando
+                            // Si es dummy y no hay error, seguimos esperando al sync remoto
+                            isLoading = profile.isDummy && state.error == null
                         ) 
                     }
                 }
@@ -91,18 +107,23 @@ class ProfileViewModel @Inject constructor(
         // 2. Fetch remoto: Traemos de Firebase y actualizamos Room (SSOT)
         viewModelScope.launch {
             try {
-                syncProfileUseCase(uid)
+                syncProfileUseCase(finalUid)
             } catch (e: Exception) {
-                // Solo mostramos error si el perfil local también es dummy (no hay datos offline)
-                if (_uiState.value.profile?.isDummy == true) {
-                    _uiState.update { it.copy(error = "Error de conexión: ${e.localizedMessage}", isLoading = false) }
+                android.util.Log.e("ProfileViewModel", "Sync failed for $finalUid", e)
+                // Obligamos a apagar loading si hay error de red y no tenemos datos reales
+                val currentProfile = _uiState.value.profile
+                if (currentProfile == null || currentProfile.isDummy) {
+                    _uiState.update { it.copy(
+                        error = "Error de conexión: ${e.localizedMessage}", 
+                        isLoading = false 
+                    ) }
                 }
             }
         }
 
         // 3. Obtener posts
         viewModelScope.launch {
-            getProfilePostsUseCase(uid)
+            getProfilePostsUseCase(finalUid)
                 .catch { e ->
                     android.util.Log.e("ProfileViewModel", "Error fetching posts", e)
                 }
@@ -113,7 +134,7 @@ class ProfileViewModel @Inject constructor(
 
         // 4. Obtener posts guardados
         viewModelScope.launch {
-            getSavedPostsUseCase(uid)
+            getSavedPostsUseCase(finalUid)
                 .catch { e ->
                     android.util.Log.e("ProfileViewModel", "Error fetching saved posts", e)
                 }
@@ -138,7 +159,7 @@ class ProfileViewModel @Inject constructor(
     }
 
     fun retry() {
-        startDataObserving()
+        loadProfile(this.targetUserId)
     }
 
     fun clearUploadStatus() {
@@ -146,5 +167,71 @@ class ProfileViewModel @Inject constructor(
         viewModelScope.launch {
             clearUploadStatusUseCase(uid)
         }
+    }
+
+    fun toggleVote(postId: String, voteValue: Int) {
+        // Actualización optimista en la lista local
+        _uiState.update { state ->
+            val updatedPosts = state.posts.map { post ->
+                if (post.id == postId) {
+                    val currentVote = post.myVoteValue
+                    if (currentVote == voteValue) {
+                        val scoreDiff = -voteValue
+                        val newTruth = if (voteValue > 0) post.truthCount - 1 else post.truthCount
+                        val newFalse = if (voteValue < 0) post.falseCount - 1 else post.falseCount
+                        post.copy(myVoteValue = 0, votesScore = post.votesScore + scoreDiff, truthCount = newTruth, falseCount = newFalse)
+                    } else {
+                        val scoreDiff = if (currentVote == 0) voteValue else voteValue - currentVote
+                        val newTruth = post.truthCount + (if (voteValue > 0) 1 else 0) - (if (currentVote > 0) 1 else 0)
+                        val newFalse = post.falseCount + (if (voteValue < 0) 1 else 0) - (if (currentVote < 0) 1 else 0)
+                        post.copy(myVoteValue = voteValue, votesScore = post.votesScore + scoreDiff, truthCount = newTruth, falseCount = newFalse)
+                    }
+                } else post
+            }
+            state.copy(posts = updatedPosts)
+        }
+        viewModelScope.launch {
+            val authorId = _uiState.value.posts.find { it.id == postId }?.authorId ?: return@launch
+            toggleVoteUseCase(postId, voteValue, authorId)
+        }
+    }
+
+    fun deletePost(postId: String, photoUrls: List<String>) {
+        viewModelScope.launch {
+            feedRepository.deletePost(postId, photoUrls).onSuccess {
+                _uiState.update { it.copy(snackbarMessage = "Publicación eliminada") }
+            }
+        }
+    }
+
+    fun markAsExpired(postId: String) {
+        _uiState.update { state ->
+            val updatedPosts = state.posts.map { 
+                if (it.id == postId) it.copy(verificationStatus = com.farbalapps.rinde.domain.model.VerificationStatus.EXPIRED) else it 
+            }
+            state.copy(posts = updatedPosts)
+        }
+        viewModelScope.launch {
+            feedRepository.markPostAsExpired(postId)
+        }
+    }
+
+    fun reportAsExpired(postId: String, postTitle: String, authorId: String) {
+        val currentUser = firebaseAuth.currentUser ?: return
+        viewModelScope.launch {
+            feedRepository.reportPostAsExpired(
+                postId = postId,
+                postTitle = postTitle,
+                authorId = authorId,
+                currentUserId = currentUser.uid,
+                currentUserName = currentUser.displayName ?: "Usuario"
+            ).onSuccess {
+                _uiState.update { it.copy(snackbarMessage = "Reporte enviado al autor") }
+            }
+        }
+    }
+
+    fun clearSnackbar() {
+        _uiState.update { it.copy(snackbarMessage = null) }
     }
 }

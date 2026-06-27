@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -287,7 +288,7 @@ fun CommentInputArea(onSubmit: (String) -> Unit) {
                 },
                 enabled = text.isNotBlank()
             ) {
-                Icon(Icons.Default.Send, null, tint = if (text.isNotBlank()) RindePrimary else Color.Gray)
+                Icon(Icons.AutoMirrored.Filled.Send, null, tint = if (text.isNotBlank()) RindePrimary else Color.Gray)
             }
         }
     }

@@ -39,7 +39,10 @@ class CommentRepositoryImpl @Inject constructor(
             }
 
             override fun onCancelled(error: DatabaseError) {
-                close(error.toException())
+                // «Permission denied» u otro error de RTDB: no cierres el Flow con excepción
+                // porque eso mata el proceso. Simplemente logueamos y emitimos lista vacía.
+                android.util.Log.e("CommentRepository", "Error al leer comentarios ($postId): ${error.message}")
+                trySend(emptyList())
             }
         }
         
@@ -57,7 +60,8 @@ class CommentRepositoryImpl @Inject constructor(
             }
 
             override fun onCancelled(error: DatabaseError) {
-                close(error.toException())
+                android.util.Log.e("CommentRepository", "Error al leer respuestas ($commentId): ${error.message}")
+                trySend(emptyList())
             }
         }
         

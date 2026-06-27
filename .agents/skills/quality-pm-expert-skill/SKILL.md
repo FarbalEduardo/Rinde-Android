@@ -20,6 +20,7 @@ Herramienta integral para medir la salud técnica y la cobertura de pruebas del 
 10. **Pruebas de Componentes Compose (UI Testing)**: Exige la creación de pruebas de componentes visuales apoyadas en el árbol semántico (`composeTestRule`).
 11. **Snapshot / Visual Regression Testing**: Recomienda la adopción de pruebas visuales y de capturas (ej. Paparazzi, Roborazzi) para prevenir regresiones accidentales en la UI.
 12. **Validación de Code Smells por Linter**: Integra y exige la validación automática de reglas de higiene (por ejemplo, con Detekt) previo al cierre funcional de tareas como Quality Gate obligatorio.
+13. **Denormalization Consistency Test**: Exigir unit tests que validen que tras operaciones de actualización de entidades (ej. `updateProfile`), los campos desnormalizados se actualicen de manera atómica o en lote mediante las clases correspondientes.
 
 ## Uso
 Ejecutar: `powershell .agents/skills/quality-pm-expert-skill/scripts/audit_quality.ps1`

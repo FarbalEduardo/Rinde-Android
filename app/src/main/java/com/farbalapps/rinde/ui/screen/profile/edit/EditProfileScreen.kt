@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -56,16 +57,10 @@ fun EditProfileContent(
     uiState: EditProfileUiState,
     onBack: () -> Unit,
     onNameChange: (String) -> Unit,
-    onPhotoChange: (String) -> Unit,
+    onPhotoChange: (String?) -> Unit,
     onPrivacyToggle: (Boolean) -> Unit,
     onSave: () -> Unit
 ) {
-    val photoLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia()
-    ) { uri ->
-        uri?.let { onPhotoChange(it.toString()) }
-    }
-
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
@@ -75,7 +70,7 @@ fun EditProfileContent(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, stringResource(R.string.back))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back))
                     }
                 }
             )
@@ -98,11 +93,12 @@ fun EditProfileContent(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditProfileForm(
     uiState: EditProfileUiState,
     onNameChange: (String) -> Unit,
-    onPhotoChange: (String) -> Unit,
+    onPhotoChange: (String?) -> Unit,
     onPrivacyToggle: (Boolean) -> Unit,
     onSave: () -> Unit
 ) {
@@ -112,6 +108,58 @@ fun EditProfileForm(
         uri?.let { onPhotoChange(it.toString()) }
     }
 
+    var showPhotoOptions by remember { mutableStateOf(false) }
+
+    if (showPhotoOptions) {
+        ModalBottomSheet(
+            onDismissRequest = { showPhotoOptions = false }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp)
+                    .padding(bottom = 36.dp)
+            ) {
+                Text(
+                    text = "Foto de perfil",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+                
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            showPhotoOptions = false
+                            photoLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                        }
+                        .padding(vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.PhotoLibrary, contentDescription = null)
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Text("Elegir de la galería", style = MaterialTheme.typography.bodyLarge)
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            showPhotoOptions = false
+                            onPhotoChange(null)
+                        }
+                        .padding(vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Text("Eliminar foto actual", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.error)
+                }
+            }
+        }
+    }
+
     Spacer(modifier = Modifier.height(16.dp))
 
     // Avatar Selection
@@ -119,7 +167,11 @@ fun EditProfileForm(
         EditAvatarSection(
             photoUrl = uiState.photoUrl,
             onClick = {
-                photoLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                if (uiState.photoUrl.isNullOrBlank()) {
+                    photoLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                } else {
+                    showPhotoOptions = true
+                }
             }
         )
     }

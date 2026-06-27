@@ -18,6 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.farbalapps.rinde.R
 import com.farbalapps.rinde.data.local.AppLanguage
 import com.farbalapps.rinde.data.local.ThemeMode
@@ -36,9 +37,9 @@ fun SettingsScreen(
     var showThemeSheet by remember { mutableStateOf(false) }
     var showLanguageSheet by remember { mutableStateOf(false) }
 
-    val themeMode by viewModel.themeMode.collectAsState()
-    val appLanguage by viewModel.appLanguage.collectAsState()
-    val isPrivate by viewModel.isProfilePrivate.collectAsState()
+    val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
+    val appLanguage by viewModel.appLanguage.collectAsStateWithLifecycle()
+    val isPrivate by viewModel.isProfilePrivate.collectAsStateWithLifecycle()
 
     if (showLogoutDialog) {
         LogoutDialog(

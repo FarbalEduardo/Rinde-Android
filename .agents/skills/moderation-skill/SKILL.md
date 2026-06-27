@@ -11,6 +11,8 @@ Habilidad especializada para auditar y filtrar contenido en el proyecto "Rinde".
 ### 2. Auditoría de Políticas
 - Verificar que las entidades de dominio (como `CommunityPost`) pasen por el `ContentModerator` antes de ser persistidas.
 - Asegurar que el UI proporcione feedback didáctico al usuario en caso de rechazo.
+- Al moderar y marcar un post como inactivo o eliminarlo (`isActive = false`), propagar de inmediato la desactivación o limpieza de los snapshots desnormalizados asociados en las subcolecciones `saved_posts` de los usuarios correspondientes.
+
 
 ## Instrucciones para el Agente
 1. Al analizar código relacionado con subida de datos, busca siempre si hay validaciones de seguridad.

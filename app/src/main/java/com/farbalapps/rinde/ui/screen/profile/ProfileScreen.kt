@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -36,15 +37,23 @@ import com.farbalapps.rinde.ui.theme.RindeTheme
 @Composable
 fun ProfileScreen(
     innerPadding: PaddingValues = PaddingValues(0.dp),
+    targetUserId: String? = null,
+    onBack: (() -> Unit)? = null,
     onEditProfile: () -> Unit = {},
     onNavigateToSettings: () -> Unit = {},
     onLogout: () -> Unit = {},
     onNavigateToSaved: () -> Unit = {},
     onNavigateToBlocked: () -> Unit = {},
+    onNavigateToPostDetail: (String) -> Unit = {},
+    onEditPost: (String) -> Unit = {},
     viewModel: ProfileViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(targetUserId) {
+        viewModel.loadProfile(targetUserId)
+    }
 
     // Mostrar Snackbar cuando cambie el uploadStatus
     LaunchedEffect(uiState.profile?.uploadStatus) {
@@ -59,6 +68,14 @@ fun ProfileScreen(
                     viewModel.clearUploadStatus()
                 }
             }
+        }
+    }
+
+    // Snackbar para otras acciones (eliminar, reportar)
+    LaunchedEffect(uiState.snackbarMessage) {
+        uiState.snackbarMessage?.let { msg ->
+            snackbarHostState.showSnackbar(msg)
+            viewModel.clearSnackbar()
         }
     }
 
@@ -77,17 +94,40 @@ fun ProfileScreen(
                         containerColor = MaterialTheme.colorScheme.background
                     )
                 )
+            } else {
+                TopAppBar(
+                    title = { },
+                    navigationIcon = {
+                        IconButton(onClick = { onBack?.invoke() }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background
+                    )
+                )
             }
         },
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         modifier = Modifier.fillMaxSize()
     ) { padding ->
         ProfileContent(
-            innerPadding = innerPadding,
+            innerPadding = padding,
             uiState = uiState,
             onEditProfile = onEditProfile,
             toggleFollow = { viewModel.toggleFollow() },
-            onRetry = { viewModel.retry() }
+            onRetry = { viewModel.retry() },
+            onToggleVote = { postId, vote -> viewModel.toggleVote(postId, vote) },
+            onPostClick = onNavigateToPostDetail,
+            onEditPost = onEditPost,
+            onDeletePost = { post -> viewModel.deletePost(post.id, post.photos) },
+            onReportExpired = { post -> 
+                if (post.authorId == uiState.profile?.id) {
+                    viewModel.markAsExpired(post.id)
+                } else {
+                    viewModel.reportAsExpired(post.id, post.title, post.authorId)
+                }
+            }
         )
     }
 }
@@ -98,9 +138,15 @@ fun ProfileContent(
     uiState: ProfileUiState,
     onEditProfile: () -> Unit,
     toggleFollow: () -> Unit,
-    onRetry: () -> Unit
+    onRetry: () -> Unit,
+    onToggleVote: (String, Int) -> Unit = { _, _ -> },
+    onPostClick: (String) -> Unit = {},
+    onEditPost: (String) -> Unit = {},
+    onDeletePost: (com.farbalapps.rinde.domain.model.CommunityPost) -> Unit = {},
+    onReportExpired: (com.farbalapps.rinde.domain.model.CommunityPost) -> Unit = {}
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
+    val context = androidx.compose.ui.platform.LocalContext.current
     
     Surface(
         modifier = Modifier.fillMaxSize().padding(innerPadding),
@@ -135,7 +181,19 @@ fun ProfileContent(
                     ProfileHeader(
                         uiState = uiState,
                         onEditProfile = onEditProfile,
-                        toggleFollow = toggleFollow
+                        toggleFollow = toggleFollow,
+                        onShareProfile = {
+                            profile?.let { p ->
+                                val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(
+                                        android.content.Intent.EXTRA_TEXT,
+                                        "¡Mira el perfil de ${p.name} en Rinde! Mi usuario: @${p.name}"
+                                    )
+                                }
+                                context.startActivity(android.content.Intent.createChooser(shareIntent, "Compartir perfil"))
+                            }
+                        }
                     )
                 }
             }
@@ -156,7 +214,12 @@ fun ProfileContent(
                 profile = profile,
                 emptyMyPostsMsg = emptyMyPostsMsg,
                 emptyUserPostsMsg = emptyUserPostsMsg,
-                emptySavedMsg = emptySavedMsg
+                emptySavedMsg = emptySavedMsg,
+                onToggleVote = onToggleVote,
+                onPostClick = onPostClick,
+                onEditPost = onEditPost,
+                onDeletePost = onDeletePost,
+                onReportExpired = onReportExpired
             )
 
             item { Spacer(modifier = Modifier.height(dimensionResource(id = R.dimen.spacer_huge))) }
@@ -187,13 +250,13 @@ fun ProfileTabs(
     onTabSelected: (Int) -> Unit,
     isCurrentUser: Boolean
 ) {
-    TabRow(
+    PrimaryTabRow(
         selectedTabIndex = selectedTab,
         containerColor = MaterialTheme.colorScheme.background,
         contentColor = MaterialTheme.colorScheme.primary,
-        indicator = { tabPositions ->
+        indicator = {
             TabRowDefaults.SecondaryIndicator(
-                Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
+                Modifier.tabIndicatorOffset(selectedTab),
                 color = MaterialTheme.colorScheme.primary
             )
         },
@@ -220,7 +283,12 @@ fun LazyListScope.ProfilePostsContent(
     profile: Profile?,
     emptyMyPostsMsg: String,
     emptyUserPostsMsg: String,
-    emptySavedMsg: String
+    emptySavedMsg: String,
+    onToggleVote: (String, Int) -> Unit = { _, _ -> },
+    onPostClick: (String) -> Unit = {},
+    onEditPost: (String) -> Unit = {},
+    onDeletePost: (com.farbalapps.rinde.domain.model.CommunityPost) -> Unit = {},
+    onReportExpired: (com.farbalapps.rinde.domain.model.CommunityPost) -> Unit = {}
 ) {
     if (selectedTab == 0) {
         if (uiState.posts.isEmpty()) {
@@ -232,17 +300,17 @@ fun LazyListScope.ProfilePostsContent(
             }
         } else {
             items(uiState.posts, key = { it.id }) { post ->
-                Box(modifier = Modifier.padding(horizontal = dimensionResource(id = R.dimen.padding_medium), vertical = dimensionResource(id = R.dimen.padding_small))) {
-                    PostCard(
-                        post = post,
-                        isAuthorVerified = false, // TODO: Fetch from profile if needed
-                        onLikeClick = { /* TODO */ },
-                        onSaveClick = { /* TODO */ },
-                        onCommentClick = { /* TODO */ },
-                        onVoteHot = { /* TODO */ },
-                        onVoteCold = { /* TODO */ }
-                    )
-                }
+                PostCard(
+                    post = post,
+                    isAuthorVerified = false,
+                    currentUserId = profile?.id ?: "",
+                    onSaveClick = { /* TODO */ },
+                    onPostClick = { onPostClick(post.id) },
+                    onEditPost = { onEditPost(post.id) },
+                    onDeletePost = { onDeletePost(post) },
+                    onReportExpired = { onReportExpired(post) },
+                    modifier = Modifier.padding(vertical = 1.dp)
+                )
             }
         }
     } else {
@@ -255,17 +323,17 @@ fun LazyListScope.ProfilePostsContent(
             }
         } else {
             items(uiState.savedPosts, key = { it.id }) { post ->
-                Box(modifier = Modifier.padding(horizontal = dimensionResource(id = R.dimen.padding_medium), vertical = dimensionResource(id = R.dimen.padding_small))) {
-                    PostCard(
-                        post = post,
-                        isAuthorVerified = false,
-                        onLikeClick = { /* TODO */ },
-                        onSaveClick = { /* TODO */ },
-                        onCommentClick = { /* TODO */ },
-                        onVoteHot = { /* TODO */ },
-                        onVoteCold = { /* TODO */ }
-                    )
-                }
+                PostCard(
+                    post = post,
+                    isAuthorVerified = false,
+                    currentUserId = profile?.id ?: "",
+                    onSaveClick = { /* TODO */ },
+                    onPostClick = { onPostClick(post.id) },
+                    onEditPost = { onEditPost(post.id) },
+                    onDeletePost = { onDeletePost(post) },
+                    onReportExpired = { onReportExpired(post) },
+                    modifier = Modifier.padding(vertical = 1.dp)
+                )
             }
         }
     }

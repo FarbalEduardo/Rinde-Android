@@ -63,7 +63,7 @@ class EditProfileViewModel @Inject constructor(
         _uiState.update { it.copy(name = newName) }
     }
 
-    fun onPhotoChange(newPhotoUri: String) {
+    fun onPhotoChange(newPhotoUri: String?) {
         _uiState.update { it.copy(photoUrl = newPhotoUri) }
     }
 

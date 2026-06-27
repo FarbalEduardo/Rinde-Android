@@ -443,19 +443,28 @@ fun CreatePostScreen(
 
             // ── 4. TÍTULO ─────────────────────────────────────────────────────
             item {
-                OutlinedTextField(
-                    value = uiState.title,
-                    onValueChange = viewModel::onTitleChange,
-                    label = { Text(stringResource(R.string.create_post_hint_title)) },
-                    placeholder = { Text(stringResource(R.string.create_post_placeholder_title)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = RindePrimary,
-                        focusedLabelColor = RindePrimary
-                    ),
-                    singleLine = true
-                )
+                Column {
+                    OutlinedTextField(
+                        value = uiState.title,
+                        onValueChange = viewModel::onTitleChange,
+                        label = { Text(stringResource(R.string.create_post_hint_title)) },
+                        placeholder = { Text(stringResource(R.string.create_post_placeholder_title)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = MaterialTheme.shapes.medium,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = RindePrimary,
+                            focusedLabelColor = RindePrimary
+                        ),
+                        singleLine = true
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = "El título debe iniciar con mayúscula y tener al menos 5 caracteres (ej: \"Oferta de audífonos\").",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 4.dp)
+                    )
+                }
             }
 
             // ── 5. DESCRIPCIÓN ────────────────────────────────────────────────
@@ -474,6 +483,118 @@ fun CreatePostScreen(
                         focusedLabelColor = RindePrimary
                     )
                 )
+            }
+
+            // ── 5.1 PRECIO Y DETALLES ──────────────────────────────────────────
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        "Precio y Detalles",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(
+                            value = uiState.normalPriceInput,
+                            onValueChange = viewModel::onNormalPriceChange,
+                            label = { Text("Precio Normal") },
+                            modifier = Modifier.weight(1f),
+                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal),
+                            singleLine = true,
+                            shape = MaterialTheme.shapes.medium,
+                            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = RindePrimary, focusedLabelColor = RindePrimary)
+                        )
+                        OutlinedTextField(
+                            value = uiState.discountPriceInput,
+                            onValueChange = viewModel::onDiscountPriceChange,
+                            label = { Text("Precio c/ Descuento") },
+                            modifier = Modifier.weight(1f),
+                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal),
+                            singleLine = true,
+                            shape = MaterialTheme.shapes.medium,
+                            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = RindePrimary, focusedLabelColor = RindePrimary)
+                        )
+                    }
+
+                    // Porcentaje calculado
+                    val nPrice = uiState.normalPriceInput.toDoubleOrNull()
+                    val dPrice = uiState.discountPriceInput.toDoubleOrNull()
+                    if (nPrice != null && dPrice != null && nPrice > 0 && nPrice > dPrice) {
+                        val pct = (((nPrice - dPrice) / nPrice) * 100).toInt()
+                        Text(
+                            text = "Descuento calculado: $pct%",
+                            color = RindePrimary,
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                    }
+
+                    OutlinedTextField(
+                        value = uiState.currency,
+                        onValueChange = viewModel::onCurrencyChange,
+                        label = { Text("Moneda") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        shape = MaterialTheme.shapes.medium,
+                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = RindePrimary, focusedLabelColor = RindePrimary)
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("Producto Disponible")
+                        Switch(
+                            checked = uiState.isAvailable,
+                            onCheckedChange = viewModel::onIsAvailableChange,
+                            colors = SwitchDefaults.colors(checkedThumbColor = RindePrimary, checkedTrackColor = RindePrimary.copy(alpha=0.5f))
+                        )
+                    }
+
+                    Text("Condición del Producto", style = MaterialTheme.typography.labelLarge)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf("Nuevo", "Usado", "Reacondicionado").forEach { cond ->
+                            FilterChip(
+                                selected = uiState.condition == cond,
+                                onClick = { viewModel.onConditionChange(cond) },
+                                label = { Text(cond) },
+                                shape = RoundedCornerShape(50),
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = RindePrimary.copy(alpha = 0.1f),
+                                    selectedLabelColor = RindePrimary
+                                )
+                            )
+                        }
+                    }
+
+                    if (uiState.offerType == com.farbalapps.rinde.domain.model.OfferType.ONLINE) {
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("¿Requiere Código de Cupón?")
+                            Switch(
+                                checked = uiState.hasCoupon,
+                                onCheckedChange = viewModel::onHasCouponChange,
+                                colors = SwitchDefaults.colors(checkedThumbColor = RindePrimary, checkedTrackColor = RindePrimary.copy(alpha=0.5f))
+                            )
+                        }
+                        if (uiState.hasCoupon) {
+                            OutlinedTextField(
+                                value = uiState.couponCode,
+                                onValueChange = viewModel::onCouponCodeChange,
+                                label = { Text("Código de Cupón") },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                shape = MaterialTheme.shapes.medium,
+                                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = RindePrimary, focusedLabelColor = RindePrimary)
+                            )
+                        }
+                    }
+                }
             }
 
             // ── 6. CATEGORÍA (sin valor por defecto, el usuario debe elegir) ──

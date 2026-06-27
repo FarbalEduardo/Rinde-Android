@@ -43,6 +43,19 @@ data class CommunityPost(
     val productLink: String?,
     val storeName: String?,
     val isRecommended: Boolean,
-    val expiresAt: Date?
+    val expiresAt: Date?,
+    val normalPrice: Double?,
+    val discountPrice: Double?,
+    val currency: String,
+    val couponCode: String?,
+    val discountPercentage: Int?,
+    val isAvailable: Boolean,
+    val condition: String,
+    // Estado de interacción del usuario actual (no se persiste en Firestore,
+    // se enriquece en el repositorio al cargar el feed)
+    val isLikedByMe: Boolean = false,
+    val myVoteValue: Int = 0,       // -1 = falso, 0 = sin voto, 1 = verdadero
+    val isSavedByMe: Boolean = false,
+    val authorTrustScore: Float = 0f,
+    val authorTrustLevel: String = "NEW"
 )
-

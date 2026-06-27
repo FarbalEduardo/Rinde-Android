@@ -20,9 +20,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavDestination
+import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 import com.farbalapps.rinde.R
 import com.farbalapps.rinde.ui.navigation.HomeNavHost
 import com.farbalapps.rinde.ui.navigation.HomeRoute
@@ -40,7 +43,7 @@ fun HomeScreen(
     var showAddProductSheet by remember { mutableStateOf(false) }
     var showExitDialog by remember { mutableStateOf(false) }
     val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = navBackStackEntry?.destination?.route
+    val destination = navBackStackEntry?.destination
     val context = LocalContext.current
     val activity = context as? android.app.Activity
     
@@ -54,7 +57,7 @@ fun HomeScreen(
     }
 
     // Intercept back button to show confirmation dialog
-    androidx.activity.compose.BackHandler(enabled = currentRoute == HomeRoute.Community.route) {
+    androidx.activity.compose.BackHandler(enabled = destination?.hasRoute<HomeRoute.Community>() == true) {
         showExitDialog = true
     }
 
@@ -65,16 +68,16 @@ fun HomeScreen(
         )
     }
 
-    val appBarTitle = when (currentRoute) {
-        HomeRoute.List.route -> stringResource(id = R.string.app_name)
-        HomeRoute.Community.route -> stringResource(id = R.string.home_tab_community)
-        HomeRoute.Goals.route -> stringResource(id = R.string.home_tab_goals)
-        HomeRoute.Assistant.route -> stringResource(id = R.string.home_tab_chef_ai)
-        HomeRoute.Profile.route -> stringResource(id = R.string.home_tab_profile)
+    val appBarTitle = when {
+        destination?.hasRoute<HomeRoute.List>() == true -> stringResource(id = R.string.app_name)
+        destination?.hasRoute<HomeRoute.Community>() == true -> stringResource(id = R.string.home_tab_community)
+        destination?.hasRoute<HomeRoute.Goals>() == true -> stringResource(id = R.string.home_tab_goals)
+        destination?.hasRoute<HomeRoute.Assistant>() == true -> stringResource(id = R.string.home_tab_chef_ai)
+        destination?.hasRoute<HomeRoute.Profile>() == true -> stringResource(id = R.string.home_tab_profile)
         else -> stringResource(id = R.string.app_name)
     }
 
-    var isFabVisible by remember { mutableStateOf(true) }
+      var isFabVisible by remember { mutableStateOf(true) }
     val nestedScrollConnection = remember {
         object : NestedScrollConnection {
             override fun onPostScroll(
@@ -90,28 +93,29 @@ fun HomeScreen(
     }
 
     // Reset FAB visibility when switching tabs
-    LaunchedEffect(currentRoute) {
+    LaunchedEffect(destination) {
         isFabVisible = true
     }
 
-    val isTopLevelRoute = currentRoute in listOf(
-        HomeRoute.List.route,
-        HomeRoute.Community.route,
-        HomeRoute.Goals.route,
-        HomeRoute.Assistant.route,
-        HomeRoute.Profile.route
-    )
+    val isTopLevelRoute = destination?.let { dest ->
+        dest.hasRoute<HomeRoute.List>() || 
+        dest.hasRoute<HomeRoute.Community>() || 
+        dest.hasRoute<HomeRoute.Goals>() || 
+        dest.hasRoute<HomeRoute.Assistant>() || 
+        dest.hasRoute<HomeRoute.Profile>()
+    } ?: false
 
     Scaffold(
         modifier = Modifier.nestedScroll(nestedScrollConnection),
         topBar = {
-            if (currentRoute == HomeRoute.List.route || currentRoute == HomeRoute.Profile.route) {
+            val isProfile = destination?.hasRoute<HomeRoute.Profile>() == true
+            if (isProfile) {
                 HomeScreenTopBar(
                     title = appBarTitle,
                     showSearch = false,
                     onSearchClick = {},
-                    showSettings = currentRoute == HomeRoute.Profile.route,
-                    onSettingsClick = { navController.navigate(HomeRoute.Settings.route) }
+                    showSettings = isProfile,
+                    onSettingsClick = { navController.navigate(HomeRoute.Settings) }
                 )
             }
         },
@@ -123,10 +127,10 @@ fun HomeScreen(
         floatingActionButton = {
             HomeScreenFab(
                 isVisible = isFabVisible,
-                currentRoute = currentRoute,
+                destination = destination,
                 onAddProduct = { showAddProductSheet = true },
                 onAddGoal = { /* TODO: Crear meta */ },
-                onAddCommunityPost = { navController.navigate(HomeRoute.CreatePost.route) }
+                onAddCommunityPost = { navController.navigate(HomeRoute.CreatePost) }
             )
         }
     ) { innerPadding ->
@@ -245,7 +249,7 @@ fun ExitConfirmationDialog(
 @Composable
 fun HomeScreenFab(
     isVisible: Boolean,
-    currentRoute: String?,
+    destination: NavDestination?,
     onAddProduct: () -> Unit,
     onAddGoal: () -> Unit,
     onAddCommunityPost: () -> Unit
@@ -255,30 +259,30 @@ fun HomeScreenFab(
         enter = fadeIn() + scaleIn(),
         exit = fadeOut() + scaleOut()
     ) {
-        when (currentRoute) {
-            HomeRoute.List.route -> {
+        when {
+            destination?.hasRoute<HomeRoute.List>() == true -> {
                 FloatingActionButton(
                     onClick = onAddProduct,
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
+                    containerColor = com.farbalapps.rinde.ui.theme.RindePrimary,
+                    contentColor = androidx.compose.ui.graphics.Color.White
                 ) {
                     Icon(Icons.Default.Add, stringResource(id = R.string.add_entry))
                 }
             }
-            HomeRoute.Community.route -> {
+            destination?.hasRoute<HomeRoute.Community>() == true || destination?.hasRoute<HomeRoute.Profile>() == true -> {
                 FloatingActionButton(
                     onClick = onAddCommunityPost,
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
+                    containerColor = com.farbalapps.rinde.ui.theme.RindePrimary,
+                    contentColor = androidx.compose.ui.graphics.Color.White
                 ) {
                     Icon(Icons.Default.Add, stringResource(id = R.string.community_fab_desc))
                 }
             }
-            HomeRoute.Goals.route -> {
+            destination?.hasRoute<HomeRoute.Goals>() == true -> {
                 FloatingActionButton(
                     onClick = onAddGoal,
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
+                    containerColor = com.farbalapps.rinde.ui.theme.RindePrimary,
+                    contentColor = androidx.compose.ui.graphics.Color.White
                 ) {
                     Icon(Icons.Default.Add, stringResource(R.string.home_fab_add_goal))
                 }
