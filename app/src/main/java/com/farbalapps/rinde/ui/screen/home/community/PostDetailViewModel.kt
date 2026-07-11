@@ -16,6 +16,7 @@ import com.farbalapps.rinde.domain.usecase.DeleteCommentUseCase
 import com.farbalapps.rinde.domain.usecase.EditCommentUseCase
 import com.farbalapps.rinde.domain.usecase.DeleteReplyUseCase
 import com.farbalapps.rinde.domain.usecase.EditReplyUseCase
+import com.farbalapps.rinde.domain.usecase.ReportCommentUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -57,7 +58,8 @@ class PostDetailViewModel @Inject constructor(
     private val deleteCommentUseCase: DeleteCommentUseCase,
     private val editCommentUseCase: EditCommentUseCase,
     private val deleteReplyUseCase: DeleteReplyUseCase,
-    private val editReplyUseCase: EditReplyUseCase
+    private val editReplyUseCase: EditReplyUseCase,
+    private val reportCommentUseCase: ReportCommentUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PostDetailUiState())
@@ -304,6 +306,38 @@ class PostDetailViewModel @Inject constructor(
     fun toggleReplyLike(commentId: String, replyId: String) {
         viewModelScope.launch {
             toggleLikeUseCase.toggleReplyLike(commentId, replyId)
+        }
+    }
+
+    fun reportComment(comment: Comment) {
+        val postId = currentPostId ?: return
+        viewModelScope.launch {
+            reportCommentUseCase(
+                postId = postId,
+                commentId = comment.id,
+                commentText = comment.text,
+                authorId = comment.authorId
+            ).onSuccess {
+                _uiState.update { it.copy(snackbarMessage = "Comentario reportado") }
+            }.onFailure { e ->
+                _uiState.update { it.copy(error = e.message) }
+            }
+        }
+    }
+
+    fun reportReply(reply: Reply) {
+        val postId = currentPostId ?: return
+        viewModelScope.launch {
+            reportCommentUseCase(
+                postId = postId,
+                commentId = reply.id,
+                commentText = reply.text,
+                authorId = reply.authorId
+            ).onSuccess {
+                _uiState.update { it.copy(snackbarMessage = "Respuesta reportada") }
+            }.onFailure { e ->
+                _uiState.update { it.copy(error = e.message) }
+            }
         }
     }
 

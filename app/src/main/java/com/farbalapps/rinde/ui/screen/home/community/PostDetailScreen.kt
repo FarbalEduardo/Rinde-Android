@@ -38,6 +38,8 @@ import com.farbalapps.rinde.domain.model.CommunityPost
 import com.farbalapps.rinde.domain.model.OfferType
 import com.farbalapps.rinde.domain.model.Reply
 import com.farbalapps.rinde.domain.model.VerificationStatus
+import com.farbalapps.rinde.ui.screen.home.community.components.SharedCommentInput
+import com.farbalapps.rinde.ui.screen.home.community.components.SharedCommentThread
 import com.farbalapps.rinde.ui.theme.RindePrimary
 import com.farbalapps.rinde.ui.theme.VoteFalseContainerDark
 import com.farbalapps.rinde.ui.theme.VoteTrueContainerDark
@@ -116,12 +118,7 @@ fun PostDetailScreen(
                 )
                 PostDetailContent(
                     post = finalPost,
-                    comments = uiState.comments,
-                    replies = uiState.replies,
-                    isLoadingComments = uiState.isLoadingComments,
-                    isSendingComment = uiState.isSendingComment,
-                    commentText = uiState.commentText,
-                    currentUserId = uiState.currentUserId,
+                    uiState = uiState,
                     onBack = onBack,
                     onAuthorClick = { onAuthorClick(finalPost.authorId) },
                     onSaveClick = { viewModel.toggleSave() },
@@ -150,6 +147,19 @@ fun PostDetailScreen(
                     onLikeComment = { viewModel.toggleCommentLike(it) },
                     onLoadReplies = { viewModel.loadReplies(it) },
                     onLikeReply = { commentId, replyId -> viewModel.toggleReplyLike(commentId, replyId) },
+                    onDeleteComment = { commentId, authorId -> viewModel.deleteComment(commentId, authorId) },
+                    onEditCommentStart = { viewModel.startEditComment(it) },
+                    onEditTextChange = { viewModel.onEditTextChange(it) },
+                    onEditCommentSave = { viewModel.saveEditedContent() },
+                    onEditCommentCancel = { viewModel.cancelEdit() },
+                    onDeleteReply = { commentId, replyId, authorId -> viewModel.deleteReply(commentId, replyId, authorId) },
+                    onEditReplyStart = { viewModel.startEditReply(it) },
+                    onReportComment = { viewModel.reportComment(it) },
+                    onReportReply = { viewModel.reportReply(it) },
+                    onReplyTextChange = { viewModel.onReplyTextChange(it) },
+                    onReplySubmit = { viewModel.submitReply() },
+                    onCancelReply = { viewModel.setReplyingTo(null) },
+                    onReplyClick = { viewModel.setReplyingTo(it) },
                     onVoteTrue = { viewModel.toggleVote(1) },
                     onVoteFalse = { viewModel.toggleVote(-1) },
                     paddingValues = paddingValues
@@ -172,12 +182,7 @@ fun PostDetailScreen(
 @Composable
 private fun PostDetailContent(
     post: CommunityPost,
-    comments: List<Comment>,
-    replies: Map<String, List<Reply>>,
-    isLoadingComments: Boolean,
-    isSendingComment: Boolean,
-    commentText: String,
-    currentUserId: String,
+    uiState: PostDetailUiState,
     onBack: () -> Unit,
     onAuthorClick: () -> Unit,
     onSaveClick: () -> Unit,
@@ -190,6 +195,19 @@ private fun PostDetailContent(
     onLikeComment: (String) -> Unit,
     onLoadReplies: (String) -> Unit,
     onLikeReply: (String, String) -> Unit,
+    onDeleteComment: (String, String) -> Unit,
+    onEditCommentStart: (Comment) -> Unit,
+    onEditTextChange: (String) -> Unit,
+    onEditCommentSave: () -> Unit,
+    onEditCommentCancel: () -> Unit,
+    onDeleteReply: (String, String, String) -> Unit,
+    onEditReplyStart: (Reply) -> Unit,
+    onReportComment: (Comment) -> Unit,
+    onReportReply: (Reply) -> Unit,
+    onReplyTextChange: (String) -> Unit,
+    onReplySubmit: () -> Unit,
+    onCancelReply: () -> Unit,
+    onReplyClick: (Comment) -> Unit,
     onVoteTrue: () -> Unit,
     onVoteFalse: () -> Unit,
     paddingValues: PaddingValues
@@ -565,21 +583,23 @@ private fun PostDetailContent(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         
-                        DetailCommentInputArea(
-                            text = commentText,
-                            isSending = isSendingComment,
-                            onTextChange = onCommentTextChange,
-                            onSubmit = onCommentSubmit
+                        SharedCommentInput(
+                            text = if (uiState.replyingToComment != null) uiState.replyText else uiState.commentText,
+                            replyingTo = uiState.replyingToComment,
+                            isSending = uiState.isSendingComment,
+                            onTextChange = { if (uiState.replyingToComment != null) onReplyTextChange(it) else onCommentTextChange(it) },
+                            onSubmit = { if (uiState.replyingToComment != null) onReplySubmit() else onCommentSubmit() },
+                            onCancelReply = onCancelReply
                         )
                         
                         Spacer(modifier = Modifier.height(24.dp))
 
-                        if (isLoadingComments && comments.isEmpty()) {
+                        if (uiState.isLoadingComments && uiState.comments.isEmpty()) {
                             // Skeleton en lugar de CircularProgressIndicator
                             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                                 repeat(3) { CommentSkeleton() }
                             }
-                        } else if (comments.isEmpty()) {
+                        } else if (uiState.comments.isEmpty()) {
                             Box(modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp), contentAlignment = Alignment.Center) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     Icon(Icons.Default.ChatBubbleOutline, null, modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.surfaceVariant)
@@ -593,13 +613,26 @@ private fun PostDetailContent(
                                 }
                             }
                         } else {
-                            comments.forEach { comment ->
-                                DetailCommentItem(
+                            uiState.comments.forEach { comment ->
+                                SharedCommentThread(
                                     comment = comment,
-                                    replies = replies[comment.id] ?: emptyList(),
+                                    replies = uiState.replies[comment.id] ?: emptyList(),
+                                    currentUserId = uiState.currentUserId,
+                                    editingCommentId = uiState.editingCommentId,
+                                    editingText = uiState.editingText,
                                     onLikeClick = { onLikeComment(comment.id) },
+                                    onReplyClick = { onReplyClick(comment) },
+                                    onEditStart = onEditCommentStart,
+                                    onEditTextChange = onEditTextChange,
+                                    onEditSave = onEditCommentSave,
+                                    onEditCancel = onEditCommentCancel,
+                                    onDelete = { onDeleteComment(comment.id, comment.authorId) },
                                     onLoadReplies = { onLoadReplies(comment.id) },
                                     onLikeReply = { replyId -> onLikeReply(comment.id, replyId) },
+                                    onDeleteReply = onDeleteReply,
+                                    onEditReply = onEditReplyStart,
+                                    onReportComment = { onReportComment(comment) },
+                                    onReportReply = onReportReply,
                                     modifier = Modifier.padding(vertical = 12.dp)
                                 )
                                 HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
@@ -675,7 +708,7 @@ private fun PostDetailContent(
                     val isExpired = post.verificationStatus == VerificationStatus.EXPIRED
 
                     if (showReportConfirm) {
-                        val isAuthor = post.authorId == currentUserId
+                        val isAuthor = post.authorId == uiState.currentUserId
                         val titleText = if (isAuthor) {
                             if (isExpired) "Marcar como disponible" else "Marcar como expirada"
                         } else {
@@ -717,7 +750,7 @@ private fun PostDetailContent(
                             )
                         }
                         DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
-                            if (post.authorId == currentUserId && currentUserId.isNotEmpty()) {
+                            if (post.authorId == uiState.currentUserId && uiState.currentUserId.isNotEmpty()) {
                                 DropdownMenuItem(
                                     text = { Text("Editar") },
                                     leadingIcon = { Icon(Icons.Default.Edit, null) },
@@ -833,198 +866,7 @@ fun PostImageCarousel(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// COMMENT ITEM
-// ─────────────────────────────────────────────────────────────────────────────
-
-@Composable
-private fun DetailCommentItem(
-    comment: Comment,
-    replies: List<Reply>,
-    onLikeClick: () -> Unit,
-    onLoadReplies: () -> Unit,
-    onLikeReply: (String) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    var showReplies by remember { mutableStateOf(false) }
-
-    Column(modifier = modifier) {
-        Row(verticalAlignment = Alignment.Top) {
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                if (comment.authorPhotoUrl != null) {
-                    AsyncImage(
-                        model = comment.authorPhotoUrl,
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize().clip(CircleShape),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Icon(Icons.Default.Person, null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = comment.authorName,
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = comment.text,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
-                    lineHeight = 20.sp
-                )
-                if (comment.imageUrl != null) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    AsyncImage(
-                        model = comment.imageUrl,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(160.dp)
-                            .clip(RoundedCornerShape(8.dp)),
-                        contentScale = ContentScale.Crop
-                    )
-                }
-                
-                Row(
-                    modifier = Modifier.padding(top = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Text(
-                        text = formatCommentTime(comment.timestamp),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Row(
-                        modifier = Modifier.clickable { onLikeClick() },
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        if (comment.likesCount > 0) {
-                            Icon(Icons.Default.ThumbUp, null, modifier = Modifier.size(12.dp), tint = RindePrimary)
-                            Text("${comment.likesCount}", style = MaterialTheme.typography.labelSmall, color = RindePrimary, fontWeight = FontWeight.Bold)
-                        } else {
-                            Text("Me gusta", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
-                }
-
-                if (comment.repliesCount > 0 && !showReplies) {
-                    Text(
-                        text = "Ver ${comment.repliesCount} respuesta${if (comment.repliesCount > 1) "s" else ""}",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = RindePrimary,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier
-                            .padding(top = 12.dp)
-                            .clickable {
-                                showReplies = true
-                                onLoadReplies()
-                            }
-                    )
-                }
-
-                if (showReplies && replies.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(12.dp))
-                    replies.forEach { reply ->
-                        Row(
-                            modifier = Modifier.padding(top = 8.dp),
-                            verticalAlignment = Alignment.Top
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(24.dp)
-                                    .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                if (reply.authorPhotoUrl != null) {
-                                    AsyncImage(
-                                        model = reply.authorPhotoUrl,
-                                        contentDescription = null,
-                                        modifier = Modifier.fillMaxSize().clip(CircleShape),
-                                        contentScale = ContentScale.Crop
-                                    )
-                                } else {
-                                    Icon(Icons.Default.Person, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
-                            }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(reply.authorName, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                                Text(reply.text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f))
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// COMMENT INPUT AREA
-// ─────────────────────────────────────────────────────────────────────────────
-
-@Composable
-private fun DetailCommentInputArea(
-    text: String,
-    isSending: Boolean,
-    onTextChange: (String) -> Unit,
-    onSubmit: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.Bottom
-    ) {
-        OutlinedTextField(
-            value = text,
-            onValueChange = onTextChange,
-            placeholder = { Text("Escribe un comentario...") },
-            modifier = Modifier.weight(1f),
-            shape = RoundedCornerShape(20.dp),
-            maxLines = 4,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = RindePrimary,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
-            )
-        )
-        Spacer(modifier = Modifier.width(12.dp))
-        
-        Surface(
-            onClick = { if (!isSending && text.isNotBlank()) onSubmit() },
-            shape = CircleShape,
-            color = if (text.isNotBlank() && !isSending) RindePrimary else MaterialTheme.colorScheme.surfaceVariant,
-            modifier = Modifier.size(48.dp)
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                if (isSending) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp), 
-                        color = MaterialTheme.colorScheme.onSurfaceVariant, 
-                        strokeWidth = 2.dp
-                    )
-                } else {
-                    Icon(
-                        Icons.AutoMirrored.Filled.Send,
-                        contentDescription = "Enviar",
-                        tint = if (text.isNotBlank()) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp).offset(x = 2.dp)
-                    )
-                }
-            }
-        }
-    }
-}
+// Removed duplicated DetailCommentItem and DetailCommentInputArea composables.
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SKELETON LOADERS

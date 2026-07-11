@@ -147,6 +147,8 @@ class CommentRepositoryImpl @Inject constructor(
     }
 
     override suspend fun deleteComment(postId: String, commentId: String): Result<Unit> = runCatching {
+        // Delete all replies from RTDB
+        rtdb.getReference("replies").child(commentId).removeValue().await()
         // Delete comment from RTDB
         rtdb.getReference("comments").child(postId).child(commentId).removeValue().await()
         // Decrement comment count in Firestore
@@ -178,6 +180,12 @@ class CommentRepositoryImpl @Inject constructor(
             "editedAt" to com.google.firebase.database.ServerValue.TIMESTAMP
         )
         rtdb.getReference("replies").child(commentId).child(replyId).updateChildren(updates).await()
+    }
+
+    override suspend fun reportComment(reportedComment: com.farbalapps.rinde.domain.model.ReportedComment): Result<Unit> = runCatching {
+        val docRef = firestore.collection("reported_comments").document()
+        val finalReport = reportedComment.copy(reportId = docRef.id)
+        docRef.set(finalReport).await()
     }
 
 }

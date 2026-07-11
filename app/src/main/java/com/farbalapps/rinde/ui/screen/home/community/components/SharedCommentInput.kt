@@ -61,9 +61,6 @@ fun SharedCommentInput(
                     .imePadding(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = { /* Image picker logic */ }) {
-                    Icon(Icons.Default.PhotoCamera, null, tint = RindePrimary)
-                }
                 OutlinedTextField(
                     value = text,
                     onValueChange = onTextChange,
