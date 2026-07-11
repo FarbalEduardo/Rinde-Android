@@ -29,6 +29,8 @@ import coil.compose.AsyncImage
 import com.farbalapps.rinde.R
 import com.farbalapps.rinde.domain.model.Profile
 import com.farbalapps.rinde.domain.model.User
+import com.farbalapps.rinde.domain.model.CommunityPost
+import com.farbalapps.rinde.domain.model.VerificationStatus
 import com.farbalapps.rinde.ui.screen.home.community.components.PostCard
 import com.farbalapps.rinde.ui.screen.profile.components.ProfileHeader
 import com.farbalapps.rinde.ui.theme.RindeTheme
@@ -49,6 +51,9 @@ fun ProfileScreen(
     viewModel: ProfileViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val postStatusOverlay by viewModel.postStatusOverlay.collectAsStateWithLifecycle()
+    val savedStatusOverlay by viewModel.savedStatusOverlay.collectAsStateWithLifecycle()
+    val voteStatusOverlay by viewModel.voteStatusOverlay.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(targetUserId) {
@@ -79,6 +84,54 @@ fun ProfileScreen(
         }
     }
 
+    ProfileScreenContent(
+        uiState = uiState,
+        postStatusOverlay = postStatusOverlay,
+        savedStatusOverlay = savedStatusOverlay,
+        voteStatusOverlay = voteStatusOverlay,
+        snackbarHostState = snackbarHostState,
+        onBack = { onBack?.invoke() },
+        onEditProfile = onEditProfile,
+        onNavigateToSettings = onNavigateToSettings,
+        onNavigateToSaved = onNavigateToSaved,
+        onNavigateToBlocked = onNavigateToBlocked,
+        onLogout = onLogout,
+        onTabSelected = { /* noop */ },
+        onVote = { postId, vote -> viewModel.toggleVote(postId, vote) },
+        onToggleSave = { viewModel.toggleSave(it) },
+        onPostClick = onNavigateToPostDetail,
+        onEditPost = onEditPost,
+        onDeletePost = { post -> viewModel.deletePost(post.id, post.photos) },
+        onMarkExpired = { post -> viewModel.markAsExpired(post.id) },
+        onReportExpired = { post -> viewModel.reportAsExpired(post.id, post.title, post.authorId) },
+        onMarkAvailable = { post -> viewModel.markAsAvailable(post.id) }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ProfileScreenContent(
+    uiState: ProfileUiState,
+    postStatusOverlay: Map<String, VerificationStatus>,
+    savedStatusOverlay: Map<String, Boolean>,
+    voteStatusOverlay: Map<String, com.farbalapps.rinde.domain.repository.VoteOverlay>,
+    snackbarHostState: SnackbarHostState,
+    onBack: () -> Unit,
+    onEditProfile: () -> Unit,
+    onNavigateToSettings: () -> Unit,
+    onNavigateToSaved: () -> Unit,
+    onNavigateToBlocked: () -> Unit,
+    onLogout: () -> Unit,
+    onTabSelected: (Int) -> Unit,
+    onVote: (String, Int) -> Unit,
+    onToggleSave: (String) -> Unit,
+    onPostClick: (String) -> Unit,
+    onEditPost: (String) -> Unit,
+    onDeletePost: (CommunityPost) -> Unit,
+    onMarkExpired: (CommunityPost) -> Unit,
+    onReportExpired: (CommunityPost) -> Unit,
+    onMarkAvailable: (CommunityPost) -> Unit
+) {
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
@@ -98,7 +151,7 @@ fun ProfileScreen(
                 TopAppBar(
                     title = { },
                     navigationIcon = {
-                        IconButton(onClick = { onBack?.invoke() }) {
+                        IconButton(onClick = onBack) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
                         }
                     },
@@ -114,20 +167,19 @@ fun ProfileScreen(
         ProfileContent(
             innerPadding = padding,
             uiState = uiState,
+            postStatusOverlay = postStatusOverlay,
+            savedStatusOverlay = savedStatusOverlay,
+            voteStatusOverlay = voteStatusOverlay,
             onEditProfile = onEditProfile,
-            toggleFollow = { viewModel.toggleFollow() },
-            onRetry = { viewModel.retry() },
-            onToggleVote = { postId, vote -> viewModel.toggleVote(postId, vote) },
-            onPostClick = onNavigateToPostDetail,
+            onRetry = { },
+            onToggleSave = onToggleSave,
+            onToggleVote = onVote,
+            onPostClick = onPostClick,
             onEditPost = onEditPost,
-            onDeletePost = { post -> viewModel.deletePost(post.id, post.photos) },
-            onReportExpired = { post -> 
-                if (post.authorId == uiState.profile?.id) {
-                    viewModel.markAsExpired(post.id)
-                } else {
-                    viewModel.reportAsExpired(post.id, post.title, post.authorId)
-                }
-            }
+            onDeletePost = onDeletePost,
+            onMarkExpired = onMarkExpired,
+            onReportExpired = onReportExpired,
+            onMarkAvailable = onMarkAvailable
         )
     }
 }
@@ -136,16 +188,20 @@ fun ProfileScreen(
 fun ProfileContent(
     innerPadding: PaddingValues,
     uiState: ProfileUiState,
+    postStatusOverlay: Map<String, com.farbalapps.rinde.domain.model.VerificationStatus> = emptyMap(),
+    savedStatusOverlay: Map<String, Boolean> = emptyMap(),
+    voteStatusOverlay: Map<String, com.farbalapps.rinde.domain.repository.VoteOverlay> = emptyMap(),
     onEditProfile: () -> Unit,
-    toggleFollow: () -> Unit,
     onRetry: () -> Unit,
+    onToggleSave: (String) -> Unit = {},
     onToggleVote: (String, Int) -> Unit = { _, _ -> },
     onPostClick: (String) -> Unit = {},
     onEditPost: (String) -> Unit = {},
     onDeletePost: (com.farbalapps.rinde.domain.model.CommunityPost) -> Unit = {},
-    onReportExpired: (com.farbalapps.rinde.domain.model.CommunityPost) -> Unit = {}
+    onMarkExpired: (com.farbalapps.rinde.domain.model.CommunityPost) -> Unit = {},
+    onReportExpired: (com.farbalapps.rinde.domain.model.CommunityPost) -> Unit = {},
+    onMarkAvailable: (com.farbalapps.rinde.domain.model.CommunityPost) -> Unit = {}
 ) {
-    var selectedTab by remember { mutableIntStateOf(0) }
     val context = androidx.compose.ui.platform.LocalContext.current
     
     Surface(
@@ -169,7 +225,6 @@ fun ProfileContent(
         // Resolve strings here in Composable context
         val emptyMyPostsMsg = stringResource(id = R.string.profile_empty_my_posts)
         val emptyUserPostsMsg = stringResource(id = R.string.profile_empty_user_posts)
-        val emptySavedMsg = stringResource(id = R.string.profile_empty_saved)
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -181,7 +236,6 @@ fun ProfileContent(
                     ProfileHeader(
                         uiState = uiState,
                         onEditProfile = onEditProfile,
-                        toggleFollow = toggleFollow,
                         onShareProfile = {
                             profile?.let { p ->
                                 val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
@@ -198,28 +252,23 @@ fun ProfileContent(
                 }
             }
 
-            // Tabs Row
-            item {
-                ProfileTabs(
-                    selectedTab = selectedTab,
-                    onTabSelected = { selectedTab = it },
-                    isCurrentUser = uiState.isCurrentUser
-                )
-            }
-
             // Posts Content
             ProfilePostsContent(
-                selectedTab = selectedTab,
                 uiState = uiState,
+                postStatusOverlay = postStatusOverlay,
+                savedStatusOverlay = savedStatusOverlay,
+                voteStatusOverlay = voteStatusOverlay,
                 profile = profile,
                 emptyMyPostsMsg = emptyMyPostsMsg,
                 emptyUserPostsMsg = emptyUserPostsMsg,
-                emptySavedMsg = emptySavedMsg,
+                onToggleSave = onToggleSave,
                 onToggleVote = onToggleVote,
                 onPostClick = onPostClick,
                 onEditPost = onEditPost,
                 onDeletePost = onDeletePost,
-                onReportExpired = onReportExpired
+                onMarkExpired = onMarkExpired,
+                onReportExpired = onReportExpired,
+                onMarkAvailable = onMarkAvailable
             )
 
             item { Spacer(modifier = Modifier.height(dimensionResource(id = R.dimen.spacer_huge))) }
@@ -244,97 +293,67 @@ fun ProfileErrorState(error: String, onRetry: () -> Unit) {
     }
 }
 
-@Composable
-fun ProfileTabs(
-    selectedTab: Int,
-    onTabSelected: (Int) -> Unit,
-    isCurrentUser: Boolean
-) {
-    PrimaryTabRow(
-        selectedTabIndex = selectedTab,
-        containerColor = MaterialTheme.colorScheme.background,
-        contentColor = MaterialTheme.colorScheme.primary,
-        indicator = {
-            TabRowDefaults.SecondaryIndicator(
-                Modifier.tabIndicatorOffset(selectedTab),
-                color = MaterialTheme.colorScheme.primary
-            )
-        },
-        divider = { HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)) }
-    ) {
-        Tab(
-            selected = selectedTab == 0,
-            onClick = { onTabSelected(0) },
-            icon = { Icon(Icons.Default.GridOn, null, modifier = Modifier.size(20.dp)) }
-        )
-        if (isCurrentUser) {
-            Tab(
-                selected = selectedTab == 1,
-                onClick = { onTabSelected(1) },
-                icon = { Icon(Icons.Default.BookmarkBorder, null, modifier = Modifier.size(20.dp)) }
-            )
-        }
-    }
-}
-
 fun LazyListScope.ProfilePostsContent(
-    selectedTab: Int,
     uiState: ProfileUiState,
+    postStatusOverlay: Map<String, com.farbalapps.rinde.domain.model.VerificationStatus> = emptyMap(),
+    savedStatusOverlay: Map<String, Boolean> = emptyMap(),
+    voteStatusOverlay: Map<String, com.farbalapps.rinde.domain.repository.VoteOverlay> = emptyMap(),
     profile: Profile?,
     emptyMyPostsMsg: String,
     emptyUserPostsMsg: String,
-    emptySavedMsg: String,
+    onToggleSave: (String) -> Unit = {},
     onToggleVote: (String, Int) -> Unit = { _, _ -> },
     onPostClick: (String) -> Unit = {},
     onEditPost: (String) -> Unit = {},
     onDeletePost: (com.farbalapps.rinde.domain.model.CommunityPost) -> Unit = {},
-    onReportExpired: (com.farbalapps.rinde.domain.model.CommunityPost) -> Unit = {}
+    onMarkExpired: (com.farbalapps.rinde.domain.model.CommunityPost) -> Unit = {},
+    onReportExpired: (com.farbalapps.rinde.domain.model.CommunityPost) -> Unit = {},
+    onMarkAvailable: (com.farbalapps.rinde.domain.model.CommunityPost) -> Unit = {}
 ) {
-    if (selectedTab == 0) {
-        if (uiState.posts.isEmpty()) {
-            item {
-                EmptyProfileState(
-                    message = if (uiState.isCurrentUser) emptyMyPostsMsg else emptyUserPostsMsg,
-                    icon = Icons.Default.PostAdd
-                )
-            }
-        } else {
-            items(uiState.posts, key = { it.id }) { post ->
-                PostCard(
-                    post = post,
-                    isAuthorVerified = false,
-                    currentUserId = profile?.id ?: "",
-                    onSaveClick = { /* TODO */ },
-                    onPostClick = { onPostClick(post.id) },
-                    onEditPost = { onEditPost(post.id) },
-                    onDeletePost = { onDeletePost(post) },
-                    onReportExpired = { onReportExpired(post) },
-                    modifier = Modifier.padding(vertical = 1.dp)
-                )
-            }
+    if (uiState.posts.isEmpty()) {
+        item {
+            EmptyProfileState(
+                message = if (uiState.isCurrentUser) emptyMyPostsMsg else emptyUserPostsMsg,
+                icon = Icons.Default.PostAdd
+            )
         }
     } else {
-        if (uiState.savedPosts.isEmpty()) {
-            item {
-                EmptyProfileState(
-                    message = emptySavedMsg,
-                    icon = Icons.Default.BookmarkBorder
-                )
-            }
-        } else {
-            items(uiState.savedPosts, key = { it.id }) { post ->
-                PostCard(
-                    post = post,
-                    isAuthorVerified = false,
-                    currentUserId = profile?.id ?: "",
-                    onSaveClick = { /* TODO */ },
-                    onPostClick = { onPostClick(post.id) },
-                    onEditPost = { onEditPost(post.id) },
-                    onDeletePost = { onDeletePost(post) },
-                    onReportExpired = { onReportExpired(post) },
-                    modifier = Modifier.padding(vertical = 1.dp)
-                )
-            }
+        items(uiState.posts, key = { it.id }) { post ->
+            val context = androidx.compose.ui.platform.LocalContext.current
+            val overriddenStatus = postStatusOverlay[post.id] ?: post.verificationStatus
+            val overriddenSaved = savedStatusOverlay[post.id] ?: post.isSavedByMe
+            val voteOver = voteStatusOverlay[post.id]
+            val finalTruth = voteOver?.truthCount ?: post.truthCount
+            val finalFalse = voteOver?.falseCount ?: post.falseCount
+            val finalMyVote = voteOver?.myVote ?: post.myVoteValue
+            val finalScore = if (voteOver != null) (finalTruth - finalFalse) else post.votesScore
+            PostCard(
+                post = post.copy(
+                    verificationStatus = overriddenStatus,
+                    isSavedByMe = overriddenSaved,
+                    truthCount = finalTruth,
+                    falseCount = finalFalse,
+                    myVoteValue = finalMyVote,
+                    votesScore = finalScore
+                ),
+                isAuthorVerified = false,
+                currentUserId = profile?.id ?: "",
+                onSaveClick = { onToggleSave(post.id) },
+                onPostClick = { onPostClick(post.id) },
+                onEditPost = { onEditPost(post.id) },
+                onDeletePost = { onDeletePost(post) },
+                onMarkExpired = { onMarkExpired(post) },
+                onReportExpired = { onReportExpired(post) },
+                onMarkAvailable = { onMarkAvailable(post) },
+                onSharePost = {
+                    val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(android.content.Intent.EXTRA_TEXT, "¡Mira esta oferta en Rinde!\n${post.title}\nhttps://rinde.app/post/${post.id}")
+                    }
+                    context.startActivity(android.content.Intent.createChooser(shareIntent, "Compartir publicación"))
+                },
+                modifier = Modifier.padding(vertical = 1.dp)
+            )
         }
     }
 }
@@ -361,5 +380,54 @@ fun EmptyProfileState(message: String, icon: androidx.compose.ui.graphics.vector
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontWeight = FontWeight.Medium
         )
+    }
+}
+
+@Preview(name = "Light Mode", showBackground = true)
+@Preview(name = "Dark Mode", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, showBackground = true)
+@Composable
+fun ProfileScreenPreview() {
+    val dummyProfile = Profile(
+        id = "dummy_user",
+        name = "Eduardo Farbal",
+        email = "eduardo@example.com",
+        photoUrl = null,
+        followersCount = 142,
+        followingCount = 98,
+        postsCount = 12,
+        rating = 4.7f,
+        reviewsCount = 23,
+        isPrivate = false,
+        isDummy = false
+    )
+    RindeTheme {
+        Surface {
+            ProfileScreenContent(
+                uiState = ProfileUiState(
+                    profile = dummyProfile,
+                    posts = emptyList(),
+                    isCurrentUser = true
+                ),
+                postStatusOverlay = emptyMap(),
+                savedStatusOverlay = emptyMap(),
+                voteStatusOverlay = emptyMap(),
+                snackbarHostState = remember { SnackbarHostState() },
+                onBack = {},
+                onEditProfile = {},
+                onNavigateToSettings = {},
+                onNavigateToSaved = {},
+                onNavigateToBlocked = {},
+                onLogout = {},
+                onTabSelected = {},
+                onVote = { _, _ -> },
+                onToggleSave = {},
+                onPostClick = {},
+                onEditPost = {},
+                onDeletePost = {},
+                onMarkExpired = {},
+                onReportExpired = {},
+                onMarkAvailable = {}
+            )
+        }
     }
 }

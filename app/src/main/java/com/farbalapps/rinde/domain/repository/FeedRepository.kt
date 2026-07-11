@@ -1,11 +1,22 @@
 package com.farbalapps.rinde.domain.repository
 
 import com.farbalapps.rinde.domain.model.CommunityPost
+import com.farbalapps.rinde.domain.model.VerificationStatus
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
+
+data class VoteOverlay(
+    val truthCount: Int?,
+    val falseCount: Int?,
+    val myVote: Int
+)
 
 interface FeedRepository {
+    val globalPostStatus: StateFlow<Map<String, VerificationStatus>>
+    val globalSavedStatus: StateFlow<Map<String, Boolean>>
+    val globalVoteStatus: StateFlow<Map<String, VoteOverlay>>
     fun getPagedFeed(forceRefresh: Boolean = false): Flow<androidx.paging.PagingData<CommunityPost>>
-    fun getFollowingFeed(userId: String, lastPostId: String? = null): Flow<List<CommunityPost>>
+    fun getHotPagedFeed(forceRefresh: Boolean = false): Flow<androidx.paging.PagingData<CommunityPost>>
     fun getSavedPosts(userId: String): Flow<List<CommunityPost>>
     fun getNearbyFeed(lat: Double, lon: Double, radiusKm: Double): Flow<List<CommunityPost>>
     fun getSmartInterestFeed(interests: List<String>, lastPostId: String? = null): Flow<List<CommunityPost>>
@@ -30,6 +41,9 @@ interface FeedRepository {
      * NUEVO: Refresca el feed si el TTL expiró o si es un refresco forzado.
      */
     suspend fun refreshFeedIfNeeded(forceRefresh: Boolean = false): Result<Int>
+
+    fun updatePostStatusLocal(postId: String, status: VerificationStatus)
+    fun updateSavedStatusLocal(postId: String, isSaved: Boolean)
 
     suspend fun forceExpireCache()
 
@@ -62,6 +76,10 @@ interface FeedRepository {
         newPhotoUris: List<String>
     ): Result<Unit>
     suspend fun markPostAsExpired(postId: String): Result<Unit>
+    suspend fun markPostAsAvailable(postId: String): Result<Unit>
     suspend fun reportPostAsExpired(postId: String, postTitle: String, authorId: String, currentUserId: String, currentUserName: String): Result<Unit>
     fun getUnreadNotificationsCount(userId: String): Flow<Int>
+
+    /** Limpia los MutableStateFlow globales del feed en logout. */
+    fun clearSessionState()
 }

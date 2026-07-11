@@ -17,12 +17,8 @@ interface PostDao {
     @Query("SELECT * FROM community_posts WHERE isActive = 1 AND category IN (:categories) ORDER BY votesScore DESC, timestamp DESC")
     fun getPostsByCategories(categories: List<String>): Flow<List<CommunityPostEntity>>
 
-    /** Usado por getFollowingFeed: devuelve posts cacheados de una lista de autores seguidos. */
-    @Query("SELECT * FROM community_posts WHERE isActive = 1 AND authorId IN (:authorIds) ORDER BY timestamp DESC LIMIT :limit")
-    fun getPostsByAuthorIds(authorIds: List<String>, limit: Int = 50): Flow<List<CommunityPostEntity>>
-
-    @Query("SELECT * FROM community_posts WHERE isActive = 1 AND authorId IN (:authorIds) ORDER BY timestamp DESC LIMIT :limit")
-    suspend fun getPostsByAuthorIdsOnce(authorIds: List<String>, limit: Int = 30): List<CommunityPostEntity>
+    @Query("SELECT * FROM community_posts WHERE isActive = 1 AND votesScore >= 50 ORDER BY votesScore DESC, timestamp DESC")
+    fun getHotPostsPagingSource(): androidx.paging.PagingSource<Int, CommunityPostEntity>
 
     @Query("SELECT * FROM community_posts WHERE id IN (:postIds)")
     suspend fun getPostsByIds(postIds: List<String>): List<CommunityPostEntity>
@@ -73,10 +69,24 @@ interface PostDao {
     @Query("UPDATE community_posts SET isActive = :isActive WHERE id = :postId")
     suspend fun updatePostStatus(postId: String, isActive: Boolean)
 
+    /** Actualiza SOLO el campo isSavedByMe sin tocar el resto de la fila (evita race conditions con isActive). */
+    @Query("UPDATE community_posts SET isSavedByMe = :isSaved WHERE id = :postId")
+    suspend fun updateSavedStatus(postId: String, isSaved: Boolean)
+
     @Query("SELECT MAX(timestamp) FROM community_posts")
     suspend fun getMaxTimestamp(): Long?
 
     @Query("DELETE FROM community_posts")
     suspend fun clearAll()
+
+    /** Resetea estado de usuario en todos los posts al cambiar de sesión. */
+    @Query("UPDATE community_posts SET isSavedByMe = 0, myVoteValue = 0")
+    suspend fun resetUserStateOnAllPosts()
+
+    @Query("UPDATE community_posts SET myVoteValue = :voteValue, truthCount = :truthCount, falseCount = :falseCount, votesScore = :score WHERE id = :postId")
+    suspend fun updateVoteState(postId: String, voteValue: Int, truthCount: Int, falseCount: Int, score: Int)
+
+    @Query("UPDATE community_posts SET myVoteValue = :voteValue WHERE id = :postId")
+    suspend fun updateVoteValueOnly(postId: String, voteValue: Int)
 }
 

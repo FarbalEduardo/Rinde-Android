@@ -13,4 +13,7 @@ interface SyncMetadataDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(metadata: SyncMetadataEntity)
+
+    @Query("DELETE FROM sync_metadata")
+    suspend fun clearAll()
 }

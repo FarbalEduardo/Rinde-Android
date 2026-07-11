@@ -8,9 +8,6 @@ import com.farbalapps.rinde.domain.model.CommunityPost
 import com.farbalapps.rinde.domain.usecase.ToggleVoteUseCase
 import com.farbalapps.rinde.domain.usecase.profile.GetProfilePostsUseCase
 import com.farbalapps.rinde.domain.usecase.profile.GetProfileUseCase
-import com.farbalapps.rinde.domain.usecase.profile.FollowUserUseCase
-import com.farbalapps.rinde.domain.usecase.profile.UnfollowUserUseCase
-import com.farbalapps.rinde.domain.usecase.profile.IsFollowingUseCase
 import com.farbalapps.rinde.domain.usecase.profile.UpdatePrivacyUseCase
 import com.farbalapps.rinde.domain.usecase.profile.SyncProfileUseCase
 import com.farbalapps.rinde.domain.usecase.profile.ClearUploadStatusUseCase
@@ -24,9 +21,7 @@ import javax.inject.Inject
 data class ProfileUiState(
     val profile: Profile? = null,
     val posts: List<CommunityPost> = emptyList(),
-    val savedPosts: List<CommunityPost> = emptyList(),
     val isLoading: Boolean = true,
-    val isFollowing: Boolean = false,
     val isCurrentUser: Boolean = false,
     val error: String? = null,
     val snackbarMessage: String? = null
@@ -37,9 +32,6 @@ class ProfileViewModel @Inject constructor(
     private val getProfileUseCase: GetProfileUseCase,
     private val getProfilePostsUseCase: GetProfilePostsUseCase,
     private val getSavedPostsUseCase: GetSavedPostsUseCase,
-    private val followUserUseCase: FollowUserUseCase,
-    private val unfollowUserUseCase: UnfollowUserUseCase,
-    private val isFollowingUseCase: IsFollowingUseCase,
     private val updatePrivacyUseCase: UpdatePrivacyUseCase,
     private val syncProfileUseCase: SyncProfileUseCase,
     private val clearUploadStatusUseCase: ClearUploadStatusUseCase,
@@ -50,6 +42,10 @@ class ProfileViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(ProfileUiState())
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
+
+    val postStatusOverlay = feedRepository.globalPostStatus
+    val savedStatusOverlay = feedRepository.globalSavedStatus
+    val voteStatusOverlay = feedRepository.globalVoteStatus
 
     private var targetUserId: String? = null
 
@@ -75,15 +71,6 @@ class ProfileViewModel @Inject constructor(
             viewModelScope.launch {
                 feedRepository.syncUserVotes(finalUid)
                 feedRepository.syncUserSavedPosts(finalUid)
-            }
-        }
-
-        // Start observing following state if it's not me
-        if (!isMe && currentUserId != null) {
-            viewModelScope.launch {
-                isFollowingUseCase(currentUserId, finalUid).collect { following ->
-                    _uiState.update { it.copy(isFollowing = following) }
-                }
             }
         }
 
@@ -132,30 +119,6 @@ class ProfileViewModel @Inject constructor(
                 }
         }
 
-        // 4. Obtener posts guardados
-        viewModelScope.launch {
-            getSavedPostsUseCase(finalUid)
-                .catch { e ->
-                    android.util.Log.e("ProfileViewModel", "Error fetching saved posts", e)
-                }
-                .collect { savedPosts ->
-                    _uiState.update { it.copy(savedPosts = savedPosts) }
-                }
-        }
-    }
-
-    fun toggleFollow() {
-        val currentUserId = firebaseAuth.currentUser?.uid ?: return
-        val targetId = this.targetUserId ?: return
-        if (currentUserId == targetId) return
-        
-        viewModelScope.launch {
-            if (_uiState.value.isFollowing) {
-                unfollowUserUseCase(currentUserId, targetId)
-            } else {
-                followUserUseCase(currentUserId, targetId)
-            }
-        }
     }
 
     fun retry() {
@@ -196,6 +159,18 @@ class ProfileViewModel @Inject constructor(
         }
     }
 
+    fun toggleSave(postId: String) {
+        val currentUserId = firebaseAuth.currentUser?.uid ?: return
+        viewModelScope.launch {
+            feedRepository.toggleSave(currentUserId, postId)
+                .onFailure {
+                    _uiState.update { state ->
+                        state.copy(snackbarMessage = "No se pudo guardar la publicación. Intenta de nuevo.")
+                    }
+                }
+        }
+    }
+
     fun deletePost(postId: String, photoUrls: List<String>) {
         viewModelScope.launch {
             feedRepository.deletePost(postId, photoUrls).onSuccess {
@@ -205,14 +180,16 @@ class ProfileViewModel @Inject constructor(
     }
 
     fun markAsExpired(postId: String) {
-        _uiState.update { state ->
-            val updatedPosts = state.posts.map { 
-                if (it.id == postId) it.copy(verificationStatus = com.farbalapps.rinde.domain.model.VerificationStatus.EXPIRED) else it 
-            }
-            state.copy(posts = updatedPosts)
-        }
+        feedRepository.updatePostStatusLocal(postId, com.farbalapps.rinde.domain.model.VerificationStatus.EXPIRED)
         viewModelScope.launch {
             feedRepository.markPostAsExpired(postId)
+        }
+    }
+
+    fun markAsAvailable(postId: String) {
+        feedRepository.updatePostStatusLocal(postId, com.farbalapps.rinde.domain.model.VerificationStatus.PENDING)
+        viewModelScope.launch {
+            feedRepository.markPostAsAvailable(postId)
         }
     }
 

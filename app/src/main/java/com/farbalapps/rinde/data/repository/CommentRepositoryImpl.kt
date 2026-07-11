@@ -146,4 +146,38 @@ class CommentRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun deleteComment(postId: String, commentId: String): Result<Unit> = runCatching {
+        // Delete comment from RTDB
+        rtdb.getReference("comments").child(postId).child(commentId).removeValue().await()
+        // Decrement comment count in Firestore
+        firestore.collection("posts").document(postId)
+            .update("commentsCount", com.google.firebase.firestore.FieldValue.increment(-1)).await()
+    }
+
+    override suspend fun editComment(postId: String, commentId: String, newText: String): Result<Unit> = runCatching {
+        val updates = mapOf<String, Any>(
+            "text" to newText,
+            "isEdited" to true,
+            "editedAt" to com.google.firebase.database.ServerValue.TIMESTAMP
+        )
+        rtdb.getReference("comments").child(postId).child(commentId).updateChildren(updates).await()
+    }
+
+    override suspend fun deleteReply(commentId: String, replyId: String, postId: String): Result<Unit> = runCatching {
+        // Delete reply from RTDB
+        rtdb.getReference("replies").child(commentId).child(replyId).removeValue().await()
+        // Decrement repliesCount in the parent comment
+        val commentRef = rtdb.getReference("comments").child(postId).child(commentId)
+        commentRef.child("repliesCount").setValue(com.google.firebase.database.ServerValue.increment(-1)).await()
+    }
+
+    override suspend fun editReply(commentId: String, replyId: String, newText: String): Result<Unit> = runCatching {
+        val updates = mapOf<String, Any>(
+            "text" to newText,
+            "isEdited" to true,
+            "editedAt" to com.google.firebase.database.ServerValue.TIMESTAMP
+        )
+        rtdb.getReference("replies").child(commentId).child(replyId).updateChildren(updates).await()
+    }
+
 }

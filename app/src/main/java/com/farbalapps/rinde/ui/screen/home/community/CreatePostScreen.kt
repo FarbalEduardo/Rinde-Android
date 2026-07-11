@@ -374,7 +374,10 @@ fun CreatePostScreen(
                                 focusedBorderColor = RindePrimary,
                                 focusedLabelColor = RindePrimary
                             ),
-                            singleLine = true
+                            singleLine = true,
+                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                                capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences
+                            )
                         )
                         OutlinedTextField(
                             value = uiState.productLink,
@@ -388,7 +391,13 @@ fun CreatePostScreen(
                                 focusedBorderColor = RindePrimary,
                                 focusedLabelColor = RindePrimary
                             ),
-                            singleLine = true
+                            singleLine = true,
+                            isError = uiState.productLinkError != null,
+                            supportingText = {
+                                uiState.productLinkError?.let {
+                                    Text(it, color = MaterialTheme.colorScheme.error)
+                                }
+                            }
                         )
                     }
                 }
@@ -410,7 +419,10 @@ fun CreatePostScreen(
                                 focusedBorderColor = RindePrimary,
                                 focusedLabelColor = RindePrimary
                             ),
-                            singleLine = true
+                            singleLine = true,
+                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                                capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences
+                            )
                         )
                         OutlinedTextField(
                             value = uiState.locationName,
@@ -455,11 +467,14 @@ fun CreatePostScreen(
                             focusedBorderColor = RindePrimary,
                             focusedLabelColor = RindePrimary
                         ),
-                        singleLine = true
+                        singleLine = true,
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                            capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences
+                        )
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text = "El título debe iniciar con mayúscula y tener al menos 5 caracteres (ej: \"Oferta de audífonos\").",
+                        text = "El título debe llevar al menos 10 caracteres (ej: \"Oferta de audífonos Sony\").",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(start = 4.dp)
@@ -481,6 +496,9 @@ fun CreatePostScreen(
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = RindePrimary,
                         focusedLabelColor = RindePrimary
+                    ),
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences
                     )
                 )
             }
@@ -513,7 +531,15 @@ fun CreatePostScreen(
                             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal),
                             singleLine = true,
                             shape = MaterialTheme.shapes.medium,
-                            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = RindePrimary, focusedLabelColor = RindePrimary)
+                            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = RindePrimary, focusedLabelColor = RindePrimary),
+                            isError = uiState.priceError != null
+                        )
+                    }
+                    if (uiState.priceError != null) {
+                        Text(
+                            text = uiState.priceError!!,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
                         )
                     }
 

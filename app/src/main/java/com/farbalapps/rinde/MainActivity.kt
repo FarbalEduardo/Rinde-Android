@@ -26,6 +26,7 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.hilt.navigation.compose.hiltViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
+import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -33,6 +34,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var sessionManager: SessionManager
     @Inject lateinit var authRepository: AuthRepository
     @Inject lateinit var settingsManager: com.farbalapps.rinde.data.local.SettingsManager
+    @Inject lateinit var feedRepository: com.farbalapps.rinde.domain.repository.FeedRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
@@ -59,7 +61,8 @@ class MainActivity : ComponentActivity() {
                 RindeAppNavHost(
                     navController = navController, 
                     startDestination = startDestination,
-                    authRepository = authRepository
+                    authRepository = authRepository,
+                    feedRepository = feedRepository
                 )
             }
         }
@@ -70,8 +73,11 @@ class MainActivity : ComponentActivity() {
 fun RindeAppNavHost(
     navController: androidx.navigation.NavHostController,
     startDestination: String,
-    authRepository: AuthRepository
+    authRepository: AuthRepository,
+    feedRepository: com.farbalapps.rinde.domain.repository.FeedRepository
 ) {
+    val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
+
     NavHost(navController = navController, startDestination = startDestination) {
         composable("welcome") {
             WelcomeScreen(
@@ -118,9 +124,15 @@ fun RindeAppNavHost(
         composable("home") {
             HomeScreen(
                 onLogout = {
-                    authRepository.logout()
-                    navController.navigate("welcome") {
-                        popUpTo("home") { inclusive = true }
+                    coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                        feedRepository.clearSessionState()
+                        authRepository.clearUserLocalState()
+                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                            authRepository.logout()
+                            navController.navigate("welcome") {
+                                popUpTo("home") { inclusive = true }
+                            }
+                        }
                     }
                 }
             )

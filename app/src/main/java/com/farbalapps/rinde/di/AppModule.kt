@@ -64,8 +64,20 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideAuthRepository(firebaseAuth: FirebaseAuth): AuthRepository {
-        return FirebaseAuthRepository(firebaseAuth)
+    fun provideAuthRepository(
+        firebaseAuth: FirebaseAuth,
+        savedPostsMemoryCache: com.farbalapps.rinde.data.util.SavedPostsMemoryCache,
+        userVoteDao: com.farbalapps.rinde.data.local.dao.UserVoteDao,
+        postDao: com.farbalapps.rinde.data.local.dao.PostDao,
+        syncMetadataDao: com.farbalapps.rinde.data.local.dao.SyncMetadataDao
+    ): AuthRepository {
+        return FirebaseAuthRepository(
+            firebaseAuth,
+            savedPostsMemoryCache,
+            userVoteDao,
+            postDao,
+            syncMetadataDao
+        )
     }
 
     @Provides
@@ -84,15 +96,28 @@ object AppModule {
                 db.execSQL("ALTER TABLE categories ADD COLUMN orderIndex INTEGER NOT NULL DEFAULT 0")
             }
         }
+
+        val MIGRATION_18_19 = object : androidx.room.migration.Migration(18, 19) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `user_votes` (" +
+                    "`postId` TEXT NOT NULL, " +
+                    "`userId` TEXT NOT NULL, " +
+                    "`voteValue` INTEGER NOT NULL, " +
+                    "`confirmedAt` INTEGER NOT NULL, " +
+                    "PRIMARY KEY(`postId`, `userId`))"
+                )
+            }
+        }
         
         return Room.databaseBuilder(
             context,
             RindeDatabase::class.java,
             "rinde_database"
-        ).addMigrations(MIGRATION_6_7)
+        ).addMigrations(MIGRATION_6_7, MIGRATION_18_19)
          .fallbackToDestructiveMigration()
          .build()
-    }
+     }
 
     @Provides
     @Singleton
@@ -111,6 +136,15 @@ object AppModule {
     fun provideCategoryDao(db: RindeDatabase): CategoryDao {
         return db.categoryDao()
     }
+
+    @Provides
+    @Singleton
+    fun provideUserVoteDao(db: RindeDatabase): com.farbalapps.rinde.data.local.dao.UserVoteDao {
+        return db.userVoteDao()
+    }
+
+
+
 
     @Provides
     @Singleton
@@ -151,14 +185,11 @@ object AppModule {
     @Provides
     @Singleton
     fun provideProfileRepository(
-        @ApplicationContext context: Context,
-        dao: ProfileDao,
-        postDao: com.farbalapps.rinde.data.local.dao.PostDao,
-        firestore: FirebaseFirestore,
-        workManager: WorkManager,
-        votesMemoryCache: com.farbalapps.rinde.data.util.VotesMemoryCache
+        crudDelegate: com.farbalapps.rinde.data.repository.delegate.ProfileCrudDelegate,
+        privacyDelegate: com.farbalapps.rinde.data.repository.delegate.ProfilePrivacyDelegate,
+        socialDelegate: com.farbalapps.rinde.data.repository.delegate.ProfileSocialDelegate
     ): ProfileRepository {
-        return ProfileRepositoryImpl(firestore, dao, postDao, context, workManager, votesMemoryCache)
+        return ProfileRepositoryImpl(crudDelegate, privacyDelegate, socialDelegate)
     }
 
     @Provides
@@ -176,16 +207,11 @@ object AppModule {
     @Provides
     @Singleton
     fun provideFeedRepository(
-        @ApplicationContext context: Context,
-        firestore: FirebaseFirestore,
-        database: FirebaseDatabase,
-        workManager: WorkManager,
-        postDao: com.farbalapps.rinde.data.local.dao.PostDao,
-        syncMetadataDao: com.farbalapps.rinde.data.local.dao.SyncMetadataDao,
-        votesMemoryCache: com.farbalapps.rinde.data.util.VotesMemoryCache,
-        savedPostsMemoryCache: com.farbalapps.rinde.data.util.SavedPostsMemoryCache
+        paginationDelegate: com.farbalapps.rinde.data.repository.delegate.FeedPaginationDelegate,
+        interactionDelegate: com.farbalapps.rinde.data.repository.delegate.FeedInteractionDelegate,
+        lifecycleDelegate: com.farbalapps.rinde.data.repository.delegate.FeedLifecycleDelegate
     ): FeedRepository {
-        return FeedRepositoryImpl(context, firestore, database, workManager, postDao, syncMetadataDao, votesMemoryCache, savedPostsMemoryCache)
+        return FeedRepositoryImpl(paginationDelegate, interactionDelegate, lifecycleDelegate)
     }
 
     @Provides

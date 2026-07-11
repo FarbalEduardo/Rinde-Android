@@ -10,7 +10,9 @@ data class CommentDto(
     val imageUrl: String? = null,
     val timestamp: Long = 0,
     val likesCount: Int = 0,
-    val repliesCount: Int = 0
+    val repliesCount: Int = 0,
+    val isEdited: Boolean = false,
+    val editedAt: Long? = null
 )
 
 data class ReplyDto(
@@ -24,5 +26,7 @@ data class ReplyDto(
     val imageUrl: String? = null,
     val mentionedUser: String? = null,
     val timestamp: Long = 0,
-    val likesCount: Int = 0
+    val likesCount: Int = 0,
+    val isEdited: Boolean = false,
+    val editedAt: Long? = null
 )

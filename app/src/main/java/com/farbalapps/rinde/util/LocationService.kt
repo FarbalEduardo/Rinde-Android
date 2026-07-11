@@ -34,4 +34,27 @@ class LocationService @Inject constructor(
             null
         }
     }
+
+    /**
+     * Obtiene una dirección legible a partir de coordenadas.
+     */
+    fun getAddressFromLocation(latitude: Double, longitude: Double): String? {
+        return try {
+            val geocoder = android.location.Geocoder(context, java.util.Locale.getDefault())
+            val addresses = geocoder.getFromLocation(latitude, longitude, 1)
+            if (!addresses.isNullOrEmpty()) {
+                val address = addresses[0]
+                val featureName = address.featureName
+                val thoroughfare = address.thoroughfare
+                val subLocality = address.subLocality
+                val locality = address.locality
+                
+                val parts = listOfNotNull(featureName ?: thoroughfare, subLocality, locality).distinct()
+                parts.joinToString(", ")
+            } else null
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
 }

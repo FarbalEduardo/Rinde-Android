@@ -16,5 +16,7 @@ data class Reply(
     val imageUrl: String? = null,       // Optional image (Cloudinary "Comments" folder)
     val mentionedUser: String? = null,  // For @mentions display
     val timestamp: Long = System.currentTimeMillis(),
-    val likesCount: Int = 0
+    val likesCount: Int = 0,
+    val isEdited: Boolean = false,
+    val editedAt: Long? = null
 )

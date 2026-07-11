@@ -11,7 +11,10 @@ import androidx.room.Index
 
 @Entity(
     tableName = "community_posts",
-    indices = [Index(value = ["isActive", "timestamp"])]
+    indices = [
+        Index(value = ["isActive", "timestamp"]),
+        Index(value = ["isActive", "votesScore"])
+    ]
 )
 data class CommunityPostEntity(
     @PrimaryKey val id: String,

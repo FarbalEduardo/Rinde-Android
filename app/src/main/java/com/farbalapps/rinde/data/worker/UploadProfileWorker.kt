@@ -45,16 +45,8 @@ class UploadProfileWorker @AssistedInject constructor(
             if (localFilePath != null) {
                 val file = File(localFilePath)
                 if (file.exists()) {
-                    // Borrar la anterior si existe y es de Cloudinary
-                    currentPhotoUrl?.let { oldUrl ->
-                        if (oldUrl.contains("cloudinary.com")) {
-                            android.util.Log.d("UploadProfileWorker", "🗑️ Intentando borrar imagen anterior...")
-                            CloudinaryHelper.deleteImage(oldUrl)
-                        }
-                    }
-
-                    finalPhotoUrl = CloudinaryHelper.uploadImage(localFilePath, "USERS")
-                    android.util.Log.d("UploadProfileWorker", "✅ Imagen subida con éxito: $finalPhotoUrl")
+                    finalPhotoUrl = CloudinaryHelper.uploadImage(localFilePath, "USERS", userId)
+                    android.util.Log.d("UploadProfileWorker", "✅ Imagen subida con éxito (sobrescrita): $finalPhotoUrl")
                     
                     // Cleanup local temp file
                     file.delete()

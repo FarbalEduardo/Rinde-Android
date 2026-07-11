@@ -38,7 +38,9 @@ class CreatePostUseCase @Inject constructor(
         couponCode: String? = null,
         discountPercentage: Int? = null,
         isAvailable: Boolean = true,
-        condition: String = "Nuevo"
+        condition: String = "Nuevo",
+        latitude: Double? = null,
+        longitude: Double? = null
     ): Result<Unit> {
         // 1. Basic Validation
         if (title.isBlank()) return Result.failure(Exception("El título es obligatorio"))
@@ -63,7 +65,7 @@ class CreatePostUseCase @Inject constructor(
             descriptionLong = description,
             photos = emptyList(), // Se llenará en el repositorio
             category = category,
-            location = PostLocation(name = locationName, latitude = null, longitude = null),
+            location = PostLocation(name = locationName, latitude = latitude, longitude = longitude),
             isActive = true,
             likesCount = 0,
             commentsCount = 0,

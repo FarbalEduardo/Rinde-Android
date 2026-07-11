@@ -168,6 +168,8 @@
     <string name="settings_section_usage">How you use Rinde</string>
     <string name="settings_section_privacy">Who can see your content</string>
     <string name="settings_item_privacy_label">Account privacy</string>
+    <string name="settings_item_privacy_private_desc">Private profile (followers only)</string>
+    <string name="settings_item_privacy_public_desc">Public profile (visible to everyone)</string>
     <string name="settings_item_privacy_public">Public</string>
     <string name="settings_item_blocked">Blocked users</string>
     <string name="settings_section_app">Your app and media</string>
