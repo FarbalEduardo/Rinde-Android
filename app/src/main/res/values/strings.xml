@@ -170,6 +170,8 @@
     <string name="settings_section_usage">Cómo usas Rinde</string>
     <string name="settings_section_privacy">Quién puede ver tu contenido</string>
     <string name="settings_item_privacy_label">Privacidad de la cuenta</string>
+    <string name="settings_item_privacy_private_desc">Perfil privado (solo seguidores)</string>
+    <string name="settings_item_privacy_public_desc">Perfil público (visible para todos)</string>
     <string name="settings_item_privacy_public">Pública</string>
     <string name="settings_item_blocked">Usuarios bloqueados</string>
     <string name="settings_section_app">Tu aplicación y medios</string>

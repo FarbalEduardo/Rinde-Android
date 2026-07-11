@@ -9,6 +9,7 @@ interface AuthRepository {
     fun signUp(email: String, password: String): Flow<Resource<User>>
     fun signInWithGoogle(idToken: String): Flow<Resource<User>>
     fun logout()
+    suspend fun clearUserLocalState()
     fun getCurrentUser(): User?
     fun isUserLoggedIn(): Boolean
     fun sendPasswordResetEmail(email: String): Flow<Resource<Unit>>

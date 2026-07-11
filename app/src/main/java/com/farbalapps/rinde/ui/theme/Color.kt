@@ -34,3 +34,8 @@ val VoteFalseContentDark = Color(0xFFFFB4AB)
 
 val VoteTrueContainerDark = Color(0xFF0F5223)
 val VoteTrueContentDark = Color(0xFF9DF8A6)
+
+// Verdict Colors
+val VerdictTrueColor = Color(0xFF2E7D32)       // Verde confianza
+val VerdictFalseColor = Color(0xFFC62828)      // Rojo alerta
+val VerdictDisputedColor = Color(0xFF757575)   // Gris neutro

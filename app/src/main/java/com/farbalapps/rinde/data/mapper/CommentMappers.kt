@@ -16,7 +16,9 @@ fun CommentDto.toDomain(): Comment {
         imageUrl = imageUrl,
         timestamp = timestamp,
         likesCount = likesCount,
-        repliesCount = repliesCount
+        repliesCount = repliesCount,
+        isEdited = isEdited,
+        editedAt = editedAt
     )
 }
 
@@ -31,7 +33,9 @@ fun Comment.toDto(): CommentDto {
         imageUrl = imageUrl,
         timestamp = timestamp,
         likesCount = likesCount,
-        repliesCount = repliesCount
+        repliesCount = repliesCount,
+        isEdited = isEdited,
+        editedAt = editedAt
     )
 }
 
@@ -47,7 +51,9 @@ fun ReplyDto.toDomain(): Reply {
         imageUrl = imageUrl,
         mentionedUser = mentionedUser,
         timestamp = timestamp,
-        likesCount = likesCount
+        likesCount = likesCount,
+        isEdited = isEdited,
+        editedAt = editedAt
     )
 }
 
@@ -63,6 +69,8 @@ fun Reply.toDto(): ReplyDto {
         imageUrl = imageUrl,
         mentionedUser = mentionedUser,
         timestamp = timestamp,
-        likesCount = likesCount
+        likesCount = likesCount,
+        isEdited = isEdited,
+        editedAt = editedAt
     )
 }

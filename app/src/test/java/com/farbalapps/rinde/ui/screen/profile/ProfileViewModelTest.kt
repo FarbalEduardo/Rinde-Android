@@ -14,7 +14,9 @@ import com.google.firebase.auth.FirebaseUser
 import io.mockk.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.test.*
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -33,9 +35,6 @@ class ProfileViewModelTest {
     private val getProfileUseCase = mockk<GetProfileUseCase>()
     private val getProfilePostsUseCase = mockk<GetProfilePostsUseCase>()
     private val getSavedPostsUseCase = mockk<GetSavedPostsUseCase>()
-    private val followUserUseCase = mockk<FollowUserUseCase>()
-    private val unfollowUserUseCase = mockk<UnfollowUserUseCase>()
-    private val isFollowingUseCase = mockk<IsFollowingUseCase>()
     private val updatePrivacyUseCase = mockk<UpdatePrivacyUseCase>()
     private val syncProfileUseCase = mockk<SyncProfileUseCase>()
     private val clearUploadStatusUseCase = mockk<ClearUploadStatusUseCase>()
@@ -105,14 +104,14 @@ class ProfileViewModelTest {
         coEvery { clearUploadStatusUseCase(testUserId) } returns Result.success(Unit)
         coEvery { feedRepository.syncUserVotes(any()) } returns Result.success(Unit)
         coEvery { feedRepository.syncUserSavedPosts(any()) } returns Result.success(Unit)
+        every { feedRepository.globalPostStatus } returns MutableStateFlow(emptyMap())
+        every { feedRepository.globalSavedStatus } returns MutableStateFlow(emptyMap())
+        every { feedRepository.globalVoteStatus } returns MutableStateFlow(emptyMap())
         
         viewModel = ProfileViewModel(
             getProfileUseCase,
             getProfilePostsUseCase,
             getSavedPostsUseCase,
-            followUserUseCase,
-            unfollowUserUseCase,
-            isFollowingUseCase,
             updatePrivacyUseCase,
             syncProfileUseCase,
             clearUploadStatusUseCase,
@@ -152,14 +151,10 @@ class ProfileViewModelTest {
         val dummyProfile = testProfile.copy(isDummy = true)
         coEvery { getProfileUseCase(testUserId) } returns flowOf(dummyProfile)
         
-        // Re-init viewmodel to use the new mock
         viewModel = ProfileViewModel(
             getProfileUseCase,
             getProfilePostsUseCase,
             getSavedPostsUseCase,
-            followUserUseCase,
-            unfollowUserUseCase,
-            isFollowingUseCase,
             updatePrivacyUseCase,
             syncProfileUseCase,
             clearUploadStatusUseCase,

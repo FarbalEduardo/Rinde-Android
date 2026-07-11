@@ -15,5 +15,7 @@ data class Comment(
     val imageUrl: String? = null,       // Optional image (Cloudinary "Comments" folder)
     val timestamp: Long = System.currentTimeMillis(),
     val likesCount: Int = 0,
-    val repliesCount: Int = 0
+    val repliesCount: Int = 0,
+    val isEdited: Boolean = false,
+    val editedAt: Long? = null
 )

@@ -28,7 +28,6 @@ import com.farbalapps.rinde.ui.screen.home.community.components.TrustStarRating
 fun ProfileHeader(
     uiState: ProfileUiState,
     onEditProfile: () -> Unit,
-    toggleFollow: () -> Unit,
     onShareProfile: () -> Unit
 ) {
     val profile = uiState.profile
@@ -53,14 +52,12 @@ fun ProfileHeader(
             
             Spacer(modifier = Modifier.width(dimensionResource(id = R.dimen.padding_large)))
             
-            // Stats Row
+            // Stats Row (Solo Publicaciones)
             Row(
                 modifier = Modifier.weight(1f),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 ProfileStatItem(count = profile?.postsCount ?: 0, label = stringResource(id = R.string.profile_stat_posts))
-                ProfileStatItem(count = profile?.followersCount ?: 0, label = stringResource(id = R.string.profile_stat_followers))
-                ProfileStatItem(count = profile?.followingCount ?: 0, label = stringResource(id = R.string.profile_stat_following))
             }
         }
         
@@ -73,12 +70,12 @@ fun ProfileHeader(
                 fontWeight = FontWeight.ExtraBold
             )
             if (profile?.isVerified == true) {
-                Spacer(modifier = Modifier.width(4.dp))
+                Spacer(modifier = Modifier.width(dimensionResource(id = R.dimen.padding_xsmall)))
                 Icon(
                     imageVector = Icons.Default.Verified,
                     contentDescription = stringResource(id = R.string.badge_verified),
                     tint = com.farbalapps.rinde.ui.theme.VerifiedBadgeColor,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(dimensionResource(id = R.dimen.icon_size_small))
                 )
             }
         }
@@ -129,27 +126,10 @@ fun ProfileHeader(
                     Icon(Icons.Default.Share, null, modifier = Modifier.size(20.dp))
                 }
             } else {
-                val isFollowing = uiState.isFollowing
-                Button(
-                    onClick = toggleFollow,
-                    shape = MaterialTheme.shapes.small,
-                    modifier = Modifier.weight(1f),
-                    colors = if (isFollowing) {
-                        ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant, contentColor = MaterialTheme.colorScheme.onSurfaceVariant)
-                    } else {
-                        ButtonDefaults.buttonColors()
-                    }
-                ) {
-                    Text(
-                        if (isFollowing) stringResource(id = R.string.profile_btn_following) else stringResource(id = R.string.profile_btn_follow), 
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-                
                 OutlinedButton(
                     onClick = { /* Message logic */ },
                     shape = MaterialTheme.shapes.small,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(stringResource(id = R.string.profile_btn_message), fontWeight = FontWeight.Bold)
                 }

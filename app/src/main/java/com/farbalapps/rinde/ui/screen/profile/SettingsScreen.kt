@@ -130,7 +130,11 @@ fun SettingsContent(
             SettingsListItem(
                 icon = if (isPrivate) Icons.Default.Lock else Icons.Default.LockOpen,
                 label = stringResource(R.string.settings_item_privacy_label),
-                supportingText = if (isPrivate) "Perfil privado (solo seguidores)" else "Perfil público (visible para todos)",
+                supportingText = if (isPrivate) {
+                    stringResource(R.string.settings_item_privacy_private_desc)
+                } else {
+                    stringResource(R.string.settings_item_privacy_public_desc)
+                },
                 trailingContent = {
                     Switch(checked = isPrivate, onCheckedChange = onTogglePrivacy)
                 }

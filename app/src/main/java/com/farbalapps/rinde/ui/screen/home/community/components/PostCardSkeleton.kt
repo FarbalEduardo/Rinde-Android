@@ -220,22 +220,6 @@ fun PostCardSkeleton(
                             .clip(RoundedCornerShape(4.dp))
                             .background(brush)
                     )
-                    // Descripción línea 1
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(12.dp)
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(brush)
-                    )
-                    // Descripción línea 2
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(0.55f)
-                            .height(12.dp)
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(brush)
-                    )
                     // Precio tachado
                     Box(
                         modifier = Modifier

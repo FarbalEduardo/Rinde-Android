@@ -35,8 +35,8 @@ object CloudinaryHelper {
      * @return La URL segura (HTTPS) de la imagen subida.
      * @throws Exception Si la subida falla.
      */
-    suspend fun uploadImage(filePath: String, folder: String): String = withContext(Dispatchers.IO) {
-        android.util.Log.d("CloudinaryHelper", "📤 Iniciando subida UNSIGNED: $filePath → carpeta: $folder")
+    suspend fun uploadImage(filePath: String, folder: String, publicId: String? = null): String = withContext(Dispatchers.IO) {
+        android.util.Log.d("CloudinaryHelper", "📤 Iniciando subida UNSIGNED: $filePath → carpeta: $folder, publicId: $publicId")
 
         val file = File(filePath)
         if (!file.exists()) {
@@ -44,7 +44,7 @@ object CloudinaryHelper {
         }
 
         // Construir la petición multipart para UNSIGNED upload
-        val requestBody = MultipartBody.Builder()
+        val requestBuilder = MultipartBody.Builder()
             .setType(MultipartBody.FORM)
             .addFormDataPart(
                 "file",
@@ -53,8 +53,13 @@ object CloudinaryHelper {
             )
             .addFormDataPart("upload_preset", "rinde_unsigned_preset")
             .addFormDataPart("folder", folder)
-            .build()
 
+        // Si hay un publicId fijo, se envía para sobrescribir (requiere preset con overwrite activo)
+        if (!publicId.isNullOrEmpty()) {
+            requestBuilder.addFormDataPart("public_id", publicId)
+        }
+
+        val requestBody = requestBuilder.build()
         val url = "https://api.cloudinary.com/v1_1/${Config.CLOUDINARY_CLOUD_NAME}/image/upload"
 
         val request = Request.Builder()
@@ -85,61 +90,13 @@ object CloudinaryHelper {
     }
 
     /**
-     * Elimina una imagen de Cloudinary usando Signed Destroy (API REST).
-     *
-     * TRADE-OFF DE SEGURIDAD / LIMITACIÓN:
-     * - Cloudinary NO permite "Unsigned Destroy" desde clientes móviles por seguridad.
-     * - Mantener deleteImage en el cliente requiere tener CLOUDINARY_API_SECRET en el APK.
-     * - En esta fase, las imágenes de publicaciones NO se eliminan física de Cloudinary al borrar posts
-     *   (quedan huérfanas). Solo se mantiene para perfiles de usuario como trade-off temporal.
-     *
-     * @param cloudinaryUrl La URL completa de la imagen en Cloudinary.
-     * @return true si se eliminó correctamente, false si falló.
+     * @deprecated Omitido por seguridad. Requería CLOUDINARY_API_SECRET expuesta en el APK.
+     * En el plan Firebase Free/Spark, las imágenes quedan huérfanas en Cloudinary al eliminarse o editarse posts.
      */
-    suspend fun deleteImage(cloudinaryUrl: String): Boolean = withContext(Dispatchers.IO) {
-        val publicId = extractPublicId(cloudinaryUrl)
-        if (publicId == null) {
-            android.util.Log.w("CloudinaryHelper", "⚠️ No se pudo extraer public_id de: $cloudinaryUrl")
-            return@withContext false
-        }
-
-        android.util.Log.d("CloudinaryHelper", "🗑️ Eliminando imagen (Signed): $publicId")
-
-        val timestamp = (System.currentTimeMillis() / 1000).toString()
-        val paramsToSign = "public_id=$publicId&timestamp=$timestamp"
-        val signature = sha1("$paramsToSign${Config.CLOUDINARY_API_SECRET}")
-
-        val requestBody = okhttp3.FormBody.Builder()
-            .add("public_id", publicId)
-            .add("api_key", Config.CLOUDINARY_API_KEY)
-            .add("timestamp", timestamp)
-            .add("signature", signature)
-            .build()
-
-        val url = "https://api.cloudinary.com/v1_1/${Config.CLOUDINARY_CLOUD_NAME}/image/destroy"
-
-        val request = Request.Builder()
-            .url(url)
-            .post(requestBody)
-            .build()
-
-        try {
-            val response = client.newCall(request).execute()
-            val responseBody = response.body?.string() ?: ""
-            val json = JSONObject(responseBody)
-            val result = json.optString("result", "")
-
-            if (result == "ok") {
-                android.util.Log.i("CloudinaryHelper", "✅ Imagen eliminada: $publicId")
-                true
-            } else {
-                android.util.Log.w("CloudinaryHelper", "⚠️ Resultado inesperado al eliminar: $responseBody")
-                false
-            }
-        } catch (e: Exception) {
-            android.util.Log.e("CloudinaryHelper", "❌ Error al eliminar imagen: ${e.message}")
-            false
-        }
+    @Deprecated("Omitido para no exponer el API_SECRET en la app")
+    suspend fun deleteImage(cloudinaryUrl: String): Boolean {
+        android.util.Log.w("CloudinaryHelper", "deleteImage llamado pero está desactivado por seguridad de API_SECRET")
+        return false
     }
 
     /**

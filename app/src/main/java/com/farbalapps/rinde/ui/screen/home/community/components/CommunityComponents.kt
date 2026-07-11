@@ -96,19 +96,19 @@ fun CommunityTabRow(
     modifier: Modifier = Modifier
 ) {
     val tabs = listOf(
-        CommunityTab.DISCOVER to "Descubrir",
-        CommunityTab.FOLLOWING to "Siguiendo",
-        CommunityTab.SAVED to "Guardados"
+        CommunityTab.DISCOVER to "✨ Descubrir",
+        CommunityTab.HOT to "🔥 Lo más Hot",
+        CommunityTab.SAVED to "🔖 Guardados"
     )
 
     PrimaryTabRow(
-        selectedTabIndex = tabs.indexOfFirst { it.first == selectedTab },
+        selectedTabIndex = tabs.indexOfFirst { it.first == selectedTab }.coerceAtLeast(0),
         modifier = modifier.fillMaxWidth(),
         containerColor = MaterialTheme.colorScheme.background,
         contentColor = MaterialTheme.colorScheme.primary,
         indicator = {
             TabRowDefaults.PrimaryIndicator(
-                modifier = Modifier.tabIndicatorOffset(tabs.indexOfFirst { it.first == selectedTab }),
+                modifier = Modifier.tabIndicatorOffset(tabs.indexOfFirst { it.first == selectedTab }.coerceAtLeast(0)),
                 width = 32.dp,
                 shape = RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp)
             )
@@ -158,26 +158,13 @@ fun FilterChipRow(
             shape = RoundedCornerShape(50)
         )
         FilterChip(
-            selected = selectedTab == CommunityTab.NEARBY,
-            onClick = { onTabSelected(CommunityTab.NEARBY) },
+            selected = selectedTab == CommunityTab.HOT,
+            onClick = { onTabSelected(CommunityTab.HOT) },
             label = { 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Place, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Default.Whatshot, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Cerca de ti", fontWeight = if (selectedTab == CommunityTab.NEARBY) FontWeight.SemiBold else FontWeight.Normal)
-                }
-            },
-            leadingIcon = {},
-            shape = RoundedCornerShape(50)
-        )
-        FilterChip(
-            selected = selectedTab == CommunityTab.FOLLOWING,
-            onClick = { onTabSelected(CommunityTab.FOLLOWING) },
-            label = { 
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Group, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Siguiendo", fontWeight = if (selectedTab == CommunityTab.FOLLOWING) FontWeight.SemiBold else FontWeight.Normal)
+                    Text("Lo más Hot", fontWeight = if (selectedTab == CommunityTab.HOT) FontWeight.SemiBold else FontWeight.Normal)
                 }
             },
             leadingIcon = {},
@@ -213,46 +200,52 @@ fun PostCard(
     onAuthorClick: () -> Unit = {},
     onSaveClick: () -> Unit = {},
     onPostClick: () -> Unit = {},
+    onCommentClick: () -> Unit = {},
     onDeletePost: () -> Unit = {},
     onEditPost: () -> Unit = {},
     onSharePost: () -> Unit = {},
+    onMarkExpired: () -> Unit = {},
     onReportExpired: () -> Unit = {},
+    onMarkAvailable: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    // ── Derivados memoizados: se calculan UNA VEZ por post, no en cada frame ──
+    // ── Derivados memoizados: se calculan cuando cambian las propiedades clave ──
     var showMenu by remember { mutableStateOf(false) }
-    val isOnline = remember(post.id) {
+    val isOnline = remember(post.id, post.offerType) {
         post.offerType == com.farbalapps.rinde.domain.model.OfferType.ONLINE
     }
-    val isUnreliable = remember(post.id) {
+    val isUnreliable = remember(post.id, post.verificationStatus) {
         post.verificationStatus == com.farbalapps.rinde.domain.model.VerificationStatus.EXPIRED ||
         post.verificationStatus == com.farbalapps.rinde.domain.model.VerificationStatus.DISPUTED
     }
-    val hasDiscount = remember(post.discountPrice, post.normalPrice) {
+    val isExpiredPost = remember(post.id, post.verificationStatus) {
+        post.verificationStatus == com.farbalapps.rinde.domain.model.VerificationStatus.EXPIRED
+    }
+    val hasDiscount = remember(post.id, post.discountPrice, post.normalPrice) {
         post.discountPrice != null && post.normalPrice != null && post.discountPrice < post.normalPrice
     }
-    val hasAnyPrice = remember(post.discountPrice, post.normalPrice) {
+    val hasAnyPrice = remember(post.id, post.discountPrice, post.normalPrice) {
         post.discountPrice != null || post.normalPrice != null
     }
-    val formattedDate = remember(post.timestamp) {
+    val formattedDate = remember(post.id, post.timestamp) {
         DateUtils.formatTimeAgo(post.timestamp?.time ?: 0L)
     }
-    val formattedNormalPrice = remember(post.normalPrice, post.currency) {
+    val formattedNormalPrice = remember(post.id, post.normalPrice, post.currency) {
         post.normalPrice?.let { "${post.currency} ${"%.2f".format(it)}" }
     }
-    val formattedDiscountPrice = remember(post.discountPrice, post.currency) {
+    val formattedDiscountPrice = remember(post.id, post.discountPrice, post.currency) {
         post.discountPrice?.let { "${post.currency} ${"%.2f".format(it)}" }
     }
-    val displayPrice = remember(post.discountPrice, post.normalPrice, post.currency) {
+    val displayPrice = remember(post.id, post.discountPrice, post.normalPrice, post.currency) {
         (post.discountPrice ?: post.normalPrice)?.let { "${post.currency} ${"%.2f".format(it)}" } ?: ""
     }
-    val storeName = remember(post.id) {
+    val storeName = remember(post.id, post.offerType, post.websiteName, post.storeName) {
         if (post.offerType == com.farbalapps.rinde.domain.model.OfferType.ONLINE) post.websiteName else post.storeName
     }
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(bottom = 8.dp)
+           //  .padding(bottom = 8.dp)
             .alpha(if (isUnreliable) 0.55f else 1f)
             .clickable { onPostClick() },
         shape = RectangleShape,
@@ -265,69 +258,75 @@ fun PostCard(
             Column {
                 // ── HEADER COMPACTO ───────────────────────────────────────────
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onAuthorClick() }
-                        .padding(start = 12.dp, end = 4.dp, top = 10.dp, bottom = 6.dp)
+                        .padding(start = 12.dp, end = 4.dp, top = 10.dp, bottom = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Box(
+                    // Izquierda (clickeable, ocupa el espacio sobrante)
+                    Row(
                         modifier = Modifier
-                            .size(24.dp)
-                            .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape),
-                        contentAlignment = Alignment.Center
+                            .weight(1f)
+                            .clickable { onAuthorClick() },
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        if (post.authorPhotoUrl != null) {
-                            AsyncImage(
-                                model = post.authorPhotoUrl,
-                                contentDescription = null,
-                                modifier = Modifier.fillMaxSize().clip(CircleShape),
-                                contentScale = ContentScale.Crop
-                            )
-                        } else {
+                        Box(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (post.authorPhotoUrl != null) {
+                                AsyncImage(
+                                    model = post.authorPhotoUrl,
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Icon(
+                                    Icons.Default.Person, null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            }
+                        }
+                        Spacer(Modifier.width(8.dp))
+
+                        Text(
+                            text = post.authorName,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+
+                        if (isAuthorVerified) {
+                            Spacer(Modifier.width(4.dp))
                             Icon(
-                                Icons.Default.Person, null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(14.dp)
+                                Icons.Default.Verified, null,
+                                tint = com.farbalapps.rinde.ui.theme.VerifiedBadgeColor,
+                                modifier = Modifier.size(12.dp)
                             )
                         }
-                    }
-                    Spacer(Modifier.width(8.dp))
 
-                    Text(
-                        text = post.authorName,
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false)
-                    )
+                        Text(
+                            text = " · ",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        )
 
-                    if (isAuthorVerified) {
-                        Spacer(Modifier.width(4.dp))
-                        Icon(
-                            Icons.Default.Verified, null,
-                            tint = com.farbalapps.rinde.ui.theme.VerifiedBadgeColor,
-                            modifier = Modifier.size(12.dp)
+                        Text(
+                            text = formattedDate,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                            maxLines = 1
                         )
                     }
 
-                    Text(
-                        text = " · ",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                    )
-
-                    Text(
-                        text = formattedDate,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                        maxLines = 1
-                    )
-
-                    Spacer(Modifier.weight(1f))
-
+                    // Derecha (tamaño fijo)
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         IconButton(onClick = onSaveClick, modifier = Modifier.size(32.dp)) {
                             Icon(
@@ -340,6 +339,7 @@ fun PostCard(
 
                         var showDeleteConfirm by remember { mutableStateOf(false) }
                         var showReportConfirm by remember { mutableStateOf(false) }
+                        var showAvailableConfirm by remember { mutableStateOf(false) }
 
                         if (showDeleteConfirm) {
                             AlertDialog(
@@ -359,15 +359,18 @@ fun PostCard(
                         }
 
                         if (showReportConfirm) {
-                            val isAuthor = post.authorId == currentUserId
                             AlertDialog(
                                 onDismissRequest = { showReportConfirm = false },
-                                title = { Text(if (isAuthor) "Marcar como expirada" else "Reportar expirada") },
-                                text = { Text(if (isAuthor) "¿Estás seguro que deseas marcar esta oferta como expirada?" else "¿Estás seguro que deseas reportar esta oferta como expirada?") },
+                                title = { Text(if (post.authorId == currentUserId) "Marcar como expirada" else "Reportar expirada") },
+                                text = { Text(if (post.authorId == currentUserId) "¿Estás seguro que deseas marcar esta oferta como expirada?" else "¿Estás seguro que deseas reportar esta oferta como expirada?") },
                                 confirmButton = {
                                     TextButton(onClick = {
                                         showReportConfirm = false
-                                        onReportExpired()
+                                        if (post.authorId == currentUserId) {
+                                            onMarkExpired()
+                                        } else {
+                                            onReportExpired()
+                                        }
                                     }) { Text("Confirmar") }
                                 },
                                 dismissButton = {
@@ -376,48 +379,85 @@ fun PostCard(
                             )
                         }
 
-                        Box {
-                            IconButton(onClick = { showMenu = true }, modifier = Modifier.size(32.dp)) {
-                                Icon(
-                                    Icons.Default.MoreVert,
-                                    contentDescription = "Opciones",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                            DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
-                                if (post.authorId == currentUserId && currentUserId.isNotEmpty()) {
-                                    DropdownMenuItem(
-                                        text = { Text("Editar") },
-                                        leadingIcon = { Icon(Icons.Default.Edit, null) },
-                                        onClick = { showMenu = false; onEditPost() }
+                        if (showAvailableConfirm) {
+                            AlertDialog(
+                                onDismissRequest = { showAvailableConfirm = false },
+                                title = { Text("Marcar como disponible") },
+                                text = { Text("¿Estás seguro que deseas marcar esta oferta como disponible nuevamente?") },
+                                confirmButton = {
+                                    TextButton(onClick = {
+                                        showAvailableConfirm = false
+                                        onMarkAvailable()
+                                    }) { Text("Confirmar") }
+                                },
+                                dismissButton = {
+                                    TextButton(onClick = { showAvailableConfirm = false }) { Text("Cancelar") }
+                                }
+                            )
+                        }
+
+                        val isAuthor = post.authorId == currentUserId && currentUserId.isNotEmpty()
+
+                        // Si está expirada y NO es el autor: no se muestra el botón de menú
+                        if (!isExpiredPost || isAuthor) {
+                            Box {
+                                IconButton(onClick = { showMenu = true }, modifier = Modifier.size(32.dp)) {
+                                    Icon(
+                                        Icons.Default.MoreVert,
+                                        contentDescription = "Opciones",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                        modifier = Modifier.size(20.dp)
                                     )
-                                    DropdownMenuItem(
-                                        text = { Text("Eliminar") },
-                                        leadingIcon = { Icon(Icons.Default.Delete, null) },
-                                        onClick = { showMenu = false; showDeleteConfirm = true }
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text("Compartir") },
-                                        leadingIcon = { Icon(Icons.Default.Share, null) },
-                                        onClick = { showMenu = false; onSharePost() }
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text("Marcar expirada") },
-                                        leadingIcon = { Icon(Icons.Default.Warning, null) },
-                                        onClick = { showMenu = false; showReportConfirm = true }
-                                    )
-                                } else {
-                                    DropdownMenuItem(
-                                        text = { Text("Compartir") },
-                                        leadingIcon = { Icon(Icons.Default.Share, null) },
-                                        onClick = { showMenu = false; onSharePost() }
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text("Reportar expirada") },
-                                        leadingIcon = { Icon(Icons.Default.Warning, null) },
-                                        onClick = { showMenu = false; showReportConfirm = true }
-                                    )
+                                }
+                                DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                                    when {
+                                        isExpiredPost && isAuthor -> {
+                                            DropdownMenuItem(
+                                                text = { Text("Marcar disponible") },
+                                                leadingIcon = { Icon(Icons.Default.Check, null) },
+                                                onClick = { showMenu = false; showAvailableConfirm = true }
+                                            )
+                                            DropdownMenuItem(
+                                                text = { Text("Eliminar") },
+                                                leadingIcon = { Icon(Icons.Default.Delete, null) },
+                                                onClick = { showMenu = false; showDeleteConfirm = true }
+                                            )
+                                        }
+                                        !isExpiredPost && isAuthor -> {
+                                            DropdownMenuItem(
+                                                text = { Text("Editar") },
+                                                leadingIcon = { Icon(Icons.Default.Edit, null) },
+                                                onClick = { showMenu = false; onEditPost() }
+                                            )
+                                            DropdownMenuItem(
+                                                text = { Text("Eliminar") },
+                                                leadingIcon = { Icon(Icons.Default.Delete, null) },
+                                                onClick = { showMenu = false; showDeleteConfirm = true }
+                                            )
+                                            DropdownMenuItem(
+                                                text = { Text("Compartir") },
+                                                leadingIcon = { Icon(Icons.Default.Share, null) },
+                                                onClick = { showMenu = false; onSharePost() }
+                                            )
+                                            DropdownMenuItem(
+                                                text = { Text("Marcar expirada") },
+                                                leadingIcon = { Icon(Icons.Default.Warning, null) },
+                                                onClick = { showMenu = false; showReportConfirm = true }
+                                            )
+                                        }
+                                        else -> {
+                                            DropdownMenuItem(
+                                                text = { Text("Compartir") },
+                                                leadingIcon = { Icon(Icons.Default.Share, null) },
+                                                onClick = { showMenu = false; onSharePost() }
+                                            )
+                                            DropdownMenuItem(
+                                                text = { Text("Reportar expirada") },
+                                                leadingIcon = { Icon(Icons.Default.Warning, null) },
+                                                onClick = { showMenu = false; showReportConfirm = true }
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -456,10 +496,11 @@ fun PostCard(
                             )
                         }
 
+                        // Eliminamos el banner rojo "⚠ Oferta Expirada" que cubría la imagen superior.
+                        // Ahora solo se muestra el badge Online/Física o 🔥 Top siempre
                         val offerBadgeColor = if (isOnline) Color(0xFF1565C0) else Color(0xFF2E7D32)
                         val offerBadgeIcon = if (isOnline) Icons.Default.Language else Icons.Default.Store
                         val offerBadgeLabel = if (isOnline) "Online" else "Física"
-
                         Surface(
                             color = offerBadgeColor,
                             shape = RoundedCornerShape(bottomEnd = 8.dp),
@@ -484,6 +525,24 @@ fun PostCard(
                                 )
                             }
                         }
+
+                        // Badge 🔥 Top (esquina superior derecha) — solo si no expirada
+                        if (!isExpiredPost && post.votesScore >= 50) {
+                            Surface(
+                                color = Color(0xFFFF6D00),
+                                shape = RoundedCornerShape(bottomStart = 8.dp),
+                                modifier = Modifier.align(Alignment.TopEnd)
+                            ) {
+                                Text(
+                                    text = "🔥 Top",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontSize = 10.sp,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
                     }
 
                     Spacer(Modifier.width(16.dp))
@@ -504,57 +563,43 @@ fun PostCard(
                             lineHeight = 22.sp
                         )
 
-                        // Descripción corta — máximo 2 líneas
-                        if (post.descriptionShort.isNotBlank()) {
-                            Text(
-                                text = post.descriptionShort,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f),
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                                lineHeight = 18.sp
-                            )
-                        }
-
                         if (hasAnyPrice) {
                             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                 if (hasDiscount && formattedNormalPrice != null) {
-                                    Text(
-                                        text = formattedNormalPrice,
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        textDecoration = TextDecoration.LineThrough
-                                    )
-                                }
-
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    val priceColor = if (hasDiscount) VoteTrueContainerDark else MaterialTheme.colorScheme.onSurface
-
-                                    Text(
-                                        text = displayPrice,
-                                        style = MaterialTheme.typography.headlineSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        color = priceColor
-                                    )
-
-                                    if (hasDiscount && post.discountPercentage != null && post.discountPercentage > 0) {
-                                        Surface(
-                                            color = Color(0xFFE53935),
-                                            shape = RoundedCornerShape(6.dp)
-                                        ) {
-                                            Text(
-                                                text = "-${post.discountPercentage}%",
-                                                style = MaterialTheme.typography.labelMedium,
-                                                fontWeight = FontWeight.ExtraBold,
-                                                color = Color.White,
-                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                            )
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Text(
+                                            text = formattedNormalPrice,
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            textDecoration = TextDecoration.LineThrough
+                                        )
+                                        if (post.discountPercentage != null && post.discountPercentage > 0) {
+                                            Surface(
+                                                color = Color(0xFFE53935),
+                                                shape = RoundedCornerShape(4.dp)
+                                            ) {
+                                                Text(
+                                                    text = "-${post.discountPercentage}%",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    fontWeight = FontWeight.ExtraBold,
+                                                    color = Color.White,
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                )
+                                            }
                                         }
                                     }
                                 }
+
+                                val priceColor = if (hasDiscount) VoteTrueContainerDark else MaterialTheme.colorScheme.onSurface
+                                Text(
+                                    text = displayPrice,
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = priceColor
+                                )
                             }
                         }
                     }
@@ -571,46 +616,30 @@ fun PostCard(
                     // Controles de Votos y Comentarios
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        // Votos reales ("Píldora")
-                        Surface(
-                            shape = RoundedCornerShape(50),
-                            color = VoteTrueContainerDark.copy(alpha = 0.1f)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                            ) {
-                                Icon(
-                                    Icons.Default.Whatshot, null,
-                                    tint = VoteTrueContainerDark,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Text(
-                                    text = "${post.truthCount}°",
-                                    style = MaterialTheme.typography.labelLarge,
-                                    color = VoteTrueContainerDark,
-                                    fontWeight = FontWeight.ExtraBold
-                                )
-                            }
-                        }
+                        VerdictBadge(
+                            truthCount = post.truthCount,
+                            falseCount = post.falseCount
+                        )
 
-                        // Comentarios
+                        // Comentarios — clickeable para abrir PostDetail
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(50))
+                                .clickable { onPostClick() }
+                                .padding(horizontal = 6.dp, vertical = 6.dp)
                         ) {
                             Icon(
                                 Icons.Default.ChatBubbleOutline, null,
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(18.dp)
+                                modifier = Modifier.size(16.dp)
                             )
                             Text(
                                 text = "${post.commentsCount}",
-                                style = MaterialTheme.typography.labelLarge,
+                                style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontWeight = FontWeight.Bold
                             )
@@ -677,51 +706,72 @@ fun PostCard(
 
 
 // ─────────────────────────────────────────────────────────────────────────────
-// FEED VERACITY BADGE — Versión estática para el card del feed
+// VERDICT BADGE — M3 Dynamic Voting System
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-fun FeedVeracityBadge(
+fun VerdictBadge(
     truthCount: Int,
-    falseCount: Int
+    falseCount: Int,
+    modifier: Modifier = Modifier
 ) {
-    val totalVotes = truthCount + falseCount
-    val showResults = totalVotes >= 30
+    val verdict = com.farbalapps.rinde.domain.model.VerdictCalculator.calculate(truthCount, falseCount)
+    val percentage = com.farbalapps.rinde.domain.model.VerdictCalculator.truthPercent(truthCount, falseCount)
     
-    if (showResults && totalVotes > 0) {
-        val truthRatio = truthCount.toFloat() / totalVotes
-        val isMostlyTrue = truthRatio >= 0.5f
-        
-        Surface(
-            shape = RoundedCornerShape(8.dp),
-            color = if (isMostlyTrue) VoteTrueContainerDark.copy(alpha = 0.2f) else VoteFalseContainerDark.copy(alpha = 0.2f),
-            modifier = Modifier.height(28.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(horizontal = 8.dp)
-            ) {
-                Icon(
-                    imageVector = if (isMostlyTrue) Icons.Default.ThumbUp else Icons.Default.ThumbDown,
-                    contentDescription = null,
-                    modifier = Modifier.size(12.dp),
-                    tint = if (isMostlyTrue) VoteTrueContentDark else VoteFalseContentDark
-                )
-                Spacer(Modifier.width(4.dp))
-                Text(
-                    text = "${(truthRatio * 100).roundToInt()}% de usuarios dicen que es ${if (isMostlyTrue) "Real" else "Falsa"}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (isMostlyTrue) VoteTrueContentDark else VoteFalseContentDark,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+    val (color, icon, text) = when (verdict) {
+        com.farbalapps.rinde.domain.model.PostVerdict.MOSTLY_TRUE -> {
+            Triple(
+                com.farbalapps.rinde.ui.theme.VerdictTrueColor,
+                Icons.Default.Check,
+                "$percentage% Real"
+            )
         }
-    } else {
-        Text(
-            text = "En validación comunitaria...",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        com.farbalapps.rinde.domain.model.PostVerdict.MOSTLY_FALSE -> {
+            Triple(
+                com.farbalapps.rinde.ui.theme.VerdictFalseColor,
+                Icons.Default.Close,
+                "${100 - percentage}% Falso"
+            )
+        }
+        com.farbalapps.rinde.domain.model.PostVerdict.DISPUTED -> {
+            Triple(
+                com.farbalapps.rinde.ui.theme.VerdictDisputedColor,
+                Icons.Default.Scale,
+                "Opiniones divididas"
+            )
+        }
+        com.farbalapps.rinde.domain.model.PostVerdict.VALIDATING -> {
+            Triple(
+                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                Icons.Default.HourglassEmpty,
+                "En validación"
+            )
+        }
+    }
+
+    Surface(
+        shape = RoundedCornerShape(50),
+        color = color.copy(alpha = 0.12f),
+        modifier = modifier.height(28.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = text,
+                tint = color,
+                modifier = Modifier.size(16.dp)
+            )
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelMedium,
+                color = color,
+                fontWeight = FontWeight.Bold
+            )
+        }
     }
 }
 
@@ -739,7 +789,8 @@ fun VotingActions(
     modifier: Modifier = Modifier
 ) {
     val totalVotes = truthCount + falseCount
-    val showResults = totalVotes >= 30
+    val verdict = com.farbalapps.rinde.domain.model.VerdictCalculator.calculate(truthCount, falseCount)
+    val showResults = verdict != com.farbalapps.rinde.domain.model.PostVerdict.VALIDATING
     val truthRatio: Float? = if (showResults && totalVotes > 0) {
         truthCount.toFloat() / totalVotes
     } else null
@@ -781,8 +832,9 @@ fun VotingActions(
         if (truthRatio != null) {
             VoteProgressIndicator(truthRatio = truthRatio, userVote = userVote)
         } else {
+            val needed = com.farbalapps.rinde.domain.model.VerdictCalculator.MIN_VOTES_THRESHOLD - totalVotes
             Text(
-                text = "Se necesitan ${30 - totalVotes} votos más para ver resultados",
+                text = "Se necesitan $needed ${if (needed == 1) "voto más" else "votos más"} para ver resultados",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,

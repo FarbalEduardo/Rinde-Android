@@ -38,7 +38,11 @@ data class CreatePostUiState(
     val isPrivateProfile: Boolean = false,
     val isLoading: Boolean = false,
     val error: String? = null,
-    val isFinished: Boolean = false
+    val isFinished: Boolean = false,
+    val priceError: String? = null,
+    val productLinkError: String? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null
 )
 
 @HiltViewModel
@@ -75,7 +79,19 @@ class CreatePostViewModel @Inject constructor(
     }
 
     fun onProductLinkChange(newLink: String) {
-        _uiState.update { it.copy(productLink = newLink) }
+        val error = if (newLink.isNotBlank() && !isValidUrl(newLink)) {
+            "Ingresa una URL válida (ej: https://...)"
+        } else null
+        _uiState.update { it.copy(productLink = newLink, productLinkError = error) }
+    }
+
+    private fun isValidUrl(url: String): Boolean {
+        return try {
+            val uri = android.net.Uri.parse(url)
+            uri.scheme in listOf("http", "https") && uri.host != null
+        } catch (e: Exception) {
+            false
+        }
     }
 
     fun onStoreNameChange(newName: String) {
@@ -83,11 +99,21 @@ class CreatePostViewModel @Inject constructor(
     }
 
     fun onNormalPriceChange(price: String) {
-        _uiState.update { it.copy(normalPriceInput = price) }
+        val normal = price.toDoubleOrNull()
+        val discount = _uiState.value.discountPriceInput.toDoubleOrNull()
+        val error = if (normal != null && discount != null && discount > normal) {
+            "El precio con descuento no puede ser mayor al precio normal"
+        } else null
+        _uiState.update { it.copy(normalPriceInput = price, priceError = error) }
     }
 
     fun onDiscountPriceChange(price: String) {
-        _uiState.update { it.copy(discountPriceInput = price) }
+        val discount = price.toDoubleOrNull()
+        val normal = _uiState.value.normalPriceInput.toDoubleOrNull()
+        val error = if (normal != null && discount != null && discount > normal) {
+            "El precio con descuento no puede ser mayor al precio normal"
+        } else null
+        _uiState.update { it.copy(discountPriceInput = price, priceError = error) }
     }
 
     fun onCurrencyChange(newCurrency: String) {
@@ -164,8 +190,14 @@ class CreatePostViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true) }
             val location = locationService.getCurrentLocation()
             if (location != null) {
-                // In a real app we would use Geocoder here
-                _uiState.update { it.copy(locationName = "Ubicación detectada", isLoading = false) }
+                val address = locationService.getAddressFromLocation(location.latitude, location.longitude)
+                val finalName = address ?: "Ubicación detectada (${String.format("%.4f", location.latitude)}, ${String.format("%.4f", location.longitude)})"
+                _uiState.update { it.copy(
+                    locationName = finalName,
+                    latitude = location.latitude,
+                    longitude = location.longitude,
+                    isLoading = false
+                ) }
             } else {
                 _uiState.update { it.copy(
                     error = "No se pudo obtener la ubicación GPS.",
@@ -196,6 +228,10 @@ class CreatePostViewModel @Inject constructor(
             _uiState.update { it.copy(error = "El título es obligatorio") }
             return
         }
+        if (state.title.length < 10) {
+            _uiState.update { it.copy(error = "El título debe tener al menos 10 caracteres") }
+            return
+        }
         if (state.description.isBlank()) {
             _uiState.update { it.copy(error = "La descripción es obligatoria") }
             return
@@ -217,6 +253,10 @@ class CreatePostViewModel @Inject constructor(
                 _uiState.update { it.copy(error = "El link del producto es obligatorio") }
                 return
             }
+            if (state.productLinkError != null) {
+                _uiState.update { it.copy(error = "Corrige los errores antes de publicar") }
+                return
+            }
         }
         if (state.offerType == com.farbalapps.rinde.domain.model.OfferType.PHYSICAL) {
             if (state.storeName.isBlank()) {
@@ -227,6 +267,10 @@ class CreatePostViewModel @Inject constructor(
                 _uiState.update { it.copy(error = "La ubicación es obligatoria para ofertas físicas") }
                 return
             }
+        }
+        if (state.priceError != null) {
+            _uiState.update { it.copy(error = "El precio con descuento no puede ser mayor al precio normal") }
+            return
         }
         
         viewModelScope.launch {
@@ -241,6 +285,10 @@ class CreatePostViewModel @Inject constructor(
             }
             if (state.discountPriceInput.isNotBlank() && discountPriceDouble == null) {
                 _uiState.update { it.copy(error = "El precio con descuento no es válido", isLoading = false) }
+                return@launch
+            }
+            if (normalPriceDouble != null && discountPriceDouble != null && discountPriceDouble > normalPriceDouble) {
+                _uiState.update { it.copy(error = "El precio con descuento no puede superar el precio normal", isLoading = false) }
                 return@launch
             }
 
@@ -271,7 +319,9 @@ class CreatePostViewModel @Inject constructor(
                 couponCode = finalCoupon,
                 discountPercentage = discountPercentage,
                 isAvailable = state.isAvailable,
-                condition = state.condition
+                condition = state.condition,
+                latitude = state.latitude,
+                longitude = state.longitude
             )
             
             if (result.isSuccess) {

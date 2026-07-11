@@ -12,6 +12,10 @@ import com.farbalapps.rinde.domain.usecase.AddReplyUseCase
 import com.farbalapps.rinde.domain.usecase.GetCommentsUseCase
 import com.farbalapps.rinde.domain.usecase.ToggleCommentLikeUseCase
 import com.farbalapps.rinde.domain.usecase.ToggleVoteUseCase
+import com.farbalapps.rinde.domain.usecase.DeleteCommentUseCase
+import com.farbalapps.rinde.domain.usecase.EditCommentUseCase
+import com.farbalapps.rinde.domain.usecase.DeleteReplyUseCase
+import com.farbalapps.rinde.domain.usecase.EditReplyUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -33,7 +37,12 @@ data class PostDetailUiState(
     val currentUserName: String = "",
     val isDeleted: Boolean = false,
     val snackbarMessage: String? = null,
-    val error: String? = null
+    val error: String? = null,
+    val editingCommentId: String? = null,
+    val editingReplyId: String? = null,
+    val editingText: String = "",
+    val replyingToComment: Comment? = null,
+    val replyText: String = ""
 )
 
 @HiltViewModel
@@ -44,11 +53,19 @@ class PostDetailViewModel @Inject constructor(
     private val getCommentsUseCase: GetCommentsUseCase,
     private val addCommentUseCase: AddCommentUseCase,
     private val addReplyUseCase: AddReplyUseCase,
-    private val toggleLikeUseCase: ToggleCommentLikeUseCase
+    private val toggleLikeUseCase: ToggleCommentLikeUseCase,
+    private val deleteCommentUseCase: DeleteCommentUseCase,
+    private val editCommentUseCase: EditCommentUseCase,
+    private val deleteReplyUseCase: DeleteReplyUseCase,
+    private val editReplyUseCase: EditReplyUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PostDetailUiState())
     val uiState: StateFlow<PostDetailUiState> = _uiState.asStateFlow()
+
+    val postStatusOverlay: StateFlow<Map<String, com.farbalapps.rinde.domain.model.VerificationStatus>> = feedRepository.globalPostStatus
+    val savedStatusOverlay: StateFlow<Map<String, Boolean>> = feedRepository.globalSavedStatus
+    val voteStatusOverlay: StateFlow<Map<String, com.farbalapps.rinde.domain.repository.VoteOverlay>> = feedRepository.globalVoteStatus
 
     private val currentUser = authRepository.getCurrentUser()
     private val currentUserId = currentUser?.id ?: ""
@@ -66,6 +83,7 @@ class PostDetailViewModel @Inject constructor(
         currentPostId = postId
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingPost = true) }
+            
             try {
                 feedRepository.getPostById(postId).collect { post ->
                     _uiState.update { it.copy(post = post, isLoadingPost = false) }
@@ -143,32 +161,120 @@ class PostDetailViewModel @Inject constructor(
             }
         }
     }
+    // ─────────────────────────────────────────────────────────────────────────
+    // Comment / Reply Actions
+    // ─────────────────────────────────────────────────────────────────────────
 
+    fun startEditComment(comment: Comment) {
+        _uiState.update { it.copy(editingCommentId = comment.id, editingText = comment.text, editingReplyId = null) }
+    }
+
+    fun startEditReply(reply: Reply) {
+        _uiState.update { it.copy(editingReplyId = reply.id, editingText = reply.text, editingCommentId = null) }
+    }
+
+    fun onEditTextChange(text: String) {
+        _uiState.update { it.copy(editingText = text) }
+    }
+
+    fun cancelEdit() {
+        _uiState.update { it.copy(editingCommentId = null, editingReplyId = null, editingText = "") }
+    }
+
+    fun saveEditedContent() {
+        val postId = currentPostId ?: return
+        val state = _uiState.value
+        val text = state.editingText.trim()
+        if (text.isBlank()) return
+
+        viewModelScope.launch {
+            if (state.editingCommentId != null) {
+                // El authorId lo valida el UseCase internamente usando currentUser
+                editCommentUseCase(postId, state.editingCommentId, state.currentUserId, text)
+            } else if (state.editingReplyId != null) {
+                // Para simplificar encontramos el commentId buscando en replies
+                var parentCommentId = ""
+                for ((cId, repls) in state.replies) {
+                    if (repls.any { it.id == state.editingReplyId }) {
+                        parentCommentId = cId
+                        break
+                    }
+                }
+                if (parentCommentId.isNotEmpty()) {
+                    editReplyUseCase(parentCommentId, state.editingReplyId, state.currentUserId, text)
+                }
+            }
+            cancelEdit()
+        }
+    }
+
+    fun deleteComment(commentId: String, authorId: String) {
+        val postId = currentPostId ?: return
+        viewModelScope.launch {
+            deleteCommentUseCase(postId, commentId, authorId).onSuccess {
+                _uiState.update { it.copy(snackbarMessage = "Comentario eliminado") }
+            }
+        }
+    }
+
+    fun deleteReply(commentId: String, replyId: String, authorId: String) {
+        val postId = currentPostId ?: return
+        viewModelScope.launch {
+            deleteReplyUseCase(commentId, replyId, postId, authorId).onSuccess {
+                _uiState.update { it.copy(snackbarMessage = "Respuesta eliminada") }
+            }
+        }
+    }
+
+    fun setReplyingTo(comment: Comment?) {
+        _uiState.update { it.copy(replyingToComment = comment, replyText = "") }
+    }
+
+    fun onReplyTextChange(text: String) {
+        _uiState.update { it.copy(replyText = text) }
+    }
+
+    fun submitReply() {
+        val postId = currentPostId ?: return
+        val state = _uiState.value
+        val comment = state.replyingToComment ?: return
+        val text = state.replyText.trim()
+        if (text.isBlank()) return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSendingComment = true) }
+            val result = addReplyUseCase(commentId = comment.id, postId = postId, text = text, imageUri = null)
+            if (result.isSuccess) {
+                _uiState.update { it.copy(replyText = "", replyingToComment = null, isSendingComment = false) }
+                loadReplies(comment.id) // Reload replies for this comment
+            } else {
+                _uiState.update { it.copy(error = result.exceptionOrNull()?.message, isSendingComment = false) }
+            }
+        }
+    }
     // ─────────────────────────────────────────────────────────────────────────
     // Voting
     // ─────────────────────────────────────────────────────────────────────────
 
     fun toggleVote(voteValue: Int) {
         val post = _uiState.value.post ?: return
-        // Optimistic update
         val currentVote = post.myVoteValue
-        val updatedPost = if (currentVote == voteValue) {
-            val scoreDiff = -voteValue
-            val newTruth = if (voteValue > 0) post.truthCount - 1 else post.truthCount
-            val newFalse = if (voteValue < 0) post.falseCount - 1 else post.falseCount
-            post.copy(myVoteValue = 0, votesScore = post.votesScore + scoreDiff,
-                truthCount = newTruth, falseCount = newFalse)
-        } else {
-            val scoreDiff = if (currentVote == 0) voteValue else voteValue - currentVote
-            val newTruth = post.truthCount + (if (voteValue > 0) 1 else 0) - (if (currentVote > 0) 1 else 0)
-            val newFalse = post.falseCount + (if (voteValue < 0) 1 else 0) - (if (currentVote < 0) 1 else 0)
-            post.copy(myVoteValue = voteValue, votesScore = post.votesScore + scoreDiff,
-                truthCount = newTruth, falseCount = newFalse)
-        }
-        _uiState.update { it.copy(post = updatedPost) }
+        val nextVote = if (currentVote == voteValue) 0 else voteValue
+
+        // Actualizamos optimistamente solo el voto personal (sin alterar contadores artificialmente)
+        _uiState.update { it.copy(post = post.copy(myVoteValue = nextVote)) }
 
         viewModelScope.launch {
-            toggleVoteUseCase(post.id, voteValue, post.authorId)
+            val result = toggleVoteUseCase(post.id, voteValue, post.authorId)
+            if (result.isFailure) {
+                // Revertir y mostrar error
+                _uiState.update { state ->
+                    state.copy(
+                        post = state.post?.copy(myVoteValue = currentVote),
+                        snackbarMessage = "No se pudo registrar tu voto. Revisa tu conexión."
+                    )
+                }
+            }
         }
     }
 
@@ -178,9 +284,13 @@ class PostDetailViewModel @Inject constructor(
 
     fun toggleSave() {
         val post = _uiState.value.post ?: return
-        _uiState.update { it.copy(post = post.copy(isSavedByMe = !post.isSavedByMe)) }
         viewModelScope.launch {
             feedRepository.toggleSave(currentUserId, post.id)
+                .onFailure {
+                    _uiState.update { state ->
+                        state.copy(snackbarMessage = "No se pudo guardar la publicación. Intenta de nuevo.")
+                    }
+                }
         }
     }
 
@@ -211,14 +321,20 @@ class PostDetailViewModel @Inject constructor(
         }
     }
 
+
     fun markAsExpired() {
         val postId = currentPostId ?: return
-        _uiState.update { state -> 
-            val updatedPost = state.post?.copy(verificationStatus = com.farbalapps.rinde.domain.model.VerificationStatus.EXPIRED)
-            state.copy(post = updatedPost)
-        }
+        feedRepository.updatePostStatusLocal(postId, com.farbalapps.rinde.domain.model.VerificationStatus.EXPIRED)
         viewModelScope.launch {
             feedRepository.markPostAsExpired(postId)
+        }
+    }
+
+    fun markAsAvailable() {
+        val postId = currentPostId ?: return
+        feedRepository.updatePostStatusLocal(postId, com.farbalapps.rinde.domain.model.VerificationStatus.PENDING)
+        viewModelScope.launch {
+            feedRepository.markPostAsAvailable(postId)
         }
     }
 

@@ -11,8 +11,18 @@ import kotlinx.coroutines.flow.callbackFlow
 import com.google.firebase.auth.AuthResult
 import com.google.android.gms.tasks.Task
 
-class FirebaseAuthRepository(
-    private val firebaseAuth: FirebaseAuth = FirebaseAuth.getInstance()
+import com.farbalapps.rinde.data.local.dao.PostDao
+import com.farbalapps.rinde.data.local.dao.SyncMetadataDao
+import com.farbalapps.rinde.data.local.dao.UserVoteDao
+import com.farbalapps.rinde.data.util.SavedPostsMemoryCache
+import javax.inject.Inject
+
+class FirebaseAuthRepository @Inject constructor(
+    private val firebaseAuth: FirebaseAuth = FirebaseAuth.getInstance(),
+    private val savedPostsMemoryCache: SavedPostsMemoryCache,
+    private val userVoteDao: UserVoteDao,
+    private val postDao: PostDao,
+    private val syncMetadataDao: SyncMetadataDao
 ) : AuthRepository {
     
     override fun login(email: String, password: String): Flow<Resource<User>> = callbackFlow {
@@ -96,6 +106,16 @@ class FirebaseAuthRepository(
     
     override fun logout() {
         firebaseAuth.signOut()
+        savedPostsMemoryCache.clear()
+    }
+
+    override suspend fun clearUserLocalState() {
+        val uid = getCurrentUser()?.id ?: ""
+        if (uid.isNotEmpty()) {
+            userVoteDao.clearUserVotes(uid)
+        }
+        postDao.clearAll() // Borra completamente el feed local de Room para evitar fugas y obligar re-sync
+        syncMetadataDao.clearAll() // Borra metadatos para reiniciar sincronizaciones del nuevo usuario
     }
     
     override fun getCurrentUser(): User? {

@@ -8,9 +8,6 @@ interface ProfileRepository {
     fun getProfile(userId: String): Flow<Profile>
     fun getProfilePosts(userId: String): Flow<List<CommunityPost>>
     suspend fun syncProfile(userId: String)
-    suspend fun followUser(myUserId: String, targetUserId: String): Result<Unit>
-    suspend fun unfollowUser(myUserId: String, targetUserId: String): Result<Unit>
-    fun isFollowing(myUserId: String, targetUserId: String): Flow<Boolean>
     suspend fun updateProfile(userId: String, name: String, photoUrl: String?): Result<Unit>
     
     // New Feature Methods

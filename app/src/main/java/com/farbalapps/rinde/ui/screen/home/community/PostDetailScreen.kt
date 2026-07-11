@@ -42,6 +42,7 @@ import com.farbalapps.rinde.ui.theme.RindePrimary
 import com.farbalapps.rinde.ui.theme.VoteFalseContainerDark
 import com.farbalapps.rinde.ui.theme.VoteTrueContainerDark
 import com.farbalapps.rinde.ui.screen.home.community.components.VotingActions
+import com.farbalapps.rinde.ui.screen.home.community.components.VerdictBadge
 import com.farbalapps.rinde.ui.screen.home.community.components.ShimmerBox
 import kotlin.math.roundToInt
 import java.text.SimpleDateFormat
@@ -81,6 +82,10 @@ fun PostDetailScreen(
         }
     }
 
+    val postStatusOverlay by viewModel.postStatusOverlay.collectAsStateWithLifecycle()
+    val savedStatusOverlay by viewModel.savedStatusOverlay.collectAsStateWithLifecycle()
+    val voteStatusOverlay by viewModel.voteStatusOverlay.collectAsStateWithLifecycle()
+
     // Fondo grisáceo claro / oscuro neutro para separar las tarjetas
     val scaffoldBgColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -94,8 +99,23 @@ fun PostDetailScreen(
             PostDetailSkeleton(paddingValues = paddingValues)
         } else {
             uiState.post?.let { post ->
+                val overriddenStatus = postStatusOverlay[post.id] ?: post.verificationStatus
+                val overriddenSaved = savedStatusOverlay[post.id] ?: post.isSavedByMe
+                val voteOver = voteStatusOverlay[post.id]
+                val finalTruth = voteOver?.truthCount ?: post.truthCount
+                val finalFalse = voteOver?.falseCount ?: post.falseCount
+                val finalMyVote = voteOver?.myVote ?: post.myVoteValue
+                val finalScore = if (voteOver != null) (finalTruth - finalFalse) else post.votesScore
+                val finalPost = post.copy(
+                    verificationStatus = overriddenStatus,
+                    isSavedByMe = overriddenSaved,
+                    truthCount = finalTruth,
+                    falseCount = finalFalse,
+                    myVoteValue = finalMyVote,
+                    votesScore = finalScore
+                )
                 PostDetailContent(
-                    post = post,
+                    post = finalPost,
                     comments = uiState.comments,
                     replies = uiState.replies,
                     isLoadingComments = uiState.isLoadingComments,
@@ -103,20 +123,24 @@ fun PostDetailScreen(
                     commentText = uiState.commentText,
                     currentUserId = uiState.currentUserId,
                     onBack = onBack,
-                    onAuthorClick = { onAuthorClick(post.authorId) },
+                    onAuthorClick = { onAuthorClick(finalPost.authorId) },
                     onSaveClick = { viewModel.toggleSave() },
                     onDeletePost = { viewModel.deletePost() },
-                    onEditPost = { onEditPost(post.id) },
+                    onEditPost = { onEditPost(finalPost.id) },
                     onSharePost = {
                         val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
                             type = "text/plain"
-                            putExtra(android.content.Intent.EXTRA_TEXT, "¡Mira esta oferta en Rinde!\n${post.title}\nhttps://rinde.app/post/${post.id}")
+                            putExtra(android.content.Intent.EXTRA_TEXT, "¡Mira esta oferta en Rinde!\n${finalPost.title}\nhttps://rinde.app/post/${finalPost.id}")
                         }
                         context.startActivity(android.content.Intent.createChooser(shareIntent, "Compartir publicación"))
                     },
                     onReportExpired = { 
-                        if (post.authorId == uiState.currentUserId) {
-                            viewModel.markAsExpired()
+                        if (finalPost.authorId == uiState.currentUserId) {
+                            if (finalPost.verificationStatus == VerificationStatus.EXPIRED) {
+                                viewModel.markAsAvailable()
+                            } else {
+                                viewModel.markAsExpired()
+                            }
                         } else {
                             viewModel.reportAsExpired()
                         }
@@ -242,13 +266,11 @@ private fun PostDetailContent(
                                     }
                                 }
 
-                                if (post.verificationStatus == VerificationStatus.VERIFIED) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(Icons.Default.GppGood, null, modifier = Modifier.size(14.dp), tint = VoteTrueContainerDark)
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text("Verificada", style = MaterialTheme.typography.labelSmall, color = VoteTrueContainerDark, fontWeight = FontWeight.Bold)
-                                    }
-                                }
+                                // VerdictBadge — mismo componente que el feed, mismos datos (truthCount/falseCount del post ya enriquecido)
+                                VerdictBadge(
+                                    truthCount = post.truthCount,
+                                    falseCount = post.falseCount
+                                )
                             }
                             
                             Spacer(modifier = Modifier.height(12.dp))
@@ -482,9 +504,9 @@ private fun PostDetailContent(
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = post.descriptionLong.ifBlank { post.descriptionShort },
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
-                            lineHeight = 22.sp
+                            lineHeight = 24.sp
                         )
                     }
                 }
@@ -650,12 +672,25 @@ private fun PostDetailContent(
                         )
                     }
 
+                    val isExpired = post.verificationStatus == VerificationStatus.EXPIRED
+
                     if (showReportConfirm) {
                         val isAuthor = post.authorId == currentUserId
+                        val titleText = if (isAuthor) {
+                            if (isExpired) "Marcar como disponible" else "Marcar como expirada"
+                        } else {
+                            "Reportar expirada"
+                        }
+                        val bodyText = if (isAuthor) {
+                            if (isExpired) "¿Estás seguro que deseas marcar esta oferta como disponible nuevamente?" else "¿Estás seguro que deseas marcar esta oferta como expirada?"
+                        } else {
+                            "¿Estás seguro que deseas reportar esta oferta como expirada?"
+                        }
+
                         AlertDialog(
                             onDismissRequest = { showReportConfirm = false },
-                            title = { Text(if (isAuthor) "Marcar como expirada" else "Reportar expirada") },
-                            text = { Text(if (isAuthor) "¿Estás seguro que deseas marcar esta oferta como expirada?" else "¿Estás seguro que deseas reportar esta oferta como expirada?") },
+                            title = { Text(titleText) },
+                            text = { Text(bodyText) },
                             confirmButton = {
                                 TextButton(onClick = {
                                     showReportConfirm = false
@@ -699,8 +734,8 @@ private fun PostDetailContent(
                                     onClick = { showMenu = false; onSharePost() }
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("Marcar expirada") },
-                                    leadingIcon = { Icon(Icons.Default.Warning, null) },
+                                    text = { Text(if (isExpired) "Marcar disponible" else "Marcar expirada") },
+                                    leadingIcon = { Icon(if (isExpired) Icons.Default.CheckCircle else Icons.Default.Warning, null) },
                                     onClick = { showMenu = false; showReportConfirm = true }
                                 )
                             } else {
@@ -709,11 +744,13 @@ private fun PostDetailContent(
                                     leadingIcon = { Icon(Icons.Default.Share, null) },
                                     onClick = { showMenu = false; onSharePost() }
                                 )
-                                DropdownMenuItem(
-                                    text = { Text("Reportar expirada") },
-                                    leadingIcon = { Icon(Icons.Default.Warning, null) },
-                                    onClick = { showMenu = false; showReportConfirm = true }
-                                )
+                                if (!isExpired) {
+                                    DropdownMenuItem(
+                                        text = { Text("Reportar expirada") },
+                                        leadingIcon = { Icon(Icons.Default.Warning, null) },
+                                        onClick = { showMenu = false; showReportConfirm = true }
+                                    )
+                                }
                             }
                         }
                     }
