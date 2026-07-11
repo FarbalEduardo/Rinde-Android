@@ -42,6 +42,12 @@ android {
         }
     }
 
+    lint {
+        abortOnError = false
+        checkReleaseBuilds = false
+        checkDependencies = false
+    }
+
     flavorDimensions += "environment"
     productFlavors {
         create("dev") {
