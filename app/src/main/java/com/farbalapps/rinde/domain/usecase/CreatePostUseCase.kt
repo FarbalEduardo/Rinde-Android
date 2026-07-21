@@ -59,7 +59,7 @@ class CreatePostUseCase @Inject constructor(
             authorId = user?.id ?: "anonymous",
             authorName = user?.displayName?.takeIf { it.isNotBlank() } ?: "Usuario",
             authorPhotoUrl = user?.photoUrl,
-            timestamp = java.util.Date(),
+            timestamp = System.currentTimeMillis(),
             title = title,
             descriptionShort = if (description.length > 50) description.take(50) + "..." else description,
             descriptionLong = description,

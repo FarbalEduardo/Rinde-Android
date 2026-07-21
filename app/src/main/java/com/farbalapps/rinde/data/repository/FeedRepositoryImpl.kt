@@ -141,6 +141,15 @@ class FeedRepositoryImpl @Inject constructor(
     override suspend fun toggleVote(userId: String, postId: String, voteValue: Int): Result<Unit> =
         interactionDelegate.toggleVote(userId, postId, voteValue)
 
+    override suspend fun toggleVoteTransaction(userId: String, postId: String, voteValue: Int): Result<Triple<Int, Int, Int>> =
+        interactionDelegate.toggleVoteTransaction(userId, postId, voteValue)
+
+    override suspend fun fetchPostVoteCounts(postId: String): Result<Triple<Int, Int, Int>> =
+        interactionDelegate.fetchPostVoteCounts(postId)
+
+    override suspend fun savePendingVote(userId: String, postId: String, voteValue: Int, authorId: String) =
+        interactionDelegate.savePendingVote(userId, postId, voteValue, authorId)
+
     override fun clearSessionState() =
         interactionDelegate.clearSessionState()
 }

@@ -1,170 +1,212 @@
 package com.farbalapps.rinde.ui.screen.home.goals
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.FlightTakeoff
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.LaptopMac
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.dimensionResource
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.farbalapps.rinde.R
-import com.farbalapps.rinde.ui.screen.home.goals.components.ChefSuggestionCard
-import com.farbalapps.rinde.ui.screen.home.goals.components.EmergencyFundCard
-import com.farbalapps.rinde.ui.screen.home.goals.components.GoalCard
-import com.farbalapps.rinde.ui.theme.Blue80
-import com.farbalapps.rinde.ui.theme.RindePrimary
-import com.farbalapps.rinde.ui.theme.RindeTheme
+import com.farbalapps.rinde.domain.model.SavingsGoal
+import com.farbalapps.rinde.ui.screen.home.goals.components.*
+import kotlinx.coroutines.flow.collectLatest
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GoalsScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
+fun GoalsScreen(
+    innerPadding: PaddingValues = PaddingValues(0.dp),
+    showCreateBottomSheetExternal: Boolean = false,
+    onDismissCreateBottomSheet: () -> Unit = {},
+    viewModel: GoalsViewModel = hiltViewModel()
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+
+    // Control de BottomSheets
+    var showCreateBottomSheetInternal by remember { mutableStateOf(false) }
+    var activeDepositGoal by remember { mutableStateOf<SavingsGoal?>(null) }
+    var goalToDelete by remember { mutableStateOf<SavingsGoal?>(null) }
+
+    val showCreateBottomSheet = showCreateBottomSheetExternal || showCreateBottomSheetInternal
+
+    // Diálogos de advertencia y confirmación
+    var showExcessConfirmation by remember { mutableStateOf<GoalsEvent.DepositExceedsTarget?>(null) }
+
+    LaunchedEffect(key1 = true) {
+        viewModel.events.collectLatest { event ->
+            when (event) {
+                is GoalsEvent.Success -> {
+                    Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
+                    showCreateBottomSheetInternal = false
+                    activeDepositGoal = null
+                }
+                is GoalsEvent.ValidationError -> {
+                    Toast.makeText(context, event.message, Toast.LENGTH_LONG).show()
+                }
+                is GoalsEvent.GoalLimitReached -> {
+                    Toast.makeText(context, "Límite de metas alcanzado.", Toast.LENGTH_SHORT).show()
+                }
+                is GoalsEvent.GoalCompleted -> {
+                    Toast.makeText(context, "🎉 ¡Felicidades! Completaste la meta: ${event.title}", Toast.LENGTH_LONG).show()
+                    activeDepositGoal = null
+                }
+                is GoalsEvent.DepositExceedsTarget -> {
+                    showExcessConfirmation = event
+                }
+            }
+        }
+    }
+
+    // Alerta de confirmación de depósito excedente (E3.4 Opción B)
+    showExcessConfirmation?.let { event ->
+        AlertDialog(
+            onDismissRequest = { showExcessConfirmation = null },
+            title = { Text("Confirmar Depósito Excedente") },
+            text = { Text("Este depósito supera tu meta por $${String.format("%.2f", event.excess)}. ¿Deseas continuar?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.deposit(event.goalId, event.amount, event.note, force = true)
+                        showExcessConfirmation = null
+                    }
+                ) {
+                    Text("Continuar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showExcessConfirmation = null }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+
+    // Alerta de eliminación (E5.1)
+    goalToDelete?.let { goal ->
+        AlertDialog(
+            onDismissRequest = { goalToDelete = null },
+            title = { Text("Eliminar Meta") },
+            text = { Text("¿Estás seguro de que deseas eliminar la meta \"${goal.title}\"? El dinero ahorrado ($${String.format("%.2f", goal.currentAmount)}) dejará de sumarse en el total.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.deleteGoal(goal.id)
+                        goalToDelete = null
+                    }
+                ) {
+                    Text("Eliminar", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { goalToDelete = null }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+
     Surface(
         modifier = Modifier
             .fillMaxSize()
             .padding(innerPadding),
         color = MaterialTheme.colorScheme.background
     ) {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding(),
-            contentPadding = PaddingValues(
-                horizontal = dimensionResource(id = R.dimen.padding_medium), 
-                vertical = dimensionResource(id = R.dimen.padding_medium)
-            ),
-            verticalArrangement = Arrangement.spacedBy(dimensionResource(id = R.dimen.padding_medium))
-        ) {
-
-            // Resumen Total Section
-            item {
-                Column(modifier = Modifier.padding(bottom = dimensionResource(id = R.dimen.padding_medium))) {
-                    Text(
-                        text = stringResource(id = R.string.goals_total_summary),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        letterSpacing = 1.sp
+            when (val state = uiState) {
+                is GoalsUiState.Loading -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                }
+                is GoalsUiState.Empty -> {
+                    EmptyGoalsContent(
+                        onCreateFirstGoalClick = { showCreateBottomSheetInternal = true }
                     )
-                    Spacer(modifier = Modifier.height(dimensionResource(id = R.dimen.padding_small)))
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
+                }
+                is GoalsUiState.Error -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text(text = state.message, color = MaterialTheme.colorScheme.error)
+                    }
+                }
+                is GoalsUiState.Content -> {
+                    // Diseño flexible de rejilla (LazyVerticalGrid) para dar soporte al responsive y al grid dinámico
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(2),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier.fillMaxSize()
                     ) {
-                        Text(
-                            text = "$12,450.00",
-                            style = MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Spacer(modifier = Modifier.width(dimensionResource(id = R.dimen.padding_medium)))
-                        Surface(
-                            color = Blue80,
-                            shape = MaterialTheme.shapes.extraLarge,
-                            modifier = Modifier.padding(top = dimensionResource(id = R.dimen.padding_xsmall))
-                        ) {
-                            Text(
-                                text = "+12%",
-                                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                                color = RindePrimary,
-                                modifier = Modifier.padding(
-                                    horizontal = dimensionResource(id = R.dimen.padding_small), 
-                                    vertical = dimensionResource(id = R.dimen.padding_xsmall)
+                        // Header de resumen (Ocupa ambas columnas)
+                        item(span = { GridItemSpan(2) }) {
+                            GoalsSummaryHeader(summary = state.summary)
+                        }
+
+                        // Tarjeta Destacada (Featured Card) (Ocupa ambas columnas) (E1.2, E1.3, E1.4)
+                        state.featuredGoal?.let { goal ->
+                            item(span = { GridItemSpan(2) }) {
+                                FeaturedGoalCard(
+                                    goal = goal,
+                                    onClick = { activeDepositGoal = goal },
+                                    onLongClick = { goalToDelete = goal }
                                 )
+                            }
+                        }
+
+                        // Tarjetas Secundarias (Ocupan una columna cada una para formar un grid de 2 columnas)
+                        items(state.secondaryGoals) { goal ->
+                            SmallGoalCard(
+                                goal = goal,
+                                onClick = { activeDepositGoal = goal },
+                                onLongClick = { goalToDelete = goal }
                             )
                         }
+
+                        // AI Suggestion & Fondo de Emergencia (Decorativos y mockeados del template original)
+                        item(span = { GridItemSpan(2) }) {
+                            ChefSuggestionCard()
+                        }
+                        item(span = { GridItemSpan(2) }) {
+                            EmergencyFundCard()
+                        }
+                        item(span = { GridItemSpan(2) }) {
+                            Spacer(modifier = Modifier.height(72.dp))
+                        }
                     }
-                    Spacer(modifier = Modifier.height(dimensionResource(id = R.dimen.padding_small)))
-                    Text(
-                        text = stringResource(id = R.string.goals_progress_msg, 45),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                 }
             }
+    } // cierre Surface
 
-            // Grid of Top Goals
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(dimensionResource(id = R.dimen.padding_medium))
-                ) {
-                    GoalCard(
-                        title = stringResource(id = R.string.goal_house_title),
-                        subtitle = stringResource(id = R.string.goal_house_subtitle),
-                        currentAmount = "$4,500",
-                        totalAmount = "$10,000",
-                        percentage = 45,
-                        icon = Icons.Default.Home,
-                        progressColor = RindePrimary,
-                        iconContainerColor = Blue80,
-                        iconColor = RindePrimary,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
+    // Modal para Crear Metas
+    if (showCreateBottomSheet) {
+        CreateGoalBottomSheet(
+            onDismissRequest = {
+                showCreateBottomSheetInternal = false
+                onDismissCreateBottomSheet()
+            },
+            onConfirm = { title, target, icon, color ->
+                viewModel.createGoal(title, target, icon, color)
             }
-
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(dimensionResource(id = R.dimen.padding_medium))
-                ) {
-                    GoalCard(
-                        title = stringResource(id = R.string.goal_japan_title),
-                        subtitle = "$2,300 / $5,000",
-                        currentAmount = "",
-                        totalAmount = "",
-                        percentage = 46,
-                        icon = Icons.Default.FlightTakeoff,
-                        progressColor = Color(0xFF8B5A62),
-                        iconContainerColor = Color(0xFFEBE3E4),
-                        iconColor = Color(0xFF8B5A62),
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    GoalCard(
-                        title = stringResource(id = R.string.goal_macbook_title),
-                        subtitle = "$1,800 / $2,500",
-                        currentAmount = "",
-                        totalAmount = "",
-                        percentage = 72,
-                        icon = Icons.Default.LaptopMac,
-                        progressColor = Color(0xFF635F70),
-                        iconContainerColor = Color(0xFFE5E4E8),
-                        iconColor = Color(0xFF635F70),
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
-
-            // AI Suggestion
-            item {
-                ChefSuggestionCard()
-            }
-
-            // Emergency Fund
-            item {
-                EmergencyFundCard()
-            }
-            
-            // Add padding at bottom for FAB
-            item {
-                Spacer(modifier = Modifier.height(dimensionResource(id = R.dimen.padding_xxlarge)))
-            }
-        }
+        )
     }
-}
 
-@PreviewLightDark
-@Composable
-fun GoalsScreenPreview() {
-    RindeTheme {
-        GoalsScreen()
+    // Modal para Registrar Depósito
+    activeDepositGoal?.let { goal ->
+        DepositBottomSheet(
+            goalTitle = goal.title,
+            onDismissRequest = { activeDepositGoal = null },
+            onConfirm = { amount, note ->
+                viewModel.deposit(goal.id, amount, note)
+            }
+        )
     }
-}
+} // cierre GoalsScreen

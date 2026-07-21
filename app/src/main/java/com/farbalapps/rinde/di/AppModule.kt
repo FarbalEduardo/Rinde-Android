@@ -109,12 +109,51 @@ object AppModule {
                 )
             }
         }
+
+        // MIGRACIÓN 19→20: Agrega las tablas de Metas de Ahorro (SavingsGoalEntity, GoalTransactionEntity).
+        // SIN esta migración, Room destruye toda la DB (incluyendo user_votes) al actualizar,
+        // causando el error "No se pudo registrar tu voto" al intentar votar.
+        val MIGRATION_19_20 = object : androidx.room.migration.Migration(19, 20) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                // Tabla principal de metas de ahorro
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `savings_goals` (" +
+                    "`id` TEXT NOT NULL, " +
+                    "`userId` TEXT NOT NULL, " +
+                    "`title` TEXT NOT NULL, " +
+                    "`targetAmount` REAL NOT NULL, " +
+                    "`currentAmount` REAL NOT NULL, " +
+                    "`iconKey` TEXT NOT NULL, " +
+                    "`colorKey` TEXT NOT NULL, " +
+                    "`isCompleted` INTEGER NOT NULL DEFAULT 0, " +
+                    "`createdAt` INTEGER NOT NULL, " +
+                    "`updatedAt` INTEGER NOT NULL, " +
+                    "`monthlySnapshotAmount` REAL NOT NULL DEFAULT 0.0, " +
+                    "`isSynced` INTEGER NOT NULL DEFAULT 0, " +
+                    "PRIMARY KEY(`id`))"
+                )
+                // Tabla de historial de transacciones/depósitos por meta
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `goal_transactions` (" +
+                    "`id` TEXT NOT NULL, " +
+                    "`goalId` TEXT NOT NULL, " +
+                    "`amount` REAL NOT NULL, " +
+                    "`note` TEXT NOT NULL, " +
+                    "`timestamp` INTEGER NOT NULL, " +
+                    "`isSynced` INTEGER NOT NULL DEFAULT 0, " +
+                    "PRIMARY KEY(`id`), " +
+                    "FOREIGN KEY(`goalId`) REFERENCES `savings_goals`(`id`) ON DELETE CASCADE)"
+                )
+                // Índice requerido por la anotación @Index en GoalTransactionEntity
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_goal_transactions_goalId` ON `goal_transactions` (`goalId`)")
+            }
+        }
         
         return Room.databaseBuilder(
             context,
             RindeDatabase::class.java,
             "rinde_database"
-        ).addMigrations(MIGRATION_6_7, MIGRATION_18_19)
+        ).addMigrations(MIGRATION_6_7, MIGRATION_18_19, MIGRATION_19_20)
          .fallbackToDestructiveMigration()
          .build()
      }
@@ -206,6 +245,12 @@ object AppModule {
 
     @Provides
     @Singleton
+    fun providePendingVoteDao(db: RindeDatabase): com.farbalapps.rinde.data.local.dao.PendingVoteDao {
+        return db.pendingVoteDao()
+    }
+
+    @Provides
+    @Singleton
     fun provideFeedRepository(
         paginationDelegate: com.farbalapps.rinde.data.repository.delegate.FeedPaginationDelegate,
         interactionDelegate: com.farbalapps.rinde.data.repository.delegate.FeedInteractionDelegate,
@@ -247,6 +292,26 @@ object AppModule {
             settingsManager,
             profileRepository,
             sessionManager
+        )
+    }
+
+    @Provides
+    @Singleton
+    fun provideGoalsDao(db: RindeDatabase): com.farbalapps.rinde.data.local.dao.GoalsDao {
+        return db.goalsDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideGoalsRepository(
+        dao: com.farbalapps.rinde.data.local.dao.GoalsDao,
+        firestore: FirebaseFirestore,
+        auth: FirebaseAuth,
+        workManager: WorkManager,
+        @IoDispatcher ioDispatcher: CoroutineDispatcher
+    ): com.farbalapps.rinde.domain.repository.GoalsRepository {
+        return com.farbalapps.rinde.data.repository.FirebaseGoalsRepository(
+            dao, firestore, auth, workManager, ioDispatcher
         )
     }
 }

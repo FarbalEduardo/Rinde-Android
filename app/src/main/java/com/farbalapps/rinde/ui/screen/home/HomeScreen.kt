@@ -105,6 +105,10 @@ fun HomeScreen(
         dest.hasRoute<HomeRoute.Profile>()
     } ?: false
 
+    // Contador simple para comunicar al GoalsScreen que debe abrir el BottomSheet de creación.
+    // Se incrementa cada vez que el FAB es pulsado; HomeNavHost reacciona con LaunchedEffect.
+    var addGoalTrigger by remember { mutableIntStateOf(0) }
+
     Scaffold(
         modifier = Modifier.nestedScroll(nestedScrollConnection),
         topBar = {
@@ -129,7 +133,7 @@ fun HomeScreen(
                 isVisible = isFabVisible,
                 destination = destination,
                 onAddProduct = { showAddProductSheet = true },
-                onAddGoal = { /* TODO: Crear meta */ },
+                onAddGoal = { addGoalTrigger++ },
                 onAddCommunityPost = { navController.navigate(HomeRoute.CreatePost) }
             )
         }
@@ -139,6 +143,7 @@ fun HomeScreen(
             innerPadding = innerPadding,
             listViewModel = listViewModel,
             onLogout = onLogout,
+            addGoalTrigger = addGoalTrigger,
             modifier = Modifier.fillMaxSize()
         )
     }

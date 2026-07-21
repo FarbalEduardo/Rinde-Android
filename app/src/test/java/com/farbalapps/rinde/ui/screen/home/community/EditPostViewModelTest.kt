@@ -54,7 +54,7 @@ class EditPostViewModelTest {
         authorId = "user_001",
         authorName = "Test Author",
         authorPhotoUrl = null,
-        timestamp = null,
+        timestamp = 0L,
         title = "Test Post",
         descriptionShort = "Short desc",
         descriptionLong = "Long description for testing",
@@ -119,7 +119,7 @@ class EditPostViewModelTest {
 
     private fun loadPost() {
         viewModel.loadPost("post_001")
-        testDispatcher.scheduler.advanceUntilIdle()
+        testDispatcher.scheduler.runCurrent()
     }
 
     private val state get() = viewModel.uiState.value
@@ -154,7 +154,7 @@ class EditPostViewModelTest {
         } returns Result.success(Unit)
 
         viewModel.submitChanges()
-        testDispatcher.scheduler.advanceUntilIdle()
+        testDispatcher.scheduler.runCurrent()
 
         coVerify {
             feedRepository.updatePost(
@@ -208,7 +208,7 @@ class EditPostViewModelTest {
         } returns Result.success(Unit)
 
         viewModel.submitChanges()
-        testDispatcher.scheduler.advanceUntilIdle()
+        testDispatcher.scheduler.runCurrent()
 
         coVerify {
             feedRepository.updatePost(
@@ -302,7 +302,7 @@ class EditPostViewModelTest {
         viewModel.onPhotoRemoved(Uri.parse(remoteUrl3))
 
         viewModel.submitChanges()
-        testDispatcher.scheduler.advanceUntilIdle()
+        testDispatcher.scheduler.runCurrent()
 
         assertNotNull("Debe haber un error de validación", state.error)
         assertTrue(

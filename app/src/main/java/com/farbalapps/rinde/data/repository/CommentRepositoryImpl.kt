@@ -33,8 +33,15 @@ class CommentRepositoryImpl @Inject constructor(
         
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                val comments = snapshot.children.mapNotNull { it.getValue(CommentDto::class.java)?.toDomain() }
-                    .reversed() // Más recientes primero
+                val comments = snapshot.children.mapNotNull { child ->
+                    try {
+                        val dto = child.getValue(CommentDto::class.java)
+                        dto?.copy(id = child.key ?: dto.id)?.toDomain()
+                    } catch (e: Exception) {
+                        android.util.Log.e("CommentRepository", "Error parsing comment ${child.key}: ${e.message}")
+                        null
+                    }
+                }.reversed() // Más recientes primero
                 trySend(comments)
             }
 
@@ -55,7 +62,15 @@ class CommentRepositoryImpl @Inject constructor(
         
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                val replies = snapshot.children.mapNotNull { it.getValue(ReplyDto::class.java)?.toDomain() }
+                val replies = snapshot.children.mapNotNull { child ->
+                    try {
+                        val dto = child.getValue(ReplyDto::class.java)
+                        dto?.copy(id = child.key ?: dto.id)?.toDomain()
+                    } catch (e: Exception) {
+                        android.util.Log.e("CommentRepository", "Error parsing reply ${child.key}: ${e.message}")
+                        null
+                    }
+                }
                 trySend(replies)
             }
 
@@ -81,12 +96,26 @@ class CommentRepositoryImpl @Inject constructor(
             }
         }
         
-        // 2. Guardar en RTDB
+        // 2. Guardar en RTDB usando ServerValue.TIMESTAMP para timestamp del servidor
         val commentRef = rtdb.getReference("comments").child(postId).push()
         val commentId = commentRef.key ?: throw Exception("Error generando ID de comentario")
-        
+
+        // Usamos un Map explícito para poder usar ServerValue.TIMESTAMP (incompatible con data classes)
         val finalComment = comment.copy(id = commentId, imageUrl = imageUrl)
-        commentRef.setValue(finalComment.toDto()).await()
+        val commentMap = mapOf(
+            "id" to commentId,
+            "postId" to finalComment.postId,
+            "authorId" to finalComment.authorId,
+            "authorName" to finalComment.authorName,
+            "authorPhotoUrl" to (finalComment.authorPhotoUrl ?: ""),
+            "text" to finalComment.text,
+            "imageUrl" to (finalComment.imageUrl ?: ""),
+            "timestamp" to com.google.firebase.database.ServerValue.TIMESTAMP,
+            "likesCount" to finalComment.likesCount,
+            "repliesCount" to finalComment.repliesCount,
+            "isEdited" to finalComment.isEdited
+        )
+        commentRef.setValue(commentMap).await()
         
         // 3. Incrementar contador en Firestore
         firestore.collection("posts").document(postId)
@@ -105,12 +134,27 @@ class CommentRepositoryImpl @Inject constructor(
             }
         }
         
-        // 2. Guardar en RTDB
+        // 2. Guardar en RTDB usando ServerValue.TIMESTAMP para timestamp del servidor
         val replyRef = rtdb.getReference("replies").child(commentId).push()
         val replyId = replyRef.key ?: throw Exception("Error generando ID de respuesta")
-        
+
+        // Usamos un Map explícito para poder usar ServerValue.TIMESTAMP (incompatible con data classes)
         val finalReply = reply.copy(id = replyId, imageUrl = imageUrl)
-        replyRef.setValue(finalReply.toDto()).await()
+        val replyMap = mapOf(
+            "id" to replyId,
+            "commentId" to finalReply.commentId,
+            "postId" to finalReply.postId,
+            "authorId" to finalReply.authorId,
+            "authorName" to finalReply.authorName,
+            "authorPhotoUrl" to (finalReply.authorPhotoUrl ?: ""),
+            "text" to finalReply.text,
+            "imageUrl" to (finalReply.imageUrl ?: ""),
+            "mentionedUser" to (finalReply.mentionedUser ?: ""),
+            "timestamp" to com.google.firebase.database.ServerValue.TIMESTAMP,
+            "likesCount" to finalReply.likesCount,
+            "isEdited" to finalReply.isEdited
+        )
+        replyRef.setValue(replyMap).await()
         
         // 3. Incrementar contador de respuestas en el comentario (RTDB)
         val commentRef = rtdb.getReference("comments").child(reply.postId).child(commentId)

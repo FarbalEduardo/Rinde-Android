@@ -228,7 +228,7 @@ fun PostCard(
         post.discountPrice != null || post.normalPrice != null
     }
     val formattedDate = remember(post.id, post.timestamp) {
-        DateUtils.formatTimeAgo(post.timestamp?.time ?: 0L)
+        DateUtils.formatTimeAgo(post.timestamp)
     }
     val formattedNormalPrice = remember(post.id, post.normalPrice, post.currency) {
         post.normalPrice?.let { "${post.currency} ${"%.2f".format(it)}" }

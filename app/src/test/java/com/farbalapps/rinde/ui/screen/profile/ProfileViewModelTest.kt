@@ -56,7 +56,7 @@ class ProfileViewModelTest {
             authorId = "author1",
             authorName = "Author One",
             authorPhotoUrl = null,
-            timestamp = null,
+            timestamp = 0L,
             title = "Post 1",
             descriptionShort = "Short 1",
             descriptionLong = "Long 1",
@@ -131,7 +131,7 @@ class ProfileViewModelTest {
         viewModel.loadProfile(testUserId)
         viewModel.uiState.test {
             // Wait for all updates to settle
-            testScheduler.advanceUntilIdle()
+            testScheduler.runCurrent()
             
             val state = expectMostRecentItem()
             
@@ -165,7 +165,7 @@ class ProfileViewModelTest {
         
         viewModel.loadProfile(testUserId)
         viewModel.uiState.test {
-            testScheduler.advanceUntilIdle()
+            testScheduler.runCurrent()
             val state = expectMostRecentItem()
             assertTrue(state.isLoading)
             assertEquals(dummyProfile, state.profile)

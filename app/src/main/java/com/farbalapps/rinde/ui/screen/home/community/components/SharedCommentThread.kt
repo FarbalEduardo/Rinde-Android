@@ -1,5 +1,10 @@
 package com.farbalapps.rinde.ui.screen.home.community.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -42,6 +47,7 @@ fun SharedCommentThread(
     onEditReply: (Reply) -> Unit,
     onReportComment: () -> Unit,
     onReportReply: (Reply) -> Unit,
+    showLikeOption: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     var showReplies by remember { mutableStateOf(false) }
@@ -83,8 +89,14 @@ fun SharedCommentThread(
 
     val isEditing = editingCommentId == comment.id
 
-    Column(modifier = modifier.fillMaxWidth()) {
-        Row(verticalAlignment = Alignment.Top) {
+    Surface(
+        modifier = modifier.fillMaxWidth().padding(vertical = 4.dp),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 1.dp
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(verticalAlignment = Alignment.Top) {
             Box(
                 modifier = Modifier.size(36.dp).background(MaterialTheme.colorScheme.surfaceVariant, CircleShape),
                 contentAlignment = Alignment.Center
@@ -110,7 +122,7 @@ fun SharedCommentThread(
                 ) {
                     Text(
                         text = comment.authorName,
-                        style = MaterialTheme.typography.labelMedium,
+                        style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -186,16 +198,18 @@ fun SharedCommentThread(
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                         )
                     }
-                    Row(
-                        modifier = Modifier.clickable { onLikeClick() },
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        if (comment.likesCount > 0) {
-                            Icon(Icons.Default.ThumbUp, null, modifier = Modifier.size(12.dp), tint = RindePrimary)
-                            Text("${comment.likesCount}", style = MaterialTheme.typography.labelSmall, color = RindePrimary, fontWeight = FontWeight.Bold)
-                        } else {
-                            Text("Me gusta", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (showLikeOption) {
+                        Row(
+                            modifier = Modifier.clickable { onLikeClick() },
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            if (comment.likesCount > 0) {
+                                Icon(Icons.Default.ThumbUp, null, modifier = Modifier.size(12.dp), tint = RindePrimary)
+                                Text("${comment.likesCount}", style = MaterialTheme.typography.labelSmall, color = RindePrimary, fontWeight = FontWeight.Bold)
+                            } else {
+                                Text("Me gusta", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
                     }
                     Text(
@@ -209,64 +223,84 @@ fun SharedCommentThread(
 
                 // Previews de respuestas (hilo de respuestas con conector visual)
                 if (comment.repliesCount > 0) {
-                    if (!showReplies) {
-                        Text(
-                            text = if (comment.repliesCount == 1) "Ver 1 respuesta" else "Ver ${comment.repliesCount} respuestas ▼",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = RindePrimary,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(top = 12.dp).clickable { 
+                    Surface(
+                        onClick = { 
+                            if (!showReplies) {
                                 showReplies = true
-                                onLoadReplies() 
+                                onLoadReplies()
+                            } else {
+                                showReplies = false
                             }
-                        )
-                    } else {
+                        },
+                        shape = CircleShape,
+                        color = if (!showReplies) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                        modifier = Modifier.padding(top = 12.dp)
+                    ) {
                         Text(
-                            text = "Ocultar respuestas ▲",
+                            text = if (!showReplies) (if (comment.repliesCount == 1) "Ver 1 respuesta" else "Ver ${comment.repliesCount} respuestas ▼") else "Ocultar respuestas ▲",
                             style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = if (!showReplies) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(top = 12.dp).clickable { showReplies = false }
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                         )
-                        
-                        if (replies.isNotEmpty()) {
-                            Spacer(modifier = Modifier.height(12.dp))
-                            // Contenedor de respuestas con línea conector vertical al lado izquierdo
-                            Row(modifier = Modifier.fillMaxWidth()) {
-                                // Línea vertical conectora
-                                Box(
-                                    modifier = Modifier
-                                        .padding(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 12.dp)
-                                        .width(2.dp)
-                                        .fillMaxHeight()
-                                        .background(MaterialTheme.colorScheme.outlineVariant)
+                    }
+                    
+                    AnimatedVisibility(
+                        visible = showReplies,
+                        enter = expandVertically() + fadeIn(),
+                        exit = shrinkVertically() + fadeOut()
+                    ) {
+                        if (replies.isEmpty()) {
+                            Box(modifier = Modifier.fillMaxWidth().padding(top = 16.dp), contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(24.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.primary
                                 )
-                                Column(modifier = Modifier.weight(1f)) {
-                                    replies.forEach { reply ->
-                                        SharedReplyItem(
-                                            reply = reply,
-                                            currentUserId = currentUserId,
-                                            onLikeClick = { onLikeReply(reply.id) },
-                                            onEditStart = { onEditReply(reply) },
-                                            onDelete = { onDeleteReply(comment.id, reply.id, reply.authorId) },
-                                            onReport = { onReportReply(reply) }
-                                        )
-                                        Spacer(modifier = Modifier.height(12.dp))
+                            }
+                        } else {
+                            Column {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                // Contenedor de respuestas con línea conector vertical al lado izquierdo
+                                Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+                                    // Línea vertical conectora
+                                    Box(
+                                        modifier = Modifier
+                                            .padding(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 12.dp)
+                                            .width(3.dp)
+                                            .fillMaxHeight()
+                                            .background(MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(50))
+                                    )
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        replies.forEach { reply ->
+                                            SharedReplyItem(
+                                                reply = reply,
+                                                currentUserId = currentUserId,
+                                                showLikeOption = showLikeOption,
+                                                onLikeClick = { onLikeReply(reply.id) },
+                                                onEditStart = { onEditReply(reply) },
+                                                onDelete = { onDeleteReply(comment.id, reply.id, reply.authorId) },
+                                                onReport = { onReportReply(reply) }
+                                            )
+                                            Spacer(modifier = Modifier.height(12.dp))
+                                        }
                                     }
                                 }
                             }
                         }
                     }
-                }
             }
         }
     }
+    }
+}
 }
 
 @Composable
 fun SharedReplyItem(
     reply: Reply,
     currentUserId: String,
+    showLikeOption: Boolean = true,
     onLikeClick: () -> Unit,
     onEditStart: () -> Unit,
     onDelete: () -> Unit,
@@ -331,7 +365,7 @@ fun SharedReplyItem(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(reply.authorName, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                Text(reply.authorName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                 Box {
                     Icon(
                         Icons.Default.MoreVert,
@@ -382,16 +416,18 @@ fun SharedReplyItem(
                         fontSize = 11.sp
                     )
                 }
-                Row(
-                    modifier = Modifier.clickable { onLikeClick() },
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    if (reply.likesCount > 0) {
-                        Icon(Icons.Default.ThumbUp, null, modifier = Modifier.size(10.dp), tint = RindePrimary)
-                        Text("${reply.likesCount}", style = MaterialTheme.typography.labelSmall, color = RindePrimary, fontWeight = FontWeight.Bold, fontSize = 11.sp)
-                    } else {
-                        Text("Me gusta", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                if (showLikeOption) {
+                    Row(
+                        modifier = Modifier.clickable { onLikeClick() },
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        if (reply.likesCount > 0) {
+                            Icon(Icons.Default.ThumbUp, null, modifier = Modifier.size(10.dp), tint = RindePrimary)
+                            Text("${reply.likesCount}", style = MaterialTheme.typography.labelSmall, color = RindePrimary, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                        } else {
+                            Text("Me gusta", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                        }
                     }
                 }
             }

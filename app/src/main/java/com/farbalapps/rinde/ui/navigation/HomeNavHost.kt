@@ -2,6 +2,12 @@ package com.farbalapps.rinde.ui.navigation
 
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -28,6 +34,9 @@ fun HomeNavHost(
     innerPadding: PaddingValues,
     listViewModel: ListViewModel,
     onLogout: () -> Unit,
+    // Contador que se incrementa cada vez que el FAB de "Agregar Meta" es pulsado.
+    // Usando un Int en lugar de un callback registrador evita la complejidad de tipos de orden superior.
+    addGoalTrigger: Int = 0,
     modifier: Modifier = Modifier
 ) {
     NavHost(
@@ -52,7 +61,18 @@ fun HomeNavHost(
             )
         }
         composable<HomeRoute.Goals> {
-            GoalsScreen(innerPadding = innerPadding)
+            var showSheet by remember { mutableStateOf(false) }
+
+            // Cada vez que el contador cambia (FAB pulsado), abre el sheet
+            LaunchedEffect(addGoalTrigger) {
+                if (addGoalTrigger > 0) showSheet = true
+            }
+
+            GoalsScreen(
+                innerPadding = innerPadding,
+                showCreateBottomSheetExternal = showSheet,
+                onDismissCreateBottomSheet = { showSheet = false }
+            )
         }
         composable<HomeRoute.Assistant> {
             AssistantScreen(innerPadding = innerPadding)

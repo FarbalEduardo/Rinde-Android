@@ -22,11 +22,15 @@ import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.channels.awaitClose
 import javax.inject.Inject
 
+import com.farbalapps.rinde.data.local.dao.PendingVoteDao
+import com.farbalapps.rinde.data.local.entity.PendingVoteEntity
+
 class FeedInteractionDelegate @Inject constructor(
     private val firestore: FirebaseFirestore,
     private val database: FirebaseDatabase,
     private val postDao: PostDao,
     private val userVoteDao: UserVoteDao,
+    private val pendingVoteDao: PendingVoteDao,
     private val savedPostsMemoryCache: SavedPostsMemoryCache
 ) {
     companion object {
@@ -156,8 +160,12 @@ class FeedInteractionDelegate @Inject constructor(
         val nextVote = if (currentVote == voteValue) 0 else voteValue
 
         val localPost = postDao.getPostById(postId)
-        val currentTruth = localPost?.truthCount ?: 0
-        val currentFalse = localPost?.falseCount ?: 0
+        val overlay = _globalVoteStatus.value[postId]
+
+        val hasSynced = overlay == null || (localPost?.myVoteValue == overlay.myVote)
+        
+        val currentTruth = if (hasSynced) localPost?.truthCount ?: 0 else overlay!!.truthCount ?: 0
+        val currentFalse = if (hasSynced) localPost?.falseCount ?: 0 else overlay!!.falseCount ?: 0
 
         val truthDelta = (if (nextVote == 1) 1 else 0) - (if (currentVote == 1) 1 else 0)
         val falseDelta  = (if (nextVote == -1) 1 else 0) - (if (currentVote == -1) 1 else 0)
@@ -169,7 +177,7 @@ class FeedInteractionDelegate @Inject constructor(
         ))
 
         try {
-            val voteRef = database.getReference("user_votes").child(userId).child(postId)
+            val voteRef = database.getReference("post_votes").child(postId).child(userId)
             val postRef = firestore.collection("posts").document(postId)
 
             if (nextVote == 0) {
@@ -204,5 +212,80 @@ class FeedInteractionDelegate @Inject constructor(
             ))
             throw e
         }
+    }
+
+    suspend fun toggleVoteTransaction(userId: String, postId: String, voteValue: Int): Result<Triple<Int, Int, Int>> = runCatching {
+        val voteDocRef = firestore.collection("posts")
+            .document(postId).collection("votes").document(userId)
+        val postRef = firestore.collection("posts").document(postId)
+
+        var finalCounts = Triple(0, 0, 0)
+        firestore.runTransaction { transaction ->
+            val voteSnapshot = transaction.get(voteDocRef)
+            val serverVote = voteSnapshot.getLong("value")?.toInt() ?: 0
+            val nextVote = if (serverVote == voteValue) 0 else voteValue
+
+            val postSnapshot = transaction.get(postRef)
+            val currentTruth = postSnapshot.getLong("truthCount")?.toInt() ?: 0
+            val currentFalse = postSnapshot.getLong("falseCount")?.toInt() ?: 0
+            val currentScore = postSnapshot.getLong("votesScore")?.toInt() ?: 0
+
+            val truthDelta = (if (nextVote == 1) 1 else 0) - (if (serverVote == 1) 1 else 0)
+            val falseDelta  = (if (nextVote == -1) 1 else 0) - (if (serverVote == -1) 1 else 0)
+            val scoreDelta  = nextVote - serverVote
+
+            if (nextVote == 0) {
+                transaction.delete(voteDocRef)
+            } else {
+                transaction.set(voteDocRef, mapOf(
+                    "value" to nextVote,
+                    "updatedAt" to FieldValue.serverTimestamp()
+                ))
+            }
+
+            val newTruth = (currentTruth + truthDelta).coerceAtLeast(0)
+            val newFalse = (currentFalse + falseDelta).coerceAtLeast(0)
+            val newScore = currentScore + scoreDelta
+
+            if (truthDelta != 0 || falseDelta != 0 || scoreDelta != 0) {
+                transaction.update(postRef,
+                    "truthCount", newTruth.toLong(),
+                    "falseCount", newFalse.toLong(),
+                    "votesScore", newScore.toLong()
+                )
+            }
+            finalCounts = Triple(newTruth, newFalse, newScore)
+        }.await()
+
+        // Sincronizar localmente en Room
+        val postSnapshotAfter = userVoteDao.getVoteOnce(postId, userId)?.voteValue ?: 0
+        val finalVoteVal = if (postSnapshotAfter == voteValue) 0 else voteValue
+        if (finalVoteVal == 0) {
+            userVoteDao.deleteVote(postId, userId)
+        } else {
+            userVoteDao.upsertVote(UserVoteEntity(postId, userId, finalVoteVal))
+        }
+
+        finalCounts
+    }
+
+    suspend fun fetchPostVoteCounts(postId: String): Result<Triple<Int, Int, Int>> = runCatching {
+        val doc = firestore.collection("posts").document(postId).get().await()
+        Triple(
+            doc.getLong("truthCount")?.toInt() ?: 0,
+            doc.getLong("falseCount")?.toInt() ?: 0,
+            doc.getLong("votesScore")?.toInt() ?: 0
+        )
+    }
+
+    suspend fun savePendingVote(userId: String, postId: String, voteValue: Int, authorId: String) {
+        pendingVoteDao.upsert(
+            PendingVoteEntity(
+                postId = postId,
+                userId = userId,
+                voteValue = voteValue,
+                authorId = authorId
+            )
+        )
     }
 }

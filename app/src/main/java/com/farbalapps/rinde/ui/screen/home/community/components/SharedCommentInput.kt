@@ -1,5 +1,12 @@
 package com.farbalapps.rinde.ui.screen.home.community.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -12,6 +19,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.farbalapps.rinde.domain.model.Comment
@@ -25,26 +35,47 @@ fun SharedCommentInput(
     onTextChange: (String) -> Unit,
     onSubmit: () -> Unit,
     onCancelReply: () -> Unit,
+    onFocus: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    Column(modifier = modifier.fillMaxWidth()) {
+    val focusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(replyingTo) {
         if (replyingTo != null) {
-            Surface(
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+            focusRequester.requestFocus()
+        }
+    }
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .imePadding()
+            .animateContentSize(animationSpec = tween(durationMillis = 220))
+    ) {
+        AnimatedVisibility(
+            visible = replyingTo != null,
+            enter = expandVertically(animationSpec = tween(220)) + fadeIn(animationSpec = tween(220)),
+            exit = shrinkVertically(animationSpec = tween(220)) + fadeOut(animationSpec = tween(220))
+        ) {
+            if (replyingTo != null) {
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(
-                        text = "Respondiendo a @${replyingTo.authorName}",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    IconButton(onClick = onCancelReply, modifier = Modifier.size(24.dp)) {
-                        Icon(Icons.Default.Close, null, modifier = Modifier.size(16.dp))
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Respondiendo a @${replyingTo.authorName}",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        IconButton(onClick = onCancelReply, modifier = Modifier.size(24.dp)) {
+                            Icon(Icons.Default.Close, null, modifier = Modifier.size(16.dp))
+                        }
                     }
                 }
             }
@@ -56,16 +87,17 @@ fun SharedCommentInput(
         ) {
             Row(
                 modifier = Modifier
-                    .padding(8.dp)
-                    .navigationBarsPadding()
-                    .imePadding(),
+                    .padding(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 OutlinedTextField(
                     value = text,
                     onValueChange = onTextChange,
                     placeholder = { Text(if (replyingTo != null) "Escribe una respuesta..." else "Escribe un comentario...") },
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .focusRequester(focusRequester)
+                        .onFocusChanged { if (it.isFocused) onFocus() },
                     shape = RoundedCornerShape(24.dp),
                     maxLines = 4,
                     colors = OutlinedTextFieldDefaults.colors(

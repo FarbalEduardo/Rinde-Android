@@ -16,6 +16,10 @@ import com.google.firebase.firestore.Query
 import kotlinx.coroutines.tasks.await
 import java.util.Date
 
+/**
+ * A Paging3 [RemoteMediator] that handles incremental loading of "Hot" community posts
+ * (posts with a minimum score of votes) from Firebase Firestore and persists them into Room.
+ */
 @OptIn(ExperimentalPagingApi::class)
 class HotPostRemoteMediator(
     private val firestore: FirebaseFirestore,
@@ -34,11 +38,13 @@ class HotPostRemoteMediator(
         val meta = syncMetadataDao.getMetadata(FEED_KEY)
         val now = System.currentTimeMillis()
         val isWithinTtl = meta != null && (now - meta.lastSyncTimestamp) < CACHE_TTL_MS
+        val hasHotPostsInRoom = postDao.getHotPostsCount() > 0
 
-        return if (!forceRefresh && isWithinTtl) {
+        return if (!forceRefresh && isWithinTtl && hasHotPostsInRoom) {
             android.util.Log.d("HotPostRemoteMediator", "Hot cache valid. SKIP_INITIAL_REFRESH.")
             InitializeAction.SKIP_INITIAL_REFRESH
         } else {
+            android.util.Log.d("HotPostRemoteMediator", "Hot cache invalid or empty Room. LAUNCH_INITIAL_REFRESH.")
             InitializeAction.LAUNCH_INITIAL_REFRESH
         }
     }
@@ -62,6 +68,9 @@ class HotPostRemoteMediator(
         }
     }
 
+    /**
+     * Handles the refresh operation by fetching the initial page of hot posts from Firestore.
+     */
     private suspend fun handleRefresh(state: PagingState<Int, CommunityPostEntity>): MediatorResult {
         val meta = syncMetadataDao.getMetadata(FEED_KEY)
         val now = System.currentTimeMillis()
@@ -71,10 +80,10 @@ class HotPostRemoteMediator(
             return MediatorResult.Success(endOfPaginationReached = false)
         }
 
-        android.util.Log.d("HotPostRemoteMediator", "Fetching hot posts from Firestore (votesScore >= 50).")
+        android.util.Log.d("HotPostRemoteMediator", "Fetching hot posts from Firestore (votesScore >= 2).")
         val query = firestore.collection("posts")
             .whereEqualTo("isActive", true)
-            .whereGreaterThanOrEqualTo("votesScore", 50)
+            .whereGreaterThanOrEqualTo("votesScore", 2)
             .orderBy("votesScore", Query.Direction.DESCENDING)
             .orderBy("timestamp", Query.Direction.DESCENDING)
             .limit(PAGE_SIZE)
@@ -100,22 +109,20 @@ class HotPostRemoteMediator(
         return MediatorResult.Success(endOfPaginationReached = posts.size < PAGE_SIZE)
     }
 
+    /**
+     * Handles appending data by querying Firestore starting after the last loaded item's votesScore and timestamp.
+     */
     private suspend fun handleAppend(state: PagingState<Int, CommunityPostEntity>): MediatorResult {
         val lastItem = state.lastItemOrNull() ?: return MediatorResult.Success(endOfPaginationReached = true)
         
-        android.util.Log.d("HotPostRemoteMediator", "Appending hot posts after votesScore: ${lastItem.votesScore}")
+        android.util.Log.d("HotPostRemoteMediator", "Appending hot posts after votesScore: ${lastItem.votesScore}, timestamp: ${lastItem.timestamp}")
         
-        val lastDocRef = firestore.collection("posts").document(lastItem.id).get().await()
-        if (!lastDocRef.exists()) {
-            return MediatorResult.Success(endOfPaginationReached = true)
-        }
-
         val snapshot = firestore.collection("posts")
             .whereEqualTo("isActive", true)
-            .whereGreaterThanOrEqualTo("votesScore", 50)
+            .whereGreaterThanOrEqualTo("votesScore", 2)
             .orderBy("votesScore", Query.Direction.DESCENDING)
             .orderBy("timestamp", Query.Direction.DESCENDING)
-            .startAfter(lastDocRef)
+            .startAfter(lastItem.votesScore, Date(lastItem.timestamp))
             .limit(PAGE_SIZE)
             .get()
             .await()

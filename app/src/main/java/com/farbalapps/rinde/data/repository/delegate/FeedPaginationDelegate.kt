@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.channels.awaitClose
+import androidx.paging.filter
 import com.farbalapps.rinde.data.local.entity.toDomainModel
 import com.farbalapps.rinde.data.local.entity.toEntity
 import com.farbalapps.rinde.data.mapper.toDomain
@@ -80,6 +81,8 @@ class FeedPaginationDelegate @Inject constructor(
         ).flow.map { pagingData ->
             pagingData.map { entity ->
                 enrichPost(entity.toDomainModel())
+            }.filter { post ->
+                com.farbalapps.rinde.domain.model.VerdictCalculator.calculate(post.truthCount, post.falseCount) == com.farbalapps.rinde.domain.model.PostVerdict.MOSTLY_TRUE
             }
         }
     }

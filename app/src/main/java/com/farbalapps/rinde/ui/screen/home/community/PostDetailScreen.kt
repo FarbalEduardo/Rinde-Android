@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.items as lazyItems
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
@@ -30,6 +31,10 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
@@ -84,56 +89,55 @@ fun PostDetailScreen(
         }
     }
 
-    val postStatusOverlay by viewModel.postStatusOverlay.collectAsStateWithLifecycle()
-    val savedStatusOverlay by viewModel.savedStatusOverlay.collectAsStateWithLifecycle()
-    val voteStatusOverlay by viewModel.voteStatusOverlay.collectAsStateWithLifecycle()
-
     // Fondo grisáceo claro / oscuro neutro para separar las tarjetas
     val scaffoldBgColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
     val context = androidx.compose.ui.platform.LocalContext.current
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        containerColor = scaffoldBgColor
+        containerColor = scaffoldBgColor,
+        bottomBar = {
+            uiState.post?.let {
+                SharedCommentInput(
+                    text = if (uiState.replyingToComment != null) uiState.replyText else uiState.commentText,
+                    replyingTo = uiState.replyingToComment,
+                    isSending = uiState.isSendingComment,
+                    onTextChange = { if (uiState.replyingToComment != null) viewModel.onReplyTextChange(it) else viewModel.onCommentTextChange(it) },
+                    onSubmit = { if (uiState.replyingToComment != null) viewModel.submitReply() else viewModel.submitComment() },
+                    onCancelReply = { viewModel.setReplyingTo(null) },
+                    onFocus = {
+                        if (uiState.replyingToComment == null) {
+                            // Cuando sea un comentario nuevo, notificar al contenido para que scrollee hacia abajo
+                            viewModel.onNewCommentInputFocused()
+                        }
+                    }
+                )
+            }
+        }
     ) { paddingValues ->
         if (uiState.isLoadingPost && uiState.post == null) {
             // Skeleton en lugar de CircularProgressIndicator infinito
             PostDetailSkeleton(paddingValues = paddingValues)
         } else {
             uiState.post?.let { post ->
-                val overriddenStatus = postStatusOverlay[post.id] ?: post.verificationStatus
-                val overriddenSaved = savedStatusOverlay[post.id] ?: post.isSavedByMe
-                val voteOver = voteStatusOverlay[post.id]
-                val finalTruth = voteOver?.truthCount ?: post.truthCount
-                val finalFalse = voteOver?.falseCount ?: post.falseCount
-                val finalMyVote = voteOver?.myVote ?: post.myVoteValue
-                val finalScore = if (voteOver != null) (finalTruth - finalFalse) else post.votesScore
-                val finalPost = post.copy(
-                    verificationStatus = overriddenStatus,
-                    isSavedByMe = overriddenSaved,
-                    truthCount = finalTruth,
-                    falseCount = finalFalse,
-                    myVoteValue = finalMyVote,
-                    votesScore = finalScore
-                )
                 PostDetailContent(
-                    post = finalPost,
+                    post = post,
                     uiState = uiState,
                     onBack = onBack,
-                    onAuthorClick = { onAuthorClick(finalPost.authorId) },
+                    onAuthorClick = { onAuthorClick(post.authorId) },
                     onSaveClick = { viewModel.toggleSave() },
                     onDeletePost = { viewModel.deletePost() },
-                    onEditPost = { onEditPost(finalPost.id) },
+                    onEditPost = { onEditPost(post.id) },
                     onSharePost = {
                         val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
                             type = "text/plain"
-                            putExtra(android.content.Intent.EXTRA_TEXT, "¡Mira esta oferta en Rinde!\n${finalPost.title}\nhttps://rinde.app/post/${finalPost.id}")
+                            putExtra(android.content.Intent.EXTRA_TEXT, "¡Mira esta oferta en Rinde!\n${post.title}\nhttps://rinde.app/post/${post.id}")
                         }
                         context.startActivity(android.content.Intent.createChooser(shareIntent, "Compartir publicación"))
                     },
                     onReportExpired = { 
-                        if (finalPost.authorId == uiState.currentUserId) {
-                            if (finalPost.verificationStatus == VerificationStatus.EXPIRED) {
+                        if (post.authorId == uiState.currentUserId) {
+                            if (post.verificationStatus == VerificationStatus.EXPIRED) {
                                 viewModel.markAsAvailable()
                             } else {
                                 viewModel.markAsExpired()
@@ -213,6 +217,29 @@ private fun PostDetailContent(
     paddingValues: PaddingValues
 ) {
     val lazyListState = rememberLazyListState()
+    val coroutineScope = rememberCoroutineScope()
+
+    // Número de items fijos antes de la lista de comentarios en la LazyColumn:
+    // 0: banner voto (condicional), 1: imagen+header, 2: spacer, 3: tienda/cupón,
+    // 4: spacer, 5: autor+descripción, 6: spacer, 7: votación, 8: spacer, 9: header comentarios
+    // El offset base sin banner es 9; con banner es 10.
+    val commentListOffset = if (uiState.voteState == VoteUiState.OFFLINE || uiState.voteState == VoteUiState.ERROR) 10 else 9
+
+    // Detectar si el teclado está abierto
+    val imeVisible = WindowInsets.ime.getBottom(androidx.compose.ui.platform.LocalDensity.current) > 0
+
+    // Cuando se activa replyingTo Y el teclado ya está visible, scroll al comentario objetivo
+    LaunchedEffect(uiState.replyingToComment, imeVisible) {
+        val replyingTo = uiState.replyingToComment
+        if (replyingTo != null && imeVisible) {
+            val idx = uiState.comments.indexOfFirst { it.id == replyingTo.id }
+            if (idx >= 0) {
+                coroutineScope.launch {
+                    lazyListState.animateScrollToItem(commentListOffset + idx)
+                }
+            }
+        }
+    }
 
     val isScrolled by remember {
         derivedStateOf { lazyListState.firstVisibleItemIndex > 0 }
@@ -237,6 +264,46 @@ private fun PostDetailContent(
                 bottom = paddingValues.calculateBottomPadding() + 16.dp
             )
         ) {
+            // Banner de estado de voto
+            if (uiState.voteState == VoteUiState.OFFLINE || uiState.voteState == VoteUiState.ERROR) {
+                item {
+                    val bannerColor = if (uiState.voteState == VoteUiState.OFFLINE) 
+                        MaterialTheme.colorScheme.tertiaryContainer 
+                    else 
+                        MaterialTheme.colorScheme.errorContainer
+
+                    val bannerContentColor = if (uiState.voteState == VoteUiState.OFFLINE) 
+                        MaterialTheme.colorScheme.onTertiaryContainer 
+                    else 
+                        MaterialTheme.colorScheme.onErrorContainer
+
+                    val bannerIcon = if (uiState.voteState == VoteUiState.OFFLINE) 
+                        Icons.Default.CloudOff 
+                    else 
+                        Icons.Default.ErrorOutline
+
+                    val bannerMessage = uiState.voteErrorMessage ?: if (uiState.voteState == VoteUiState.OFFLINE) 
+                        "Sin conexión. Tu voto se enviará cuando vuelva internet." 
+                    else 
+                        "Error al registrar tu voto."
+
+                    Surface(
+                        color = bannerColor,
+                        contentColor = bannerContentColor,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(bannerIcon, null, modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(bannerMessage, style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                }
+            }
+
             // ── SECCIÓN 1: IMAGEN Y ENCABEZADO ──────────────────────────────────
             item {
                 Surface(
@@ -501,7 +568,7 @@ private fun PostDetailContent(
                                     }
                                 }
                                 Text(
-                                    text = "Publicado hace ${com.farbalapps.rinde.util.DateUtils.formatTimeAgo(post.timestamp?.time ?: 0L)}",
+                                    text = "Publicado hace ${com.farbalapps.rinde.util.DateUtils.formatTimeAgo(post.timestamp)}",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -559,8 +626,8 @@ private fun PostDetailContent(
                             userVote = post.myVoteValue,
                             truthCount = post.truthCount,
                             falseCount = post.falseCount,
-                            onVoteTrue = onVoteTrue,
-                            onVoteFalse = onVoteFalse,
+                            onVoteTrue = { if (uiState.voteState != VoteUiState.SENDING) onVoteTrue() },
+                            onVoteFalse = { if (uiState.voteState != VoteUiState.SENDING) onVoteFalse() },
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -569,40 +636,41 @@ private fun PostDetailContent(
 
             item { Spacer(modifier = Modifier.height(8.dp)) }
 
-            // ── SECCIÓN 4: COMENTARIOS ─────────────────────────────────────────
-            item {
+            // ── SECCIÓN 4: HEADER COMENTARIOS ──────────────────────────────────
+            item(key = "comments_header") {
                 Surface(
                     color = MaterialTheme.colorScheme.surface,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
+                    Column(
+                        modifier = Modifier.padding(
+                            start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp
+                        )
+                    ) {
                         Text(
                             text = "Comentarios (${post.commentsCount})",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        SharedCommentInput(
-                            text = if (uiState.replyingToComment != null) uiState.replyText else uiState.commentText,
-                            replyingTo = uiState.replyingToComment,
-                            isSending = uiState.isSendingComment,
-                            onTextChange = { if (uiState.replyingToComment != null) onReplyTextChange(it) else onCommentTextChange(it) },
-                            onSubmit = { if (uiState.replyingToComment != null) onReplySubmit() else onCommentSubmit() },
-                            onCancelReply = onCancelReply
-                        )
-                        
-                        Spacer(modifier = Modifier.height(24.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
 
                         if (uiState.isLoadingComments && uiState.comments.isEmpty()) {
-                            // Skeleton en lugar de CircularProgressIndicator
                             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                                 repeat(3) { CommentSkeleton() }
                             }
                         } else if (uiState.comments.isEmpty()) {
-                            Box(modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp), contentAlignment = Alignment.Center) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 24.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Icon(Icons.Default.ChatBubbleOutline, null, modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.surfaceVariant)
+                                    Icon(
+                                        Icons.Default.ChatBubbleOutline, null,
+                                        modifier = Modifier.size(48.dp),
+                                        tint = MaterialTheme.colorScheme.surfaceVariant
+                                    )
                                     Spacer(modifier = Modifier.height(8.dp))
                                     Text(
                                         "Aún no hay comentarios.\n¡Sé el primero en preguntar o dar tu opinión!",
@@ -612,32 +680,46 @@ private fun PostDetailContent(
                                     )
                                 }
                             }
-                        } else {
-                            uiState.comments.forEach { comment ->
-                                SharedCommentThread(
-                                    comment = comment,
-                                    replies = uiState.replies[comment.id] ?: emptyList(),
-                                    currentUserId = uiState.currentUserId,
-                                    editingCommentId = uiState.editingCommentId,
-                                    editingText = uiState.editingText,
-                                    onLikeClick = { onLikeComment(comment.id) },
-                                    onReplyClick = { onReplyClick(comment) },
-                                    onEditStart = onEditCommentStart,
-                                    onEditTextChange = onEditTextChange,
-                                    onEditSave = onEditCommentSave,
-                                    onEditCancel = onEditCommentCancel,
-                                    onDelete = { onDeleteComment(comment.id, comment.authorId) },
-                                    onLoadReplies = { onLoadReplies(comment.id) },
-                                    onLikeReply = { replyId -> onLikeReply(comment.id, replyId) },
-                                    onDeleteReply = onDeleteReply,
-                                    onEditReply = onEditReplyStart,
-                                    onReportComment = { onReportComment(comment) },
-                                    onReportReply = onReportReply,
-                                    modifier = Modifier.padding(vertical = 12.dp)
-                                )
-                                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                            }
                         }
+                    }
+                }
+            }
+
+            // ── SECCIÓN 4: COMENTARIOS INDIVIDUALES ─────────────────────────
+            lazyItems(
+                items = uiState.comments,
+                key = { comment -> comment.id }
+            ) { comment ->
+                Surface(
+                    color = MaterialTheme.colorScheme.surface,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                        SharedCommentThread(
+                            comment = comment,
+                            replies = uiState.replies[comment.id] ?: emptyList(),
+                            currentUserId = uiState.currentUserId,
+                            editingCommentId = uiState.editingCommentId,
+                            editingText = uiState.editingText,
+                            onLikeClick = { onLikeComment(comment.id) },
+                            onReplyClick = { onReplyClick(comment) },
+                            showLikeOption = false,
+                            onEditStart = onEditCommentStart,
+                            onEditTextChange = onEditTextChange,
+                            onEditSave = onEditCommentSave,
+                            onEditCancel = onEditCommentCancel,
+                            onDelete = { onDeleteComment(comment.id, comment.authorId) },
+                            onLoadReplies = { onLoadReplies(comment.id) },
+                            onLikeReply = { replyId -> onLikeReply(comment.id, replyId) },
+                            onDeleteReply = onDeleteReply,
+                            onEditReply = onEditReplyStart,
+                            onReportComment = { onReportComment(comment) },
+                            onReportReply = onReportReply,
+                            modifier = Modifier.padding(vertical = 12.dp)
+                        )
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                        )
                     }
                 }
             }

@@ -22,6 +22,8 @@ class AddReplyUseCase @Inject constructor(
 
         val reply = Reply(
             id = "",
+            commentId = commentId,
+            postId = postId,
             authorId = user.id,
             authorName = user.displayName ?: "Usuario",
             authorPhotoUrl = user.photoUrl,
