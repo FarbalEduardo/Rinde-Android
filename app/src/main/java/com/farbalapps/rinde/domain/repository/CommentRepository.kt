@@ -15,4 +15,5 @@ interface CommentRepository {
     suspend fun editComment(postId: String, commentId: String, newText: String): Result<Unit>
     suspend fun deleteReply(commentId: String, replyId: String, postId: String): Result<Unit>
     suspend fun editReply(commentId: String, replyId: String, newText: String): Result<Unit>
+    suspend fun reportComment(reportedComment: com.farbalapps.rinde.domain.model.ReportedComment): Result<Unit>
 }

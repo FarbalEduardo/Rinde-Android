@@ -1,7 +1,5 @@
 package com.farbalapps.rinde.domain.model
 
-import java.util.Date
-
 data class PostLocation(
     val name: String,
     val latitude: Double?,
@@ -21,7 +19,7 @@ data class CommunityPost(
     val authorId: String,
     val authorName: String,
     val authorPhotoUrl: String?,
-    val timestamp: Date?,
+    val timestamp: Long,
     val title: String,
     val descriptionShort: String,
     val descriptionLong: String,
@@ -43,7 +41,7 @@ data class CommunityPost(
     val productLink: String?,
     val storeName: String?,
     val isRecommended: Boolean,
-    val expiresAt: Date?,
+    val expiresAt: Long?,
     val normalPrice: Double?,
     val discountPrice: Double?,
     val currency: String,

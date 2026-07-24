@@ -13,6 +13,7 @@ import com.farbalapps.rinde.domain.usecase.DeleteCommentUseCase
 import com.farbalapps.rinde.domain.usecase.EditCommentUseCase
 import com.farbalapps.rinde.domain.usecase.DeleteReplyUseCase
 import com.farbalapps.rinde.domain.usecase.EditReplyUseCase
+import com.farbalapps.rinde.domain.usecase.ReportCommentUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -27,7 +28,6 @@ data class CommentsUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
     val commentText: String = "",
-    val selectedImageUri: Uri? = null,
     val replyingTo: Comment? = null,
     val editingCommentId: String? = null,
     val editingReplyId: String? = null,
@@ -45,6 +45,7 @@ class CommentsViewModel @Inject constructor(
     private val editCommentUseCase: EditCommentUseCase,
     private val deleteReplyUseCase: DeleteReplyUseCase,
     private val editReplyUseCase: EditReplyUseCase,
+    private val reportCommentUseCase: ReportCommentUseCase,
     private val authRepository: com.farbalapps.rinde.domain.repository.AuthRepository
 ) : ViewModel() {
 
@@ -85,9 +86,6 @@ class CommentsViewModel @Inject constructor(
         _uiState.update { it.copy(commentText = text) }
     }
 
-    fun onImageSelected(uri: Uri?) {
-        _uiState.update { it.copy(selectedImageUri = uri) }
-    }
 
     fun setReplyingTo(comment: Comment?) {
         _uiState.update { it.copy(replyingTo = comment, commentText = "") }
@@ -151,7 +149,7 @@ class CommentsViewModel @Inject constructor(
     fun submitComment() {
         val postId = currentPostId ?: return
         val state = _uiState.value
-        if (state.commentText.isBlank() && state.selectedImageUri == null) return
+        if (state.commentText.isBlank()) return
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
@@ -161,20 +159,19 @@ class CommentsViewModel @Inject constructor(
                     commentId = state.replyingTo.id,
                     postId = postId,
                     text = state.commentText,
-                    imageUri = state.selectedImageUri
+                    imageUri = null
                 )
             } else {
                 addCommentUseCase(
                     postId = postId,
                     text = state.commentText,
-                    imageUri = state.selectedImageUri
+                    imageUri = null
                 )
             }
 
             if (result.isSuccess) {
                 _uiState.update { it.copy(
                     commentText = "",
-                    selectedImageUri = null,
                     replyingTo = null,
                     isLoading = false
                 ) }
@@ -197,6 +194,38 @@ class CommentsViewModel @Inject constructor(
     fun toggleReplyLike(commentId: String, replyId: String) {
         viewModelScope.launch {
             toggleLikeUseCase.toggleReplyLike(commentId, replyId)
+        }
+    }
+
+    fun reportComment(comment: Comment) {
+        val postId = currentPostId ?: return
+        viewModelScope.launch {
+            reportCommentUseCase(
+                postId = postId,
+                commentId = comment.id,
+                commentText = comment.text,
+                authorId = comment.authorId
+            ).onSuccess {
+                // UI updates if needed, e.g. toast/snackbar
+            }.onFailure { e ->
+                _uiState.update { it.copy(error = e.message) }
+            }
+        }
+    }
+
+    fun reportReply(reply: Reply) {
+        val postId = currentPostId ?: return
+        viewModelScope.launch {
+            reportCommentUseCase(
+                postId = postId,
+                commentId = reply.id,
+                commentText = reply.text,
+                authorId = reply.authorId
+            ).onSuccess {
+                // UI updates if needed
+            }.onFailure { e ->
+                _uiState.update { it.copy(error = e.message) }
+            }
         }
     }
 }

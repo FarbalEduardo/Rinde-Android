@@ -36,6 +36,8 @@ import kotlinx.coroutines.withContext
 import java.util.Date
 import javax.inject.Inject
 
+import javax.inject.Provider
+
 class FeedLifecycleDelegate @Inject constructor(
     @ApplicationContext private val context: Context,
     private val firestore: FirebaseFirestore,
@@ -45,7 +47,8 @@ class FeedLifecycleDelegate @Inject constructor(
     private val syncMetadataDao: SyncMetadataDao,
     private val userVoteDao: UserVoteDao,
     private val savedPostsMemoryCache: SavedPostsMemoryCache,
-    private val firebaseAuth: FirebaseAuth
+    private val firebaseAuth: FirebaseAuth,
+    private val interactionDelegateProvider: Provider<FeedInteractionDelegate>
 ) {
     companion object {
         private const val TAG = "FeedLifecycleDelegate"
@@ -86,6 +89,7 @@ class FeedLifecycleDelegate @Inject constructor(
     }
 
     fun getPostById(postId: String): Flow<CommunityPost> = callbackFlow {
+        // Sincronización desde Firestore a Room en background
         val listener = firestore.collection("posts").document(postId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
@@ -98,7 +102,17 @@ class FeedLifecycleDelegate @Inject constructor(
                         try {
                             val post = postDto.copy(id = snapshot.id).toDomain()
                             val enriched = enrichPost(post)
-                            trySend(enriched)
+
+                            // Propagar los contadores y valor de voto al globalVoteStatus para actualizar Feed y Profile
+                            interactionDelegateProvider.get().updateVoteStatusLocal(
+                                postId = post.id,
+                                overlay = com.farbalapps.rinde.domain.repository.VoteOverlay(
+                                    truthCount = post.truthCount,
+                                    falseCount = post.falseCount,
+                                    myVote = enriched.myVoteValue
+                                )
+                            )
+
                             val existingLocal = postDao.getPostById(postId)
                             val safeEntity = enriched.toEntity().copy(
                                 myVoteValue = enriched.myVoteValue
@@ -115,7 +129,20 @@ class FeedLifecycleDelegate @Inject constructor(
                     }
                 }
             }
-        awaitClose { listener.remove() }
+
+        // Emitir directamente desde Room como Única Fuente de Verdad
+        val job = launch {
+            postDao.getPostByIdFlow(postId).collect { entity ->
+                if (entity != null) {
+                    trySend(enrichPost(entity.toDomainModel()))
+                }
+            }
+        }
+
+        awaitClose { 
+            listener.remove() 
+            job.cancel()
+        }
     }
 
     fun getUserPosts(userId: String): Flow<List<CommunityPost>> {

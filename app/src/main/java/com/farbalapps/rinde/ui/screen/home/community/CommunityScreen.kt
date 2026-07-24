@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Whatshot
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.material3.*
 import androidx.compose.material3.SearchBar
@@ -45,6 +46,7 @@ import com.farbalapps.rinde.R
 import com.farbalapps.rinde.domain.model.CommunityPost
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.LazyPagingItems
+import androidx.paging.compose.itemKey
 import com.farbalapps.rinde.ui.screen.home.community.components.CommunityTabRow
 import com.farbalapps.rinde.ui.screen.home.community.components.PostCard
 import com.farbalapps.rinde.ui.screen.home.community.components.PostCardSkeleton
@@ -222,6 +224,102 @@ fun EmptyFeedState(
     }
 }
 
+@Composable
+fun FeedErrorState(
+    errorMessage: String,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val cleanErrorMessage = remember(errorMessage) {
+        val errorLower = errorMessage.lowercase()
+        if (errorLower.contains("failed_precondition") ||
+            errorLower.contains("index") ||
+            errorLower.contains("firestore") ||
+            errorLower.contains("firebase") ||
+            errorLower.contains("query")) {
+            "Ocurrió un problema temporal con el servidor de base de datos. Por favor, vuelve a intentarlo más tarde."
+        } else {
+            errorMessage
+        }
+    }
+
+    androidx.compose.animation.AnimatedVisibility(
+        visible = true,
+        enter = androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(500)) +
+                androidx.compose.animation.slideInVertically(initialOffsetY = { it / 2 }),
+        modifier = modifier
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 80.dp, bottom = 40.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Icon with pulse animation (same pattern as EmptyFeedState)
+                val infiniteTransition = rememberInfiniteTransition(label = "error_pulse")
+                val scale by infiniteTransition.animateFloat(
+                    initialValue = 0.95f,
+                    targetValue = 1.05f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(1500, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+                        repeatMode = RepeatMode.Reverse
+                    ),
+                    label = "error_scale"
+                )
+
+                Surface(
+                    modifier = Modifier.size(80.dp),
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f),
+                    tonalElevation = 2.dp
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(40.dp)
+                                .graphicsLayer {
+                                    scaleX = scale
+                                    scaleY = scale
+                                },
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+
+                Text(
+                    text = "No se pudieron cargar las publicaciones",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = cleanErrorMessage,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 40.dp)
+                )
+                TextButton(
+                    onClick = onRetry
+                ) {
+                    Text(
+                        text = "Reintentar",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CommunityContent(
@@ -315,14 +413,27 @@ fun CommunityContent(
                 .coerceAtLeast(statusBarHeight)
         }
 
+        val pullToRefreshState = rememberPullToRefreshState()
+
         Box(modifier = Modifier.fillMaxSize()) {
             // 1. Contenido de la lista (capa inferior)
             PullToRefreshBox(
                 isRefreshing = effectiveIsRefreshing,
                 onRefresh = onRefresh,
+                state = pullToRefreshState,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(bottom = innerPadding.calculateBottomPadding())
+                    .padding(bottom = innerPadding.calculateBottomPadding()),
+                contentAlignment = Alignment.TopCenter,
+                indicator = {
+                    androidx.compose.material3.pulltorefresh.PullToRefreshDefaults.Indicator(
+                        state = pullToRefreshState,
+                        isRefreshing = effectiveIsRefreshing,
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .padding(top = dynamicTopPadding + 16.dp)
+                    )
+                }
             ) {
                 LazyColumn(
                     state = lazyListState,
@@ -336,9 +447,20 @@ fun CommunityContent(
                         CommunityTab.DISCOVER -> {
                             val loadState = discoverItems.loadState
                             val isDiscoverLoading = loadState.refresh is androidx.paging.LoadState.Loading
+                            val isDiscoverError = loadState.refresh is androidx.paging.LoadState.Error || 
+                                    loadState.mediator?.refresh is androidx.paging.LoadState.Error
                             val endOfPaginationReached = (loadState.refresh as? androidx.paging.LoadState.NotLoading)?.endOfPaginationReached == true
 
-                            if (discoverItems.itemCount == 0 && (isDiscoverLoading || !endOfPaginationReached)) {
+                            if (isDiscoverError && discoverItems.itemCount == 0) {
+                                val error = (loadState.refresh as? androidx.paging.LoadState.Error)?.error
+                                    ?: (loadState.mediator?.refresh as? androidx.paging.LoadState.Error)?.error
+                                item {
+                                    FeedErrorState(
+                                        errorMessage = error?.localizedMessage ?: "Error desconocido",
+                                        onRetry = { discoverItems.retry() }
+                                    )
+                                }
+                            } else if (discoverItems.itemCount == 0 && (isDiscoverLoading || !endOfPaginationReached)) {
                                 items(5) {
                                     PostCardSkeleton(modifier = Modifier.padding(horizontal = paddingMedium / 2, vertical = dimensionResource(id = R.dimen.padding_small) / 2))
                                 }
@@ -347,16 +469,19 @@ fun CommunityContent(
                                     EmptyFeedState(tab = CommunityTab.DISCOVER)
                                 }
                             } else {
-                                items(discoverItems.itemCount) { index ->
+                                items(
+                                    count = discoverItems.itemCount,
+                                    key = discoverItems.itemKey { it.id }
+                                ) { index ->
                                     val post = discoverItems[index]
                                     if (post != null) {
                                         val overriddenStatus = postStatusOverlay[post.id] ?: post.verificationStatus
                                         val overriddenSaved = savedOverlay[post.id] ?: post.isSavedByMe
                                         val voteOver = voteOverlay[post.id]
-                                        val finalTruth = voteOver?.truthCount ?: post.truthCount
-                                        val finalFalse = voteOver?.falseCount ?: post.falseCount
-                                        val finalMyVote = voteOver?.myVote ?: post.myVoteValue
-                                        val finalScore = if (voteOver != null) (finalTruth - finalFalse) else post.votesScore
+                                        val finalTruth = if (voteOver != null && post.myVoteValue != voteOver.myVote) (voteOver.truthCount ?: post.truthCount) else post.truthCount
+                                        val finalFalse = if (voteOver != null && post.myVoteValue != voteOver.myVote) (voteOver.falseCount ?: post.falseCount) else post.falseCount
+                                        val finalMyVote = if (voteOver != null && post.myVoteValue != voteOver.myVote) voteOver.myVote else post.myVoteValue
+                                        val finalScore = finalTruth - finalFalse
                                         PostCard(
                                             post = post.copy(
                                                 verificationStatus = overriddenStatus,
@@ -384,14 +509,60 @@ fun CommunityContent(
                                         )
                                     }
                                 }
+
+                                // Render append state indicators
+                                when {
+                                    loadState.append is androidx.paging.LoadState.Loading -> {
+                                        items(2) {
+                                            PostCardSkeleton(
+                                                modifier = Modifier.padding(
+                                                    horizontal = paddingMedium / 2,
+                                                    vertical = dimensionResource(id = R.dimen.padding_small) / 2
+                                                )
+                                            )
+                                        }
+                                    }
+                                    loadState.append is androidx.paging.LoadState.Error -> {
+                                        item {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(vertical = 16.dp),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                                    Text(
+                                                        text = "No se pudieron cargar más ofertas.",
+                                                        style = MaterialTheme.typography.bodyMedium,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                    )
+                                                    TextButton(onClick = { discoverItems.retry() }) {
+                                                        Text("Reintentar")
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                         CommunityTab.HOT -> {
                             val loadState = hotItems.loadState
                             val isHotLoading = loadState.refresh is androidx.paging.LoadState.Loading
+                            val isHotError = loadState.refresh is androidx.paging.LoadState.Error || 
+                                    loadState.mediator?.refresh is androidx.paging.LoadState.Error
                             val endOfPaginationReached = (loadState.refresh as? androidx.paging.LoadState.NotLoading)?.endOfPaginationReached == true
 
-                            if (hotItems.itemCount == 0 && (isHotLoading || !endOfPaginationReached)) {
+                            if (isHotError && hotItems.itemCount == 0) {
+                                val error = (loadState.refresh as? androidx.paging.LoadState.Error)?.error
+                                    ?: (loadState.mediator?.refresh as? androidx.paging.LoadState.Error)?.error
+                                item {
+                                    FeedErrorState(
+                                        errorMessage = error?.localizedMessage ?: "Error desconocido",
+                                        onRetry = { hotItems.retry() }
+                                    )
+                                }
+                            } else if (hotItems.itemCount == 0 && (isHotLoading || !endOfPaginationReached)) {
                                 items(5) {
                                     PostCardSkeleton(modifier = Modifier.padding(horizontal = paddingMedium / 2, vertical = dimensionResource(id = R.dimen.padding_small) / 2))
                                 }
@@ -400,16 +571,19 @@ fun CommunityContent(
                                     EmptyFeedState(tab = CommunityTab.HOT)
                                 }
                             } else {
-                                items(hotItems.itemCount) { index ->
+                                items(
+                                    count = hotItems.itemCount,
+                                    key = hotItems.itemKey { it.id }
+                                ) { index ->
                                     val post = hotItems[index]
                                     if (post != null) {
                                         val overriddenStatus = postStatusOverlay[post.id] ?: post.verificationStatus
                                         val overriddenSaved = savedOverlay[post.id] ?: post.isSavedByMe
                                         val voteOver = voteOverlay[post.id]
-                                        val finalTruth = voteOver?.truthCount ?: post.truthCount
-                                        val finalFalse = voteOver?.falseCount ?: post.falseCount
-                                        val finalMyVote = voteOver?.myVote ?: post.myVoteValue
-                                        val finalScore = if (voteOver != null) (finalTruth - finalFalse) else post.votesScore
+                                        val finalTruth = if (voteOver != null && post.myVoteValue != voteOver.myVote) (voteOver.truthCount ?: post.truthCount) else post.truthCount
+                                        val finalFalse = if (voteOver != null && post.myVoteValue != voteOver.myVote) (voteOver.falseCount ?: post.falseCount) else post.falseCount
+                                        val finalMyVote = if (voteOver != null && post.myVoteValue != voteOver.myVote) voteOver.myVote else post.myVoteValue
+                                        val finalScore = finalTruth - finalFalse
                                         PostCard(
                                             post = post.copy(
                                                 verificationStatus = overriddenStatus,
@@ -435,6 +609,41 @@ fun CommunityContent(
                                                 vertical = dimensionResource(id = R.dimen.padding_small) / 2
                                             )
                                         )
+                                    }
+                                }
+
+                                // Render append state indicators
+                                when {
+                                    loadState.append is androidx.paging.LoadState.Loading -> {
+                                        items(2) {
+                                            PostCardSkeleton(
+                                                modifier = Modifier.padding(
+                                                    horizontal = paddingMedium / 2,
+                                                    vertical = dimensionResource(id = R.dimen.padding_small) / 2
+                                                )
+                                            )
+                                        }
+                                    }
+                                    loadState.append is androidx.paging.LoadState.Error -> {
+                                        item {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(vertical = 16.dp),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                                    Text(
+                                                        text = "No se pudieron cargar más ofertas.",
+                                                        style = MaterialTheme.typography.bodyMedium,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                    )
+                                                    TextButton(onClick = { hotItems.retry() }) {
+                                                        Text("Reintentar")
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -453,10 +662,10 @@ fun CommunityContent(
                                     val overriddenStatus = postStatusOverlay[post.id] ?: post.verificationStatus
                                     val overriddenSaved = savedOverlay[post.id] ?: post.isSavedByMe
                                     val voteOver = voteOverlay[post.id]
-                                    val finalTruth = voteOver?.truthCount ?: post.truthCount
-                                    val finalFalse = voteOver?.falseCount ?: post.falseCount
-                                    val finalMyVote = voteOver?.myVote ?: post.myVoteValue
-                                    val finalScore = if (voteOver != null) (finalTruth - finalFalse) else post.votesScore
+                                    val finalTruth = if (voteOver != null && post.myVoteValue != voteOver.myVote) (voteOver.truthCount ?: post.truthCount) else post.truthCount
+                                    val finalFalse = if (voteOver != null && post.myVoteValue != voteOver.myVote) (voteOver.falseCount ?: post.falseCount) else post.falseCount
+                                    val finalMyVote = if (voteOver != null && post.myVoteValue != voteOver.myVote) voteOver.myVote else post.myVoteValue
+                                    val finalScore = finalTruth - finalFalse
                                     PostCard(
                                         post = post.copy(
                                             verificationStatus = overriddenStatus,

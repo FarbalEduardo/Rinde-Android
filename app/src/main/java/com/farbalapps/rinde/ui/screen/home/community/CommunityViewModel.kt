@@ -56,21 +56,19 @@ class CommunityViewModel @Inject constructor(
 
     private val _userId = authRepository.getCurrentUser()?.id ?: ""
 
-    private val _forceRefreshSharedFlow = MutableSharedFlow<Boolean>(replay = 1)
+    private val _forceRefreshTrigger = MutableStateFlow(0)
 
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-    val pagedFeed: Flow<PagingData<CommunityPost>> = _forceRefreshSharedFlow
-        .onStart { emit(false) }
-        .flatMapLatest { force ->
-            feedRepository.getPagedFeed(forceRefresh = force)
+    val pagedFeed: Flow<PagingData<CommunityPost>> = _forceRefreshTrigger
+        .flatMapLatest { trigger ->
+            feedRepository.getPagedFeed(forceRefresh = trigger > 0)
         }
         .cachedIn(viewModelScope)
 
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-    val hotPagedFeed: Flow<PagingData<CommunityPost>> = _forceRefreshSharedFlow
-        .onStart { emit(false) }
-        .flatMapLatest { force ->
-            feedRepository.getHotPagedFeed(forceRefresh = force)
+    val hotPagedFeed: Flow<PagingData<CommunityPost>> = _forceRefreshTrigger
+        .flatMapLatest { trigger ->
+            feedRepository.getHotPagedFeed(forceRefresh = trigger > 0)
         }
         .cachedIn(viewModelScope)
 
@@ -102,7 +100,7 @@ class CommunityViewModel @Inject constructor(
         viewModelScope.launch {
             val hasCachedData = postDao.getPostsOnce(1).isNotEmpty()
             if (!hasCachedData) {
-                _forceRefreshSharedFlow.emit(true)
+                _forceRefreshTrigger.value = 1
             }
         }
 
@@ -112,7 +110,7 @@ class CommunityViewModel @Inject constructor(
                 if (tab == CommunityTab.DISCOVER || tab == CommunityTab.HOT) {
                     _uiState.update { it.copy(isLoading = false) }
                 } else {
-                    refresh(clearPosts = true)
+                    refresh(clearPosts = true, isManualRefresh = false)
                 }
             }
         }
@@ -152,7 +150,7 @@ class CommunityViewModel @Inject constructor(
         viewModelScope.launch {
             feedRepository.refreshFeedIfNeeded(forceRefresh = true)
             updateLastSeenTimestamp()
-            _forceRefreshSharedFlow.emit(true)
+            _forceRefreshTrigger.value = _forceRefreshTrigger.value + 1
         }
     }
 
@@ -229,15 +227,17 @@ class CommunityViewModel @Inject constructor(
         if (state.currentTab == CommunityTab.DISCOVER || state.currentTab == CommunityTab.HOT) return // Paging 3 manages discovery/hot page loading
     }
 
-    fun refresh(clearPosts: Boolean = false) {
+    fun refresh(clearPosts: Boolean = false, isManualRefresh: Boolean = true) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isRefreshing = true) }
+            if (isManualRefresh) {
+                _uiState.update { it.copy(isRefreshing = true) }
+            }
             val tab = _uiState.value.currentTab
             if (tab == CommunityTab.DISCOVER || tab == CommunityTab.HOT) {
                 if (tab == CommunityTab.DISCOVER) {
                     updateLastSeenTimestamp()
                 }
-                _forceRefreshSharedFlow.emit(true)
+                _forceRefreshTrigger.value = _forceRefreshTrigger.value + 1
                 _uiState.update { it.copy(isRefreshing = false, isLoading = false) }
             } else {
                 if (clearPosts) {
@@ -264,11 +264,31 @@ class CommunityViewModel @Inject constructor(
     }
 
     fun toggleSave(postId: String) {
+        val wasSaved = savedOverlay.value[postId] ?: _uiState.value.posts.find { it.id == postId }?.isSavedByMe ?: false
+        val nextSaved = !wasSaved
+
+        // Apply optimistic updates
+        feedRepository.updateSavedStatusLocal(postId, nextSaved)
+        _uiState.update { state ->
+            val updatedPosts = state.posts.map { post ->
+                if (post.id == postId) post.copy(isSavedByMe = nextSaved) else post
+            }
+            state.copy(posts = updatedPosts)
+        }
+
         viewModelScope.launch {
             feedRepository.toggleSave(_uiState.value.userId, postId)
                 .onFailure {
+                    // Revert optimistic updates on failure
+                    feedRepository.updateSavedStatusLocal(postId, wasSaved)
                     _uiState.update { state ->
-                        state.copy(snackbarMessage = "No se pudo guardar la publicación. Intenta de nuevo.")
+                        val revertedPosts = state.posts.map { post ->
+                            if (post.id == postId) post.copy(isSavedByMe = wasSaved) else post
+                        }
+                        state.copy(
+                            posts = revertedPosts,
+                            snackbarMessage = "No se pudo guardar la publicación. Intenta de nuevo."
+                        )
                     }
                 }
         }
@@ -294,20 +314,29 @@ class CommunityViewModel @Inject constructor(
                 ?: postDao.getPostById(postId)?.authorId 
                 ?: return@launch
 
-            val result = toggleVoteUseCase(postId, voteValue, authorId)
-            if (result.isFailure) {
-                // 3. Revertir cambio optimista y mostrar error en caso de fallo
-                _uiState.update { state ->
-                    val revertedPosts = state.posts.map { post ->
-                        if (post.id == postId) {
-                            post.copy(myVoteValue = originalVote)
-                        } else post
+            when (val result = toggleVoteUseCase(postId, voteValue, authorId)) {
+                is com.farbalapps.rinde.domain.usecase.VoteResult.ServerError -> {
+                    // Revertir cambio optimista y mostrar error en caso de fallo crítico de servidor
+                    _uiState.update { state ->
+                        val revertedPosts = state.posts.map { post ->
+                            if (post.id == postId) {
+                                post.copy(myVoteValue = originalVote)
+                            } else post
+                        }
+                        state.copy(
+                            posts = revertedPosts,
+                            snackbarMessage = result.message
+                        )
                     }
-                    state.copy(
-                        posts = revertedPosts,
-                        snackbarMessage = "No se pudo registrar tu voto. Revisa tu conexión."
-                    )
                 }
+                is com.farbalapps.rinde.domain.usecase.VoteResult.NetworkError -> {
+                    _uiState.update { state ->
+                        state.copy(
+                            snackbarMessage = result.message
+                        )
+                    }
+                }
+                else -> { /* IDLE, Success, Offline: no-op o manejado por overlay */ }
             }
         }
     }

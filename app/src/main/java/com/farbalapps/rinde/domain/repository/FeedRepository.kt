@@ -6,8 +6,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 
 data class VoteOverlay(
-    val truthCount: Int?,
-    val falseCount: Int?,
+    val truthCount: Int? = null,
+    val falseCount: Int? = null,
     val myVote: Int
 )
 
@@ -52,6 +52,9 @@ interface FeedRepository {
     suspend fun toggleLike(userId: String, postId: String): Result<Unit>
     suspend fun toggleSave(userId: String, postId: String): Result<Unit>
     suspend fun toggleVote(userId: String, postId: String, voteValue: Int): Result<Unit>
+    suspend fun toggleVoteTransaction(userId: String, postId: String, voteValue: Int): Result<Triple<Int, Int, Int>>
+    suspend fun fetchPostVoteCounts(postId: String): Result<Triple<Int, Int, Int>>
+    suspend fun savePendingVote(userId: String, postId: String, voteValue: Int, authorId: String)
     suspend fun syncUserVotes(userId: String): Result<Unit>
     suspend fun syncUserSavedPosts(userId: String): Result<Unit>
 

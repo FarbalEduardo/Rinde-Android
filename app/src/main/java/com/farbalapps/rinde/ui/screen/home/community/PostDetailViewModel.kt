@@ -16,6 +16,7 @@ import com.farbalapps.rinde.domain.usecase.DeleteCommentUseCase
 import com.farbalapps.rinde.domain.usecase.EditCommentUseCase
 import com.farbalapps.rinde.domain.usecase.DeleteReplyUseCase
 import com.farbalapps.rinde.domain.usecase.EditReplyUseCase
+import com.farbalapps.rinde.domain.usecase.ReportCommentUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,9 +25,14 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+import com.farbalapps.rinde.domain.usecase.VoteResult
+
+import kotlinx.coroutines.flow.combine
+
+enum class VoteUiState { IDLE, SENDING, ERROR, OFFLINE }
+
 data class PostDetailUiState(
     val post: CommunityPost? = null,
-    // Comentarios ordenados de más reciente a más antiguo
     val comments: List<Comment> = emptyList(),
     val replies: Map<String, List<Reply>> = emptyMap(),
     val isLoadingPost: Boolean = true,
@@ -42,7 +48,11 @@ data class PostDetailUiState(
     val editingReplyId: String? = null,
     val editingText: String = "",
     val replyingToComment: Comment? = null,
-    val replyText: String = ""
+    val replyText: String = "",
+    val voteState: VoteUiState = VoteUiState.IDLE,
+    val isVotePending: Boolean = false,
+    val voteErrorMessage: String? = null,
+    val isNewCommentFocused: Boolean = false
 )
 
 @HiltViewModel
@@ -57,19 +67,17 @@ class PostDetailViewModel @Inject constructor(
     private val deleteCommentUseCase: DeleteCommentUseCase,
     private val editCommentUseCase: EditCommentUseCase,
     private val deleteReplyUseCase: DeleteReplyUseCase,
-    private val editReplyUseCase: EditReplyUseCase
+    private val editReplyUseCase: EditReplyUseCase,
+    private val reportCommentUseCase: ReportCommentUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PostDetailUiState())
     val uiState: StateFlow<PostDetailUiState> = _uiState.asStateFlow()
 
-    val postStatusOverlay: StateFlow<Map<String, com.farbalapps.rinde.domain.model.VerificationStatus>> = feedRepository.globalPostStatus
-    val savedStatusOverlay: StateFlow<Map<String, Boolean>> = feedRepository.globalSavedStatus
-    val voteStatusOverlay: StateFlow<Map<String, com.farbalapps.rinde.domain.repository.VoteOverlay>> = feedRepository.globalVoteStatus
-
     private val currentUser = authRepository.getCurrentUser()
     private val currentUserId = currentUser?.id ?: ""
     private var currentPostId: String? = null
+    private var postJob: kotlinx.coroutines.Job? = null
 
     init {
         _uiState.update { it.copy(currentUserId = currentUserId, currentUserName = currentUser?.displayName ?: "") }
@@ -81,15 +89,34 @@ class PostDetailViewModel @Inject constructor(
 
     fun loadPost(postId: String) {
         currentPostId = postId
-        viewModelScope.launch {
+        postJob?.cancel()
+        postJob = viewModelScope.launch {
             _uiState.update { it.copy(isLoadingPost = true) }
             
             try {
-                feedRepository.getPostById(postId).collect { post ->
-                    _uiState.update { it.copy(post = post, isLoadingPost = false) }
+                combine(
+                    feedRepository.getPostById(postId),
+                    feedRepository.globalPostStatus,
+                    feedRepository.globalSavedStatus,
+                    feedRepository.globalVoteStatus
+                ) { post, postStatusOverlay, savedStatusOverlay, voteStatusOverlay ->
+                    val overriddenStatus = postStatusOverlay[post.id] ?: post.verificationStatus
+                    val overriddenSaved = savedStatusOverlay[post.id] ?: post.isSavedByMe
+                    val voteOverlay = voteStatusOverlay[post.id]
+                    post.copy(
+                        verificationStatus = overriddenStatus,
+                        isSavedByMe = overriddenSaved,
+                        truthCount = voteOverlay?.truthCount ?: post.truthCount,
+                        falseCount = voteOverlay?.falseCount ?: post.falseCount,
+                        myVoteValue = voteOverlay?.myVote ?: post.myVoteValue
+                    )
+                }.collect { finalPost ->
+                    _uiState.update { it.copy(post = finalPost, isLoadingPost = false) }
                 }
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoadingPost = false, error = e.message) }
+                if (e !is kotlinx.coroutines.CancellationException) {
+                    _uiState.update { it.copy(isLoadingPost = false, error = e.message) }
+                }
             }
         }
         loadComments(postId)
@@ -181,6 +208,14 @@ class PostDetailViewModel @Inject constructor(
         _uiState.update { it.copy(editingCommentId = null, editingReplyId = null, editingText = "") }
     }
 
+    fun onNewCommentInputFocused() {
+        _uiState.update { it.copy(isNewCommentFocused = true) }
+        viewModelScope.launch {
+            kotlinx.coroutines.delay(500)
+            _uiState.update { it.copy(isNewCommentFocused = false) }
+        }
+    }
+
     fun saveEditedContent() {
         val postId = currentPostId ?: return
         val state = _uiState.value
@@ -258,21 +293,58 @@ class PostDetailViewModel @Inject constructor(
 
     fun toggleVote(voteValue: Int) {
         val post = _uiState.value.post ?: return
+        if (_uiState.value.voteState == VoteUiState.SENDING) return
+
         val currentVote = post.myVoteValue
         val nextVote = if (currentVote == voteValue) 0 else voteValue
 
-        // Actualizamos optimistamente solo el voto personal (sin alterar contadores artificialmente)
-        _uiState.update { it.copy(post = post.copy(myVoteValue = nextVote)) }
+        _uiState.update { it.copy(voteState = VoteUiState.SENDING, voteErrorMessage = null) }
 
         viewModelScope.launch {
-            val result = toggleVoteUseCase(post.id, voteValue, post.authorId)
-            if (result.isFailure) {
-                // Revertir y mostrar error
-                _uiState.update { state ->
-                    state.copy(
-                        post = state.post?.copy(myVoteValue = currentVote),
-                        snackbarMessage = "No se pudo registrar tu voto. Revisa tu conexión."
-                    )
+            // 2. Enviar voto (el UseCase maneja la persistencia en Room)
+            when (val result = toggleVoteUseCase(post.id, voteValue, post.authorId)) {
+                is VoteResult.Success -> {
+                    result.counts?.let { (truth, false_, score) ->
+                        _uiState.update { state ->
+                            state.copy(
+                                post = state.post?.copy(truthCount = truth, falseCount = false_, votesScore = score),
+                                voteState = VoteUiState.IDLE,
+                                isVotePending = false,
+                                voteErrorMessage = null
+                            )
+                        }
+                    } ?: _uiState.update { it.copy(voteState = VoteUiState.IDLE) }
+                }
+
+                is VoteResult.Offline -> {
+                    _uiState.update {
+                        it.copy(
+                            voteState = VoteUiState.OFFLINE,
+                            isVotePending = true,
+                            voteErrorMessage = "Sin conexión. Tu voto se enviará cuando vuelva internet."
+                        )
+                    }
+                }
+
+                is VoteResult.NetworkError -> {
+                    feedRepository.savePendingVote(currentUserId, post.id, voteValue, post.authorId)
+                    _uiState.update {
+                        it.copy(
+                            voteState = VoteUiState.OFFLINE,
+                            isVotePending = true,
+                            voteErrorMessage = result.message
+                        )
+                    }
+                }
+
+                is VoteResult.ServerError -> {
+                    _uiState.update {
+                        it.copy(
+                            post = post, // Revertir
+                            voteState = VoteUiState.ERROR,
+                            voteErrorMessage = result.message
+                        )
+                    }
                 }
             }
         }
@@ -304,6 +376,38 @@ class PostDetailViewModel @Inject constructor(
     fun toggleReplyLike(commentId: String, replyId: String) {
         viewModelScope.launch {
             toggleLikeUseCase.toggleReplyLike(commentId, replyId)
+        }
+    }
+
+    fun reportComment(comment: Comment) {
+        val postId = currentPostId ?: return
+        viewModelScope.launch {
+            reportCommentUseCase(
+                postId = postId,
+                commentId = comment.id,
+                commentText = comment.text,
+                authorId = comment.authorId
+            ).onSuccess {
+                _uiState.update { it.copy(snackbarMessage = "Comentario reportado") }
+            }.onFailure { e ->
+                _uiState.update { it.copy(error = e.message) }
+            }
+        }
+    }
+
+    fun reportReply(reply: Reply) {
+        val postId = currentPostId ?: return
+        viewModelScope.launch {
+            reportCommentUseCase(
+                postId = postId,
+                commentId = reply.id,
+                commentText = reply.text,
+                authorId = reply.authorId
+            ).onSuccess {
+                _uiState.update { it.copy(snackbarMessage = "Respuesta reportada") }
+            }.onFailure { e ->
+                _uiState.update { it.copy(error = e.message) }
+            }
         }
     }
 

@@ -1,0 +1,30 @@
+{
+  "rules": {
+    "comments": {
+      "$postId": {
+        ".read": "auth != null",
+        ".write": "auth != null",
+        ".indexOn": ["timestamp"]
+      }
+    },
+    "replies": {
+      "$commentId": {
+        ".read": "auth != null",
+        ".write": "auth != null",
+        ".indexOn": ["timestamp"]
+      }
+    },
+    "comment_likes": {
+      "$commentId": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+    "reply_likes": {
+      "$replyId": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    }
+  }
+}

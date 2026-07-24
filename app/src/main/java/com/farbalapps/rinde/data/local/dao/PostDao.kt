@@ -17,8 +17,11 @@ interface PostDao {
     @Query("SELECT * FROM community_posts WHERE isActive = 1 AND category IN (:categories) ORDER BY votesScore DESC, timestamp DESC")
     fun getPostsByCategories(categories: List<String>): Flow<List<CommunityPostEntity>>
 
-    @Query("SELECT * FROM community_posts WHERE isActive = 1 AND votesScore >= 50 ORDER BY votesScore DESC, timestamp DESC")
+    @Query("SELECT * FROM community_posts WHERE isActive = 1 AND votesScore >= 2 ORDER BY votesScore DESC, timestamp DESC")
     fun getHotPostsPagingSource(): androidx.paging.PagingSource<Int, CommunityPostEntity>
+
+    @Query("SELECT COUNT(*) FROM community_posts WHERE isActive = 1 AND votesScore >= 2")
+    suspend fun getHotPostsCount(): Int
 
     @Query("SELECT * FROM community_posts WHERE id IN (:postIds)")
     suspend fun getPostsByIds(postIds: List<String>): List<CommunityPostEntity>

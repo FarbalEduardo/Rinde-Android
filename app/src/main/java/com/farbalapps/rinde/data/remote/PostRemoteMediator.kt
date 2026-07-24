@@ -16,6 +16,10 @@ import com.google.firebase.firestore.Query
 import kotlinx.coroutines.tasks.await
 import java.util.Date
 
+/**
+ * A Paging3 [RemoteMediator] that handles incremental loading of global community posts
+ * from Firebase Firestore and persists them into Room.
+ */
 @OptIn(ExperimentalPagingApi::class)
 class PostRemoteMediator(
     private val firestore: FirebaseFirestore,
@@ -63,6 +67,9 @@ class PostRemoteMediator(
         }
     }
 
+    /**
+     * Handles the refresh operation by fetching the initial page of posts from Firestore.
+     */
     private suspend fun handleRefresh(state: PagingState<Int, CommunityPostEntity>): MediatorResult {
         val meta = syncMetadataDao.getMetadata(FEED_KEY)
         val now = System.currentTimeMillis()
@@ -118,6 +125,9 @@ class PostRemoteMediator(
         return MediatorResult.Success(endOfPaginationReached = posts.size < PAGE_SIZE)
     }
 
+    /**
+     * Handles appending data by querying Firestore starting after the last loaded item's timestamp.
+     */
     private suspend fun handleAppend(state: PagingState<Int, CommunityPostEntity>): MediatorResult {
         val lastItem = state.lastItemOrNull() ?: return MediatorResult.Success(endOfPaginationReached = true)
         

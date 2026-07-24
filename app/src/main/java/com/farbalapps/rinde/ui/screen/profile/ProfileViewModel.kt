@@ -133,28 +133,21 @@ class ProfileViewModel @Inject constructor(
     }
 
     fun toggleVote(postId: String, voteValue: Int) {
-        // Actualización optimista en la lista local
+        val post = _uiState.value.posts.find { it.id == postId } ?: return
+        val currentVote = post.myVoteValue
+        val nextVote = if (currentVote == voteValue) 0 else voteValue
+
         _uiState.update { state ->
-            val updatedPosts = state.posts.map { post ->
-                if (post.id == postId) {
-                    val currentVote = post.myVoteValue
-                    if (currentVote == voteValue) {
-                        val scoreDiff = -voteValue
-                        val newTruth = if (voteValue > 0) post.truthCount - 1 else post.truthCount
-                        val newFalse = if (voteValue < 0) post.falseCount - 1 else post.falseCount
-                        post.copy(myVoteValue = 0, votesScore = post.votesScore + scoreDiff, truthCount = newTruth, falseCount = newFalse)
-                    } else {
-                        val scoreDiff = if (currentVote == 0) voteValue else voteValue - currentVote
-                        val newTruth = post.truthCount + (if (voteValue > 0) 1 else 0) - (if (currentVote > 0) 1 else 0)
-                        val newFalse = post.falseCount + (if (voteValue < 0) 1 else 0) - (if (currentVote < 0) 1 else 0)
-                        post.copy(myVoteValue = voteValue, votesScore = post.votesScore + scoreDiff, truthCount = newTruth, falseCount = newFalse)
-                    }
-                } else post
+            val updatedPosts = state.posts.map { p ->
+                if (p.id == postId) {
+                    p.copy(myVoteValue = nextVote)
+                } else p
             }
             state.copy(posts = updatedPosts)
         }
+
         viewModelScope.launch {
-            val authorId = _uiState.value.posts.find { it.id == postId }?.authorId ?: return@launch
+            val authorId = post.authorId
             toggleVoteUseCase(postId, voteValue, authorId)
         }
     }

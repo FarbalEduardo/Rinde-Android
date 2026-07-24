@@ -85,8 +85,10 @@ fun CommentsBottomSheet(
                         onDelete = { viewModel.deleteComment(comment.id, comment.authorId) },
                         onLoadReplies = { viewModel.loadReplies(comment.id) },
                         onLikeReply = { replyId -> viewModel.toggleReplyLike(comment.id, replyId) },
-                        onDeleteReply = { cId, rId -> viewModel.deleteReply(cId, rId, comment.authorId) }, // Needs correct reply author id, but for now passing comment author id for simplicity, should pass reply author id
-                        onEditReply = { viewModel.startEditReply(it) }
+                        onDeleteReply = { cId, rId, replyAuthorId -> viewModel.deleteReply(cId, rId, replyAuthorId) },
+                        onEditReply = { viewModel.startEditReply(it) },
+                        onReportComment = { viewModel.reportComment(comment) },
+                        onReportReply = { viewModel.reportReply(it) }
                     )
                 }
             }
