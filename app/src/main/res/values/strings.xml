@@ -11,7 +11,7 @@
     <!-- Login Screen -->
     <string name="login_welcome">Bienvenido</string>
     <string name="login_subtitle">Inicia sesión para continuar</string>
-    <string name="label_email">Usuario o Correo electrónico</string>
+    <string name="label_email">Correo electrónico</string>
     <string name="label_password">Contraseña</string>
     <string name="btn_forgot_password">¿Olvidaste tu contraseña?</string>
     <string name="reset_password_instruction">Ingresa tu correo para recibir un enlace de restablecimiento.</string>

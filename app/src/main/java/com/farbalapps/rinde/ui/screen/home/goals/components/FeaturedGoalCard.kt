@@ -50,7 +50,7 @@ fun FeaturedGoalCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
-            modifier = Modifier.padding(20.dp)
+            modifier = Modifier.padding(16.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -58,7 +58,7 @@ fun FeaturedGoalCard(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(48.dp)
+                        .size(44.dp)
                         .background(progressColor.copy(alpha = 0.15f), shape = CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
@@ -66,12 +66,32 @@ fun FeaturedGoalCard(
                         imageVector = icon,
                         contentDescription = goal.title,
                         tint = progressColor,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = goal.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = "Progreso de ahorro",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 
                 if (goal.isCompleted) {
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
                     Surface(
                         color = Color(0xFFE8F5E9),
                         shape = RoundedCornerShape(50),
@@ -87,27 +107,9 @@ fun FeaturedGoalCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = goal.title,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis // E7.1
-            )
-
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
             val progressPercent = (fraction * 100).toInt()
-            Text(
-                text = "Progreso de ahorro",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -128,7 +130,7 @@ fun FeaturedGoalCard(
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(6.dp))
 
             LinearProgressIndicator(
                 progress = { animatedProgress },

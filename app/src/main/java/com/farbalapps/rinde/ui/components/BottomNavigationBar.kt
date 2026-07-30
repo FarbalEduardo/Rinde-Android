@@ -1,7 +1,7 @@
 package com.farbalapps.rinde.ui.components
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.AccountCircle
@@ -41,7 +41,7 @@ fun BottomNavigationBar(
         Pair(HomeRoute.Community, Pair(stringResource(id = R.string.home_tab_community), Icons.Default.Public)),
         Pair(HomeRoute.List, Pair(stringResource(id = R.string.home_tab_home), Icons.Default.ShoppingCart)),
         Pair(HomeRoute.Goals, Pair(stringResource(id = R.string.home_tab_goals), Icons.Default.Flag)),
-        Pair(HomeRoute.Assistant, Pair(stringResource(id = R.string.social_google), Icons.Default.AutoAwesome)),
+        Pair(HomeRoute.Assistant, Pair("Chef", Icons.Default.Restaurant)),
         Pair(HomeRoute.Profile, Pair("Perfil", Icons.Default.AccountCircle))
     )
 

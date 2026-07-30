@@ -1,17 +1,17 @@
 package com.farbalapps.rinde.ui.screen.home.goals.components
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.dimensionResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.farbalapps.rinde.R
 import com.farbalapps.rinde.domain.usecase.goals.GoalsSummary
 
 @Composable
@@ -19,55 +19,105 @@ fun GoalsSummaryHeader(
     summary: GoalsSummary,
     modifier: Modifier = Modifier
 ) {
-    Column(modifier = modifier.fillMaxWidth()) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // Label "RESUMEN TOTAL"
         Text(
-            text = stringResource(id = R.string.goals_total_summary),
-            style = MaterialTheme.typography.labelLarge,
+            text = "RESUMEN TOTAL",
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            letterSpacing = 1.sp
+            letterSpacing = 2.sp
         )
-        Spacer(modifier = Modifier.height(dimensionResource(id = R.dimen.padding_small)))
-        Row(
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = String.format("$%,.2f", summary.totalSaved),
-                style = MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            
-            // Badge de crecimiento mensual (E4.3)
-            if (summary.monthlyGrowthPercent != 0) {
-                Spacer(modifier = Modifier.width(dimensionResource(id = R.dimen.padding_medium)))
-                val isPositive = summary.monthlyGrowthPercent > 0
-                val badgeColor = if (isPositive) Color(0xFFE8F5E9) else Color(0xFFFFEBEE)
-                val textColor = if (isPositive) Color(0xFF2E7D32) else Color(0xFFC62828)
-                val sign = if (isPositive) "+" else ""
 
-                Surface(
-                    color = badgeColor,
-                    shape = MaterialTheme.shapes.extraLarge,
-                    modifier = Modifier.padding(top = dimensionResource(id = R.dimen.padding_xsmall))
+        Spacer(modifier = Modifier.height(4.dp))
+
+        // Monto Total en Grande
+        Text(
+            text = String.format("$%,.2f", summary.totalSaved),
+            style = MaterialTheme.typography.displayMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Tarjeta de Progreso Global (Estilo lalo 2 con contraste azul primario suave)
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "$sign${summary.monthlyGrowthPercent}%",
-                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                        color = textColor,
-                        modifier = Modifier.padding(
-                            horizontal = dimensionResource(id = R.dimen.padding_small),
-                            vertical = dimensionResource(id = R.dimen.padding_xsmall)
+                        text = "Has alcanzado el ${summary.progressPercent}% de tus objetivos",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Surface(
+                        shape = RoundedCornerShape(50),
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        modifier = Modifier.padding(start = 8.dp)
+                    ) {
+                        Text(
+                            text = "${summary.progressPercent}%",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                         )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Barra de progreso global
+                LinearProgressIndicator(
+                    progress = { summary.progressPercent / 100f },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(10.dp)
+                        .clip(RoundedCornerShape(50)),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                    gapSize = 0.dp,
+                    drawStopIndicator = {}
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = String.format("$%,.2f ahorrado", summary.totalSaved),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = String.format("Meta: $%,.2f", summary.totalTarget),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
         }
-        Spacer(modifier = Modifier.height(dimensionResource(id = R.dimen.padding_small)))
-        
-        // Mensaje de porcentaje global (E4.2)
-        Text(
-            text = stringResource(id = R.string.goals_progress_msg, summary.progressPercent),
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 }

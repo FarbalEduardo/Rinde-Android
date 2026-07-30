@@ -47,10 +47,10 @@ fun BudgetSummaryCard(
 
     Surface(
         shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surface,
+        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f),
         border = androidx.compose.foundation.BorderStroke(
             1.dp,
-            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
         ),
         tonalElevation = 0.dp,
         modifier = modifier

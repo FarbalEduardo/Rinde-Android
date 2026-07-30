@@ -50,8 +50,13 @@ fun HomeScreen(
     // ViewModels
     val listViewModel: ListViewModel = hiltViewModel()
     val notificationsViewModel: com.farbalapps.rinde.ui.screen.home.community.NotificationsViewModel = hiltViewModel()
+    val goalsViewModel: com.farbalapps.rinde.ui.screen.home.goals.GoalsViewModel = hiltViewModel()
     val uiState by listViewModel.uiState.collectAsStateWithLifecycle()
     val notificationsState by notificationsViewModel.uiState.collectAsStateWithLifecycle()
+    val goalsUiState by goalsViewModel.uiState.collectAsStateWithLifecycle()
+
+    val isGoalsFabVisible = (goalsUiState is com.farbalapps.rinde.ui.screen.home.goals.GoalsUiState.Content) &&
+            (goalsUiState as com.farbalapps.rinde.ui.screen.home.goals.GoalsUiState.Content).canAddMore
 
     // Trigger catalog load
     LaunchedEffect(Unit) {
@@ -138,6 +143,7 @@ fun HomeScreen(
             HomeScreenFab(
                 isVisible = isFabVisible,
                 destination = destination,
+                isGoalsFabVisible = isGoalsFabVisible,
                 onAddProduct = { showAddProductSheet = true },
                 onAddGoal = { addGoalTrigger++ },
                 onAddCommunityPost = { navController.navigate(HomeRoute.CreatePost) }
@@ -262,6 +268,7 @@ fun ExitConfirmationDialog(
 fun HomeScreenFab(
     isVisible: Boolean,
     destination: NavDestination?,
+    isGoalsFabVisible: Boolean = true,
     onAddProduct: () -> Unit,
     onAddGoal: () -> Unit,
     onAddCommunityPost: () -> Unit
@@ -291,12 +298,14 @@ fun HomeScreenFab(
                 }
             }
             destination?.hasRoute<HomeRoute.Goals>() == true -> {
-                FloatingActionButton(
-                    onClick = onAddGoal,
-                    containerColor = com.farbalapps.rinde.ui.theme.RindePrimary,
-                    contentColor = androidx.compose.ui.graphics.Color.White
-                ) {
-                    Icon(Icons.Default.Add, stringResource(R.string.home_fab_add_goal))
+                if (isGoalsFabVisible) {
+                    FloatingActionButton(
+                        onClick = onAddGoal,
+                        containerColor = com.farbalapps.rinde.ui.theme.RindePrimary,
+                        contentColor = androidx.compose.ui.graphics.Color.White
+                    ) {
+                        Icon(Icons.Default.Add, stringResource(R.string.home_fab_add_goal))
+                    }
                 }
             }
         }

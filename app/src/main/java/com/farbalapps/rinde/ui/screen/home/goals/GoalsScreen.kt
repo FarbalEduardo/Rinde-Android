@@ -2,21 +2,18 @@ package com.farbalapps.rinde.ui.screen.home.goals
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.farbalapps.rinde.R
 import com.farbalapps.rinde.domain.model.SavingsGoal
 import com.farbalapps.rinde.ui.screen.home.goals.components.*
 import kotlinx.coroutines.flow.collectLatest
@@ -32,10 +29,11 @@ fun GoalsScreen(
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
 
-    // Control de BottomSheets
+    // Control de BottomSheets y diálogos
     var showCreateBottomSheetInternal by remember { mutableStateOf(false) }
     var activeDepositGoal by remember { mutableStateOf<SavingsGoal?>(null) }
     var goalToDelete by remember { mutableStateOf<SavingsGoal?>(null) }
+    var showOptionsMenu by remember { mutableStateOf(false) }
 
     val showCreateBottomSheet = showCreateBottomSheetExternal || showCreateBottomSheetInternal
 
@@ -54,7 +52,7 @@ fun GoalsScreen(
                     Toast.makeText(context, event.message, Toast.LENGTH_LONG).show()
                 }
                 is GoalsEvent.GoalLimitReached -> {
-                    Toast.makeText(context, "Límite de metas alcanzado.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Límite de metas alcanzado (máximo 3).", Toast.LENGTH_SHORT).show()
                 }
                 is GoalsEvent.GoalCompleted -> {
                     Toast.makeText(context, "🎉 ¡Felicidades! Completaste la meta: ${event.title}", Toast.LENGTH_LONG).show()
@@ -67,7 +65,7 @@ fun GoalsScreen(
         }
     }
 
-    // Alerta de confirmación de depósito excedente (E3.4 Opción B)
+    // Alerta de confirmación de depósito excedente
     showExcessConfirmation?.let { event ->
         AlertDialog(
             onDismissRequest = { showExcessConfirmation = null },
@@ -91,7 +89,7 @@ fun GoalsScreen(
         )
     }
 
-    // Alerta de eliminación (E5.1)
+    // Alerta de eliminación de meta
     goalToDelete?.let { goal ->
         AlertDialog(
             onDismissRequest = { goalToDelete = null },
@@ -115,12 +113,55 @@ fun GoalsScreen(
         )
     }
 
-    Surface(
+    Scaffold(
         modifier = Modifier
             .fillMaxSize()
             .padding(innerPadding),
-        color = MaterialTheme.colorScheme.background
-    ) {
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "Mis Objetivos",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                actions = {
+                    Box {
+                        IconButton(onClick = { showOptionsMenu = true }) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = "Opciones de Metas"
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = showOptionsMenu,
+                            onDismissRequest = { showOptionsMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Nueva Meta") },
+                                onClick = {
+                                    showOptionsMenu = false
+                                    showCreateBottomSheetInternal = true
+                                }
+                            )
+                        }
+                    }
+                },
+                windowInsets = WindowInsets(0.dp),
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground
+                )
+            )
+        },
+        containerColor = MaterialTheme.colorScheme.background
+    ) { contentPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = contentPadding.calculateTopPadding())
+        ) {
             when (val state = uiState) {
                 is GoalsUiState.Loading -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -138,53 +179,73 @@ fun GoalsScreen(
                     }
                 }
                 is GoalsUiState.Content -> {
-                    // Diseño flexible de rejilla (LazyVerticalGrid) para dar soporte al responsive y al grid dinámico
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(2),
+                    val allGoals = remember(state) {
+                        listOfNotNull(state.featuredGoal) + state.secondaryGoals
+                    }
+
+                    LazyColumn(
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        // Header de resumen (Ocupa ambas columnas)
-                        item(span = { GridItemSpan(2) }) {
+                        // Header de Resumen Total (Estilo lalo 2)
+                        item {
                             GoalsSummaryHeader(summary = state.summary)
                         }
 
-                        // Tarjeta Destacada (Featured Card) (Ocupa ambas columnas) (E1.2, E1.3, E1.4)
-                        state.featuredGoal?.let { goal ->
-                            item(span = { GridItemSpan(2) }) {
-                                FeaturedGoalCard(
-                                    goal = goal,
-                                    onClick = { activeDepositGoal = goal },
-                                    onLongClick = { goalToDelete = goal }
+                        // Sección: Objetivos Activos
+                        item {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp, bottom = 4.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Objetivos activos",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "${allGoals.size} de 3 metas",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.SemiBold
                                 )
                             }
                         }
 
-                        // Tarjetas Secundarias (Ocupan una columna cada una para formar un grid de 2 columnas)
-                        items(state.secondaryGoals) { goal ->
-                            SmallGoalCard(
+                        // Lista de Metas (Hasta 3 metas caben limpiamente)
+                        items(allGoals, key = { it.id }) { goal ->
+                            FeaturedGoalCard(
                                 goal = goal,
                                 onClick = { activeDepositGoal = goal },
                                 onLongClick = { goalToDelete = goal }
                             )
                         }
 
-                        // AI Suggestion & Fondo de Emergencia (Decorativos y mockeados del template original)
-                        item(span = { GridItemSpan(2) }) {
-                            ChefSuggestionCard()
+                        // Tarjeta comodín punteada si aún quedan cupos para metas (menos de 3)
+                        if (allGoals.size < 3) {
+                            item {
+                                DashedAddGoalCard(
+                                    currentGoalCount = allGoals.size,
+                                    onClick = { showCreateBottomSheetInternal = true }
+                                )
+                            }
                         }
-                        item(span = { GridItemSpan(2) }) {
-                            EmergencyFundCard()
-                        }
-                        item(span = { GridItemSpan(2) }) {
-                            Spacer(modifier = Modifier.height(72.dp))
+
+                        // Recomendación aleatoria de IA Chef (1 de 15 frases)
+                        item {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            ChefRandomRecommendationCard()
                         }
                     }
                 }
             }
-    } // cierre Surface
+        }
+    }
 
     // Modal para Crear Metas
     if (showCreateBottomSheet) {
@@ -209,4 +270,4 @@ fun GoalsScreen(
             }
         )
     }
-} // cierre GoalsScreen
+}
