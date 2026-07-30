@@ -77,7 +77,7 @@ fun EmptyGoalsContent(
         Icon(
             imageVector = Icons.Default.Savings,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+            tint = com.farbalapps.rinde.ui.theme.RindePrimary.copy(alpha = 0.16f),
             modifier = Modifier
                 .size(64.dp)
                 .align(Alignment.TopStart)
@@ -88,7 +88,7 @@ fun EmptyGoalsContent(
         Icon(
             imageVector = Icons.AutoMirrored.Filled.TrendingUp,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
+            tint = com.farbalapps.rinde.ui.theme.RindePrimary.copy(alpha = 0.16f),
             modifier = Modifier
                 .size(72.dp)
                 .align(Alignment.BottomEnd)
@@ -117,7 +117,7 @@ fun EmptyGoalsContent(
                         .clip(CircleShape)
                         .border(
                             width = 1.5.dp,
-                            color = MaterialTheme.colorScheme.primary.copy(
+                            color = com.farbalapps.rinde.ui.theme.RindePrimary.copy(
                                 alpha = ((1.35f - rippleScale) * 0.6f).coerceIn(0f, 1f)
                             ),
                             shape = CircleShape
@@ -133,15 +133,15 @@ fun EmptyGoalsContent(
                         .background(
                             Brush.radialGradient(
                                 colors = listOf(
-                                    MaterialTheme.colorScheme.primary.copy(alpha = glowAlpha),
-                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.05f),
+                                    com.farbalapps.rinde.ui.theme.RindePrimary.copy(alpha = glowAlpha),
+                                    com.farbalapps.rinde.ui.theme.RindePrimary.copy(alpha = 0.05f),
                                     Color.Transparent
                                 )
                             )
                         )
                 )
 
-                // Icono temático principal de Metas / Ahorro en contenedor circular
+                // Icono temático principal de Metas / Ahorro (Cochinito) en contenedor circular
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
@@ -150,20 +150,20 @@ fun EmptyGoalsContent(
                         .shadow(
                             elevation = 16.dp,
                             shape = CircleShape,
-                            spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)
+                            spotColor = com.farbalapps.rinde.ui.theme.RindePrimary.copy(alpha = 0.45f)
                         )
                         .clip(CircleShape)
                         .background(MaterialTheme.colorScheme.surface)
                         .border(
                             width = 2.5.dp,
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
+                            color = com.farbalapps.rinde.ui.theme.RindePrimary.copy(alpha = 0.35f),
                             shape = CircleShape
                         )
                 ) {
                     Icon(
                         imageVector = Icons.Default.Savings,
                         contentDescription = "Metas y Ahorros",
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = com.farbalapps.rinde.ui.theme.RindePrimary,
                         modifier = Modifier.size(64.dp)
                     )
                 }
@@ -217,8 +217,8 @@ fun EmptyGoalsContent(
                 onClick = onCreateFirstGoalClick,
                 shape = RoundedCornerShape(50),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
+                    containerColor = com.farbalapps.rinde.ui.theme.RindePrimary,
+                    contentColor = Color.White
                 ),
                 elevation = ButtonDefaults.buttonElevation(
                     defaultElevation = 6.dp,

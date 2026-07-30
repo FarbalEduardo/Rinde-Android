@@ -125,7 +125,11 @@ fun SignUpScreen(
                             .fillMaxWidth()
                             .height(dimensionResource(id = R.dimen.button_height_standard)),
                         enabled = !state.isLoading,
-                        shape = MaterialTheme.shapes.large
+                        shape = MaterialTheme.shapes.large,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = com.farbalapps.rinde.ui.theme.RindePrimary,
+                            contentColor = Color.White
+                        )
                     ) {
                         if (state.isLoading) {
                             CircularProgressIndicator(

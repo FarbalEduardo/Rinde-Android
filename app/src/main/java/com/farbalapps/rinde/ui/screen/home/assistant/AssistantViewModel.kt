@@ -2,6 +2,8 @@ package com.farbalapps.rinde.ui.screen.home.assistant
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.farbalapps.rinde.domain.model.SavedShoppingList
+import com.farbalapps.rinde.domain.model.ShoppingItem
 import com.farbalapps.rinde.domain.repository.ListRepository
 import com.farbalapps.rinde.domain.repository.SavedListRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -9,6 +11,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -47,16 +50,9 @@ data class IngredientChipState(
 
 data class ChefChatUiState(
     val messages: List<ChefChatMessage> = emptyList(),
-    val availableLists: List<String> = listOf("Mi Lista Actual", "Despensa Semanal", "Compras Saludables"),
+    val availableLists: List<String> = listOf("Mi Lista Actual"),
     val selectedListName: String = "Mi Lista Actual",
-    val availableIngredients: List<IngredientChipState> = listOf(
-        IngredientChipState("1", "Limones", isSelected = true),
-        IngredientChipState("2", "Salmón", isSelected = true),
-        IngredientChipState("3", "Uvas", isSelected = true),
-        IngredientChipState("4", "Leche", isSelected = false),
-        IngredientChipState("5", "Espinacas", isSelected = false),
-        IngredientChipState("6", "Ajo", isSelected = false)
-    ),
+    val availableIngredients: List<IngredientChipState> = emptyList(),
     val isThinking: Boolean = false,
     val inputText: String = ""
 )
@@ -72,31 +68,70 @@ class AssistantViewModel @Inject constructor(
 
     private var hasPlayedInitialAnimation = false
 
+    private var savedLists: List<SavedShoppingList> = emptyList()
+    private var activeShoppingItems: List<ShoppingItem> = emptyList()
+
+    private val defaultFallbackIngredients = listOf(
+        IngredientChipState("def-1", "Limones", isSelected = true),
+        IngredientChipState("def-2", "Salmón", isSelected = true),
+        IngredientChipState("def-3", "Uvas", isSelected = true),
+        IngredientChipState("def-4", "Leche", isSelected = false),
+        IngredientChipState("def-5", "Espinacas", isSelected = false),
+        IngredientChipState("def-6", "Ajo", isSelected = false)
+    )
+
     private val fullGreetingText =
         "¡Hola! Soy tu Chef IA de Rinde 👨‍🍳✨. Puedo ayudarte a crear recetas deliciosas y saludables aprovechando al máximo los ingredientes de tu despensa o lista de compras. ¿Qué vamos a cocinar hoy?"
 
     init {
-        loadPantryIngredients()
+        observeListsAndIngredients()
         initWelcomeMessage()
     }
 
-    private fun loadPantryIngredients() {
+    private fun observeListsAndIngredients() {
         viewModelScope.launch {
             try {
-                listRepository.getItems().collect { items ->
-                    val activeItems = items.filter { !it.isCompleted }
-                    if (activeItems.isNotEmpty()) {
-                        val pantryChips = activeItems.take(8).mapIndexed { index, item ->
+                combine(
+                    listRepository.getItems(),
+                    savedListRepository.getSavedLists()
+                ) { activeItems, savedListsList ->
+                    activeShoppingItems = activeItems
+                    savedLists = savedListsList
+
+                    val listNames = listOf("Mi Lista Actual") + savedListsList.map { it.name }
+                    val currentSelected = _uiState.value.selectedListName
+                    val validSelected = if (listNames.contains(currentSelected)) currentSelected else "Mi Lista Actual"
+
+                    val ingredientNames = getIngredientsForListName(validSelected)
+                    val ingredientChips = if (ingredientNames.isNotEmpty()) {
+                        ingredientNames.take(10).mapIndexed { index, name ->
                             IngredientChipState(
-                                id = item.id,
-                                name = item.name,
+                                id = "$validSelected-$index-$name",
+                                name = name,
                                 isSelected = index < 3
                             )
                         }
-                        _uiState.update { it.copy(availableIngredients = pantryChips) }
+                    } else {
+                        emptyList()
                     }
+
+                    _uiState.value.copy(
+                        availableLists = listNames,
+                        selectedListName = validSelected,
+                        availableIngredients = ingredientChips
+                    )
+                }.collect { updatedState ->
+                    _uiState.value = updatedState
                 }
             } catch (_: Exception) { }
+        }
+    }
+
+    private fun getIngredientsForListName(listName: String): List<String> {
+        return if (listName == "Mi Lista Actual") {
+            activeShoppingItems.filter { !it.isCompleted }.map { it.name }
+        } else {
+            savedLists.find { it.name == listName }?.items?.map { it.name } ?: emptyList()
         }
     }
 
@@ -116,11 +151,10 @@ class AssistantViewModel @Inject constructor(
                 state.copy(messages = listOf(initialMessage))
             }
 
-            // Efecto Typewriter: desglosa caracter por caracter como una IA en vivo
             val builder = StringBuilder()
             for (char in fullGreetingText) {
                 builder.append(char)
-                delay(20) // 20ms por caracter
+                delay(20)
                 _uiState.update { state ->
                     val updatedMessages = state.messages.map { msg ->
                         if (msg.id == initialMessageId) msg.copy(text = builder.toString()) else msg
@@ -144,7 +178,25 @@ class AssistantViewModel @Inject constructor(
     }
 
     fun selectList(listName: String) {
-        _uiState.update { it.copy(selectedListName = listName) }
+        val ingredientNames = getIngredientsForListName(listName)
+        val ingredientChips = if (ingredientNames.isNotEmpty()) {
+            ingredientNames.take(10).mapIndexed { index, name ->
+                IngredientChipState(
+                    id = "$listName-$index-$name",
+                    name = name,
+                    isSelected = index < 3
+                )
+            }
+        } else {
+            emptyList()
+        }
+
+        _uiState.update { state ->
+            state.copy(
+                selectedListName = listName,
+                availableIngredients = ingredientChips
+            )
+        }
     }
 
     fun toggleIngredientSelection(ingredientId: String) {
@@ -178,9 +230,9 @@ class AssistantViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            delay(1500) // Simular tiempo de procesamiento de la IA Chef
+            delay(1500)
 
-            val recipe = if (selectedIngredients.contains("Salmón") || textToSend.lowercase().contains("salmón")) {
+            val recipe = if (selectedIngredients.any { it.contains("Salmón", ignoreCase = true) } || textToSend.lowercase().contains("salmón")) {
                 RecipeRecommendation(
                     title = "Salmón Glaseado al Cítrico",
                     subtitle = "Alto en Proteína • 340 kcal",

@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.ListAlt
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Restaurant
@@ -49,8 +50,8 @@ fun AssistantScreen(
 
     var showListDropdown by remember { mutableStateOf(false) }
 
-    // Scroll automático al último mensaje al actualizar la lista
-    LaunchedEffect(uiState.messages.size, uiState.messages.lastOrNull()?.text) {
+    // Scroll automático al último mensaje únicamente cuando se agrega un nuevo mensaje (evita saltos bruscos al escribir o hacer clic)
+    LaunchedEffect(uiState.messages.size) {
         if (uiState.messages.isNotEmpty()) {
             listState.animateScrollToItem(uiState.messages.size - 1)
         }
@@ -116,7 +117,7 @@ fun AssistantScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(contentPadding)
+                .padding(top = contentPadding.calculateTopPadding())
                 .imePadding()
         ) {
             // Canvas de Mensajes del Chat
@@ -323,14 +324,13 @@ private fun PantryContextBar(
     onToggleIngredient: (String) -> Unit
 ) {
     Surface(
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 2.dp,
+        color = MaterialTheme.colorScheme.background,
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(horizontal = 16.dp, vertical = 6.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             // Fila de Selector de Lista y Acción
@@ -383,38 +383,58 @@ private fun PantryContextBar(
                 )
             }
 
-            // Tira Horizontal de Chips de Ingredientes Interactivos
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                items(uiState.availableIngredients, key = { it.id }) { chip ->
-                    FilterChip(
-                        selected = chip.isSelected,
-                        onClick = { onToggleIngredient(chip.id) },
-                        label = {
-                            Text(
-                                text = chip.name,
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = if (chip.isSelected) FontWeight.Bold else FontWeight.Normal
-                            )
-                        },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = if (chip.isSelected) Icons.Default.CheckCircle else Icons.Default.Add,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                            selectedLeadingIconColor = RindePrimary,
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            labelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                        ),
-                        shape = RoundedCornerShape(50)
+            if (uiState.availableIngredients.isEmpty()) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.padding(vertical = 4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Info,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        modifier = Modifier.size(16.dp)
                     )
+                    Text(
+                        text = "Esta lista no contiene productos aún.",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
+                }
+            } else {
+                // Tira Horizontal de Chips de Ingredientes Interactivos
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    items(uiState.availableIngredients, key = { it.id }) { chip ->
+                        FilterChip(
+                            selected = chip.isSelected,
+                            onClick = { onToggleIngredient(chip.id) },
+                            label = {
+                                Text(
+                                    text = chip.name,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = if (chip.isSelected) FontWeight.Bold else FontWeight.Normal
+                                )
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = if (chip.isSelected) Icons.Default.CheckCircle else Icons.Default.Add,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = RindePrimary.copy(alpha = 0.15f),
+                                selectedLabelColor = MaterialTheme.colorScheme.onSurface,
+                                selectedLeadingIconColor = RindePrimary,
+                                containerColor = MaterialTheme.colorScheme.surface,
+                                labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            ),
+                            shape = RoundedCornerShape(50)
+                        )
+                    }
                 }
             }
         }
