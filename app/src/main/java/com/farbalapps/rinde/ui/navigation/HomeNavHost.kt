@@ -54,8 +54,8 @@ fun HomeNavHost(
                 onNavigateToUserProfile = { userId ->
                     navController.navigate(HomeRoute.UserProfile(userId))
                 },
-                onNavigateToPostDetail = { postId ->
-                    navController.navigate(HomeRoute.PostDetail(postId))
+                onNavigateToPostDetail = { postId, scrollToComments, isExpiredNotice ->
+                    navController.navigate(HomeRoute.PostDetail(postId, scrollToComments, isExpiredNotice))
                 },
                 onEditPost = { postId -> navController.navigate(HomeRoute.EditPost(postId)) }
             )
@@ -122,6 +122,8 @@ fun HomeNavHost(
             val args = backStackEntry.toRoute<HomeRoute.PostDetail>()
             PostDetailScreen(
                 postId = args.postId,
+                scrollToComments = args.scrollToComments,
+                isExpiredNotice = args.isExpiredNotice,
                 onBack = { navController.popBackStack() },
                 onAuthorClick = { userId -> navController.navigate(HomeRoute.UserProfile(userId)) },
                 onEditPost = { postId -> navController.navigate(HomeRoute.EditPost(postId)) }

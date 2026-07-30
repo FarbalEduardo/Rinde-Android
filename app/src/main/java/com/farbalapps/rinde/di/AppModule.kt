@@ -148,20 +148,60 @@ object AppModule {
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_goal_transactions_goalId` ON `goal_transactions` (`goalId`)")
             }
         }
+
+        val MIGRATION_21_22 = object : androidx.room.migration.Migration(21, 22) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("CREATE VIRTUAL TABLE IF NOT EXISTS `community_posts_fts` USING fts4(content=`community_posts`, title, descriptionShort, storeName, category, authorName, couponCode)")
+            }
+        }
+
+        val MIGRATION_22_23 = object : androidx.room.migration.Migration(22, 23) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE profiles ADD COLUMN commentsCount INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        val MIGRATION_23_24 = object : androidx.room.migration.Migration(23, 24) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE shopping_items ADD COLUMN price REAL DEFAULT NULL")
+                db.execSQL("ALTER TABLE shopping_items ADD COLUMN currency TEXT NOT NULL DEFAULT 'MXN'")
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `saved_lists` (" +
+                    "`id` TEXT NOT NULL, " +
+                    "`name` TEXT NOT NULL, " +
+                    "`savedAt` INTEGER NOT NULL, " +
+                    "`lastModifiedAt` INTEGER NOT NULL, " +
+                    "`totalItems` INTEGER NOT NULL, " +
+                    "`completedItems` INTEGER NOT NULL, " +
+                    "`totalPrice` REAL, " +
+                    "`currency` TEXT NOT NULL DEFAULT 'MXN', " +
+                    "`items` TEXT NOT NULL, " +
+                    "`userId` TEXT NOT NULL, " +
+                    "PRIMARY KEY(`id`))"
+                )
+            }
+        }
         
         return Room.databaseBuilder(
             context,
             RindeDatabase::class.java,
             "rinde_database"
-        ).addMigrations(MIGRATION_6_7, MIGRATION_18_19, MIGRATION_19_20)
+        ).addMigrations(MIGRATION_6_7, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24)
          .fallbackToDestructiveMigration()
          .build()
      }
+
 
     @Provides
     @Singleton
     fun provideShoppingItemDao(db: RindeDatabase): ShoppingItemDao {
         return db.shoppingItemDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideSavedListDao(db: RindeDatabase): com.farbalapps.rinde.data.local.dao.SavedListDao {
+        return db.savedListDao()
     }
 
     @Provides
@@ -195,6 +235,18 @@ object AppModule {
         @IoDispatcher ioDispatcher: CoroutineDispatcher
     ): ListRepository {
         return FirebaseListRepository(dao, firestore, auth, workManager, ioDispatcher)
+    }
+
+    @Provides
+    @Singleton
+    fun provideSavedListRepository(
+        dao: com.farbalapps.rinde.data.local.dao.SavedListDao,
+        firestore: FirebaseFirestore,
+        auth: FirebaseAuth,
+        workManager: WorkManager,
+        @IoDispatcher ioDispatcher: CoroutineDispatcher
+    ): com.farbalapps.rinde.domain.repository.SavedListRepository {
+        return com.farbalapps.rinde.data.repository.FirebaseSavedListRepository(dao, firestore, auth, workManager, ioDispatcher)
     }
 
     @Provides
@@ -261,6 +313,25 @@ object AppModule {
 
     @Provides
     @Singleton
+    fun provideSearchRepository(
+        postDao: com.farbalapps.rinde.data.local.dao.PostDao,
+        syncMetadataDao: com.farbalapps.rinde.data.local.dao.SyncMetadataDao,
+        firestore: FirebaseFirestore
+    ): com.farbalapps.rinde.domain.repository.SearchRepository {
+        return com.farbalapps.rinde.data.repository.SearchRepositoryImpl(postDao, syncMetadataDao, firestore)
+    }
+
+    @Provides
+    @Singleton
+    fun provideSearchHistoryDataStore(
+        @ApplicationContext context: Context
+    ): com.farbalapps.rinde.data.local.SearchHistoryDataStore {
+        return com.farbalapps.rinde.data.local.SearchHistoryDataStore(context)
+    }
+
+
+    @Provides
+    @Singleton
     fun provideCommentRepository(
         @ApplicationContext context: Context,
         database: FirebaseDatabase,
@@ -314,4 +385,14 @@ object AppModule {
             dao, firestore, auth, workManager, ioDispatcher
         )
     }
+
+    @Provides
+    @Singleton
+    fun provideNotificationRepository(
+        firestore: FirebaseFirestore,
+        @IoDispatcher ioDispatcher: CoroutineDispatcher
+    ): com.farbalapps.rinde.domain.repository.NotificationRepository {
+        return com.farbalapps.rinde.data.repository.NotificationRepositoryImpl(firestore, ioDispatcher)
+    }
 }
+

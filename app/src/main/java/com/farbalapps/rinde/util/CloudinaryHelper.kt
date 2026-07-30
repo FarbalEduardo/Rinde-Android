@@ -36,27 +36,37 @@ object CloudinaryHelper {
      * @throws Exception Si la subida falla.
      */
     suspend fun uploadImage(filePath: String, folder: String, publicId: String? = null): String = withContext(Dispatchers.IO) {
-        android.util.Log.d("CloudinaryHelper", "📤 Iniciando subida UNSIGNED: $filePath → carpeta: $folder, publicId: $publicId")
+        android.util.Log.d("CloudinaryHelper", "📤 Iniciando subida SIGNED: $filePath → carpeta: $folder, publicId: $publicId")
 
         val file = File(filePath)
         if (!file.exists()) {
             throw Exception("Cloudinary Error: El archivo no existe: $filePath")
         }
 
-        // Construir la petición multipart para UNSIGNED upload
+        val timestamp = (System.currentTimeMillis() / 1000).toString()
+        val paramsToSign = mutableMapOf<String, String>()
+        paramsToSign["folder"] = folder
+        paramsToSign["timestamp"] = timestamp
+        
+        if (!publicId.isNullOrEmpty()) {
+            paramsToSign["public_id"] = publicId
+            paramsToSign["overwrite"] = "true"
+            android.util.Log.d("CloudinaryHelper", "📝 Solicitando sobrescritura para public_id: $publicId")
+        }
+
+        // Crear string de firma ordenado alfabéticamente
+        val sortedKeys = paramsToSign.keys.sorted()
+        val signString = sortedKeys.joinToString("&") { "$it=${paramsToSign[it]}" } + Config.CLOUDINARY_API_SECRET
+        val signature = sha1(signString)
+
         val requestBuilder = MultipartBody.Builder()
             .setType(MultipartBody.FORM)
-            .addFormDataPart(
-                "file",
-                file.name,
-                file.asRequestBody("image/*".toMediaTypeOrNull())
-            )
-            .addFormDataPart("upload_preset", "rinde_unsigned_preset")
-            .addFormDataPart("folder", folder)
+            .addFormDataPart("file", file.name, file.asRequestBody("image/*".toMediaTypeOrNull()))
+            .addFormDataPart("api_key", Config.CLOUDINARY_API_KEY)
+            .addFormDataPart("signature", signature)
 
-        // Si hay un publicId fijo, se envía para sobrescribir (requiere preset con overwrite activo)
-        if (!publicId.isNullOrEmpty()) {
-            requestBuilder.addFormDataPart("public_id", publicId)
+        paramsToSign.forEach { (key, value) ->
+            requestBuilder.addFormDataPart(key, value)
         }
 
         val requestBody = requestBuilder.build()
@@ -90,13 +100,57 @@ object CloudinaryHelper {
     }
 
     /**
-     * @deprecated Omitido por seguridad. Requería CLOUDINARY_API_SECRET expuesta en el APK.
-     * En el plan Firebase Free/Spark, las imágenes quedan huérfanas en Cloudinary al eliminarse o editarse posts.
+     * Elimina una imagen de Cloudinary por su URL utilizando una petición firmada.
      */
-    @Deprecated("Omitido para no exponer el API_SECRET en la app")
-    suspend fun deleteImage(cloudinaryUrl: String): Boolean {
-        android.util.Log.w("CloudinaryHelper", "deleteImage llamado pero está desactivado por seguridad de API_SECRET")
-        return false
+    suspend fun deleteImage(cloudinaryUrl: String): Boolean = withContext(Dispatchers.IO) {
+        val publicId = extractPublicId(cloudinaryUrl)
+        if (publicId.isNullOrBlank()) {
+            android.util.Log.w("CloudinaryHelper", "⚠️ No se pudo extraer public_id de la URL: $cloudinaryUrl")
+            return@withContext false
+        }
+
+        android.util.Log.d("CloudinaryHelper", "🗑️ Eliminando imagen de Cloudinary: public_id=$publicId")
+
+        try {
+            val timestamp = (System.currentTimeMillis() / 1000).toString()
+            val signString = "public_id=$publicId&timestamp=$timestamp${Config.CLOUDINARY_API_SECRET}"
+            val signature = sha1(signString)
+
+            val requestBody = MultipartBody.Builder()
+                .setType(MultipartBody.FORM)
+                .addFormDataPart("public_id", publicId)
+                .addFormDataPart("api_key", Config.CLOUDINARY_API_KEY)
+                .addFormDataPart("timestamp", timestamp)
+                .addFormDataPart("signature", signature)
+                .build()
+
+            val url = "https://api.cloudinary.com/v1_1/${Config.CLOUDINARY_CLOUD_NAME}/image/destroy"
+            val request = Request.Builder()
+                .url(url)
+                .post(requestBody)
+                .build()
+
+            val response = client.newCall(request).execute()
+            val responseBody = response.body?.string() ?: ""
+
+            if (!response.isSuccessful) {
+                android.util.Log.e("CloudinaryHelper", "❌ Error HTTP ${response.code} eliminando $publicId: $responseBody")
+                return@withContext false
+            }
+
+            val json = JSONObject(responseBody)
+            val result = json.optString("result", "")
+            val success = result == "ok"
+            if (success) {
+                android.util.Log.i("CloudinaryHelper", "✅ Imagen eliminada exitosamente de Cloudinary: $publicId")
+            } else {
+                android.util.Log.w("CloudinaryHelper", "⚠️ Resultado inesperado eliminando $publicId: $responseBody")
+            }
+            return@withContext success
+        } catch (e: Exception) {
+            android.util.Log.e("CloudinaryHelper", "❌ Error de excepción al eliminar $publicId: ${e.message}", e)
+            return@withContext false
+        }
     }
 
     /**

@@ -28,4 +28,16 @@ class Converters {
         val type = object : TypeToken<List<String>>() {}.type
         return gson.fromJson(value, type) ?: emptyList()
     }
+
+    @TypeConverter
+    fun fromShoppingItemList(value: List<com.farbalapps.rinde.domain.model.ShoppingItem>): String {
+        return gson.toJson(value)
+    }
+
+    @TypeConverter
+    fun toShoppingItemList(value: String): List<com.farbalapps.rinde.domain.model.ShoppingItem> {
+        if (value.isBlank()) return emptyList()
+        val type = object : TypeToken<List<com.farbalapps.rinde.domain.model.ShoppingItem>>() {}.type
+        return gson.fromJson(value, type) ?: emptyList()
+    }
 }

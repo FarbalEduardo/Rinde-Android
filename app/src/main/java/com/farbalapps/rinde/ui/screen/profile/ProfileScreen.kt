@@ -235,19 +235,7 @@ fun ProfileContent(
                 Box(modifier = Modifier.padding(dimensionResource(id = R.dimen.padding_medium))) {
                     ProfileHeader(
                         uiState = uiState,
-                        onEditProfile = onEditProfile,
-                        onShareProfile = {
-                            profile?.let { p ->
-                                val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                                    type = "text/plain"
-                                    putExtra(
-                                        android.content.Intent.EXTRA_TEXT,
-                                        "¡Mira el perfil de ${p.name} en Rinde! Mi usuario: @${p.name}"
-                                    )
-                                }
-                                context.startActivity(android.content.Intent.createChooser(shareIntent, "Compartir perfil"))
-                            }
-                        }
+                        onEditProfile = onEditProfile
                     )
                 }
             }

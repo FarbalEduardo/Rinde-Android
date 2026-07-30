@@ -70,8 +70,19 @@ class UpdatePostWorker @AssistedInject constructor(
             val currentPhotos = postDoc.get("photos") as? List<*>
             val currentPhotoUrls = currentPhotos?.mapNotNull { it as? String } ?: emptyList()
 
-            // 2. [Omitido por seguridad] El borrado de imágenes antiguas requería API_SECRET expuesto en el cliente.
-            // Para el plan Firebase Free/Spark, se acepta el trade-off de imágenes huérfanas en Cloudinary.
+            // 2. Identificar y eliminar las fotos antiguas descartadas por el usuario
+            val oldPhotoSet = oldPhotoUrls.toSet()
+            val deletedPhotoUrls = currentPhotoUrls.filter { it !in oldPhotoSet }
+            if (deletedPhotoUrls.isNotEmpty()) {
+                android.util.Log.d(TAG, "🗑️ Se detectaron ${deletedPhotoUrls.size} fotos descartadas para eliminar de Cloudinary")
+                deletedPhotoUrls.forEach { photoUrl ->
+                    try {
+                        CloudinaryHelper.deleteImage(photoUrl)
+                    } catch (e: Exception) {
+                        android.util.Log.w(TAG, "⚠️ No se pudo eliminar la imagen $photoUrl de Cloudinary: ${e.message}")
+                    }
+                }
+            }
 
             // 3. Subir fotos nuevas a Cloudinary
             val uploadedPhotoUrls = mutableListOf<String>()

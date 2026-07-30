@@ -18,11 +18,20 @@ import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.outlined.Notifications
+import com.farbalapps.rinde.ui.screen.home.community.components.NotificationsBottomSheet
+import com.farbalapps.rinde.ui.screen.home.community.components.SearchContent
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+
 import androidx.compose.material3.*
+
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -67,12 +76,14 @@ import androidx.compose.ui.graphics.graphicsLayer
 fun CommunityScreen(
     onNavigateToCreatePost: () -> Unit = {},
     onNavigateToUserProfile: (String) -> Unit = {},
-    onNavigateToPostDetail: (String) -> Unit = {},
+    onNavigateToPostDetail: (postId: String, scrollToComments: Boolean, isExpiredNotice: Boolean) -> Unit = { _, _, _ -> },
     onEditPost: (String) -> Unit = {},
     viewModel: CommunityViewModel = hiltViewModel(),
+    searchViewModel: SearchViewModel = hiltViewModel(),
     commentsViewModel: CommentsViewModel = hiltViewModel(),
     innerPadding: PaddingValues = PaddingValues(0.dp)
 ) {
+
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val postStatusOverlay by viewModel.postStatusOverlay.collectAsStateWithLifecycle()
     val savedOverlay by viewModel.savedOverlay.collectAsStateWithLifecycle()
@@ -113,9 +124,9 @@ fun CommunityScreen(
         onLikeClick = { viewModel.toggleVote(it, 1) },
         onSaveClick = { viewModel.toggleSave(it) },
         onShowNewPosts = { viewModel.showPendingPosts() },
-        onPostClick = onNavigateToPostDetail,
+        onPostClick = { postId -> onNavigateToPostDetail(postId, false, false) },
         onCommentClick = { postId ->
-            onNavigateToPostDetail(postId)
+            onNavigateToPostDetail(postId, true, false)
         },
         onVoteHot = { postId -> viewModel.toggleVote(postId, 1) },
         onVoteCold = { postId -> viewModel.toggleVote(postId, -1) },
@@ -131,6 +142,7 @@ fun CommunityScreen(
             }
             context.startActivity(android.content.Intent.createChooser(shareIntent, "Compartir publicación"))
         },
+        onNavigateToPostDetail = onNavigateToPostDetail,
         innerPadding = innerPadding
     )
 
@@ -351,10 +363,33 @@ fun CommunityContent(
     onReportExpired: (String, String, String) -> Unit = { _, _, _ -> },
     onMarkAvailable: (String) -> Unit = {},
     onSharePost: (CommunityPost) -> Unit = {},
+    onNavigateToPostDetail: (String, Boolean, Boolean) -> Unit = { _, _, _ -> },
+    searchViewModel: SearchViewModel = hiltViewModel(),
+    notificationsViewModel: NotificationsViewModel = hiltViewModel(),
     innerPadding: PaddingValues
 ) {
+
+    val notificationsUiState by notificationsViewModel.uiState.collectAsStateWithLifecycle()
+    var showNotificationsSheet by remember { mutableStateOf(false) }
+
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
-    val lazyListState = rememberLazyListState()
+    val discoverListState = rememberLazyListState()
+    val hotListState = rememberLazyListState()
+    val savedListState = rememberLazyListState()
+
+    val lazyListState = when (currentTab) {
+        CommunityTab.DISCOVER -> discoverListState
+        CommunityTab.HOT -> hotListState
+        CommunityTab.SAVED -> savedListState
+    }
+
+    LaunchedEffect(currentTab) {
+        when (currentTab) {
+            CommunityTab.DISCOVER -> { /* Conservar scroll de discover */ }
+            CommunityTab.HOT -> { hotListState.scrollToItem(0) }
+            CommunityTab.SAVED -> { savedListState.scrollToItem(0) }
+        }
+    }
 
     // Lógica de visibilidad del FAB
     var lastScrollOffset by remember { mutableIntStateOf(0) }
@@ -462,7 +497,7 @@ fun CommunityContent(
                                 }
                             } else if (discoverItems.itemCount == 0 && (isDiscoverLoading || !endOfPaginationReached)) {
                                 items(5) {
-                                    PostCardSkeleton(modifier = Modifier.padding(horizontal = paddingMedium / 2, vertical = dimensionResource(id = R.dimen.padding_small) / 2))
+                                    PostCardSkeleton(modifier = Modifier.padding(horizontal = paddingMedium / 2, vertical = 2.dp))
                                 }
                             } else if (discoverItems.itemCount == 0 && endOfPaginationReached) {
                                 item {
@@ -504,7 +539,7 @@ fun CommunityContent(
                                             onSharePost = { onSharePost(post) },
                                             modifier = Modifier.padding(
                                                 horizontal = paddingMedium / 2,
-                                                vertical = dimensionResource(id = R.dimen.padding_small) / 2
+                                                vertical = 2.dp
                                             )
                                         )
                                     }
@@ -517,7 +552,7 @@ fun CommunityContent(
                                             PostCardSkeleton(
                                                 modifier = Modifier.padding(
                                                     horizontal = paddingMedium / 2,
-                                                    vertical = dimensionResource(id = R.dimen.padding_small) / 2
+                                                    vertical = 2.dp
                                                 )
                                             )
                                         }
@@ -564,7 +599,7 @@ fun CommunityContent(
                                 }
                             } else if (hotItems.itemCount == 0 && (isHotLoading || !endOfPaginationReached)) {
                                 items(5) {
-                                    PostCardSkeleton(modifier = Modifier.padding(horizontal = paddingMedium / 2, vertical = dimensionResource(id = R.dimen.padding_small) / 2))
+                                    PostCardSkeleton(modifier = Modifier.padding(horizontal = paddingMedium / 2, vertical = 2.dp))
                                 }
                             } else if (hotItems.itemCount == 0 && endOfPaginationReached) {
                                 item {
@@ -578,6 +613,9 @@ fun CommunityContent(
                                     val post = hotItems[index]
                                     if (post != null) {
                                         val overriddenStatus = postStatusOverlay[post.id] ?: post.verificationStatus
+                                        if (overriddenStatus == com.farbalapps.rinde.domain.model.VerificationStatus.EXPIRED) {
+                                            return@items
+                                        }
                                         val overriddenSaved = savedOverlay[post.id] ?: post.isSavedByMe
                                         val voteOver = voteOverlay[post.id]
                                         val finalTruth = if (voteOver != null && post.myVoteValue != voteOver.myVote) (voteOver.truthCount ?: post.truthCount) else post.truthCount
@@ -606,7 +644,7 @@ fun CommunityContent(
                                             onSharePost = { onSharePost(post) },
                                             modifier = Modifier.padding(
                                                 horizontal = paddingMedium / 2,
-                                                vertical = dimensionResource(id = R.dimen.padding_small) / 2
+                                                vertical = 2.dp
                                             )
                                         )
                                     }
@@ -619,7 +657,7 @@ fun CommunityContent(
                                             PostCardSkeleton(
                                                 modifier = Modifier.padding(
                                                     horizontal = paddingMedium / 2,
-                                                    vertical = dimensionResource(id = R.dimen.padding_small) / 2
+                                                    vertical = 2.dp
                                                 )
                                             )
                                         }
@@ -651,7 +689,7 @@ fun CommunityContent(
                         CommunityTab.SAVED -> {
                             if (isSavedLoading) {
                                 items(5) {
-                                    PostCardSkeleton(modifier = Modifier.padding(horizontal = paddingMedium, vertical = dimensionResource(id = R.dimen.padding_small)))
+                                    PostCardSkeleton(modifier = Modifier.padding(horizontal = paddingMedium, vertical = 2.dp))
                                 }
                             } else if (savedPosts.isEmpty()) {
                                 item {
@@ -688,7 +726,7 @@ fun CommunityContent(
                                         onSharePost = { onSharePost(post) },
                                         modifier = Modifier.padding(
                                             horizontal = paddingMedium / 2,
-                                            vertical = dimensionResource(id = R.dimen.padding_small) / 2
+                                            vertical = 2.dp
                                         )
                                     )
                                 }
@@ -701,7 +739,7 @@ fun CommunityContent(
                 }
             }
 
-            // 2. Header (SearchBar + Tabs) — zIndex(1) para estar encima de la lista
+            // 2. Header (SearchBar + Notifications Bell + Tabs) — zIndex(1) para estar encima de la lista
             Surface(
                 modifier = Modifier
                     .zIndex(1f)
@@ -714,84 +752,169 @@ fun CommunityContent(
                 tonalElevation = 0.dp
             ) {
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 24.dp, vertical = 4.dp)
-                    ) {
-                            SearchBar(
-                                query = "",
-                                onQueryChange = {},
-                                onSearch = {},
-                                active = false,
-                                onActiveChange = { },
-                                placeholder = { 
-                                    Text(
-                                        text = stringResource(id = R.string.community_title),
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                                    ) 
-                                },
-                                leadingIcon = { 
-                                    Icon(
-                                        Icons.Default.Search, 
-                                        contentDescription = null, 
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(20.dp) 
-                                    ) 
-                                },
-                                trailingIcon = { 
-                                    IconButton(onClick = { /* TODO */ }) {
-                                        Icon(
-                                            Icons.Default.MoreVert, 
-                                            contentDescription = null, 
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    }
-                                },
-                                colors = SearchBarDefaults.colors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                                    inputFieldColors = TextFieldDefaults.colors(
-                                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface
-                                    )
-                                ),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(48.dp)
-                            ) { }
-                    }
-                    
-                    CommunityTabRow(
-                        selectedTab = currentTab,
-                        onTabSelected = onTabSelected,
-                        modifier = Modifier.fillMaxWidth()
+                    var searchActive by remember { mutableStateOf(false) }
+                    val searchUiState by searchViewModel.uiState.collectAsStateWithLifecycle()
+                    val searchBarHorizontalPadding by animateDpAsState(
+                        targetValue = if (searchActive) 0.dp else 16.dp,
+                        label = "searchBarHorizontalPadding"
+                    )
+                    val searchBarHeight by animateDpAsState(
+                        targetValue = if (searchActive) 56.dp else 48.dp,
+                        label = "searchBarHeight"
                     )
 
-                    // Banner animado de nuevas ofertas
-                    AnimatedVisibility(
-                        visible = newPostsCount >= 1,
-                        enter = slideInVertically(initialOffsetY = { -it }),
-                        exit = slideOutVertically(targetOffsetY = { -it })
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(
+                                horizontal = searchBarHorizontalPadding,
+                                vertical = if (searchActive) 0.dp else 2.dp
+                            ),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Box(
+                        SearchBar(
+                            query = searchUiState.query,
+                            onQueryChange = { searchViewModel.onQueryChange(it) },
+                            onSearch = { searchViewModel.onSearchTriggered(it) },
+                            active = searchActive,
+                            onActiveChange = { active ->
+                                searchActive = active
+                                if (!active) {
+                                    searchViewModel.onQueryChange("")
+                                }
+                            },
+                            placeholder = { 
+                                Text(
+                                    text = "Buscar ofertas o tiendas...",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                ) 
+                            },
+                            leadingIcon = { 
+                                Icon(
+                                    Icons.Default.Search, 
+                                    contentDescription = null, 
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(18.dp) 
+                                ) 
+                            },
+                            trailingIcon = { 
+                                if (searchActive) {
+                                    IconButton(onClick = {
+                                        searchActive = false
+                                        searchViewModel.onQueryChange("")
+                                    }) {
+                                        Icon(
+                                            Icons.Default.Close, 
+                                            contentDescription = "Cerrar búsqueda", 
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                }
+                                // TODO: Implementar menú de 3 puntos (MoreVert) con las siguientes funciones futuras:
+                                //   1. "Ordenar por: Más recientes / Más votados / Más comentados"
+                                //      → Cambiar el criterio de ordenación del feed con opciones de sort.
+                                //   2. "Filtrar por categoría"
+                                //      → Filtrar el feed mostrando sólo publicaciones de una categoría específica.
+                                //   3. "Ocultar ofertas ya vistas"
+                                //      → Marcar posts como vistos y no volver a mostrarlos en el feed principal.
+                                //   4. "Configuración del feed"
+                                //      → Pantalla de preferencias: tipo de publicaciones, zonas de caza preferidas.
+                            },
+                            colors = SearchBarDefaults.colors(
+                                containerColor = if (searchActive) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.surfaceVariant,
+                                inputFieldColors = TextFieldDefaults.colors(
+                                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                    focusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
+                                    unfocusedContainerColor = androidx.compose.ui.graphics.Color.Transparent
+                                )
+                            ),
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .background(MaterialTheme.colorScheme.primaryContainer)
-                                .clickable { onShowNewPosts() }
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                            contentAlignment = Alignment.Center
+                                .weight(1f)
+                                .heightIn(min = searchBarHeight, max = if (searchActive) androidx.compose.ui.unit.Dp.Unspecified else 48.dp)
                         ) {
-                            Text(
-                                text = "Hay $newPostsCount nuevas ofertas",
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            SearchContent(
+                                uiState = searchUiState,
+                                onQueryChange = { searchViewModel.onQueryChange(it) },
+                                onCategorySelect = { searchViewModel.onCategorySelect(it) },
+                                onSearchTriggered = { searchViewModel.onSearchTriggered(it) },
+                                onRemoveRecentSearch = { searchViewModel.removeRecentSearch(it) },
+                                onClearRecentSearches = { searchViewModel.clearRecentSearches() },
+                                onPostClick = { postId ->
+                                    searchActive = false
+                                    onPostClick(postId)
+                                },
+                                onSaveClick = { postId -> onSaveClick(postId) },
+                                onCommentClick = { postId ->
+                                    searchActive = false
+                                    onCommentClick(postId)
+                                },
+                                currentUserId = currentUserId
                             )
+                        }
+
+                        androidx.compose.animation.AnimatedVisibility(
+                            visible = !searchActive,
+                            enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.scaleIn(),
+                            exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.scaleOut()
+                        ) {
+                            BadgedBox(
+                                badge = {
+                                    if (notificationsUiState.unreadCount > 0) {
+                                        Badge {
+                                            Text(if (notificationsUiState.unreadCount > 99) "99+" else notificationsUiState.unreadCount.toString())
+                                        }
+                                    }
+                                },
+                                modifier = Modifier.padding(start = 4.dp)
+                            ) {
+                                IconButton(onClick = { showNotificationsSheet = true }) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Notifications,
+                                        contentDescription = "Notificaciones",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    
+                    if (!searchActive) {
+                        CommunityTabRow(
+                            selectedTab = currentTab,
+                            onTabSelected = onTabSelected,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        // Banner animado de nuevas ofertas
+                        AnimatedVisibility(
+                            visible = newPostsCount >= 1,
+                            enter = slideInVertically(initialOffsetY = { -it }),
+                            exit = slideOutVertically(targetOffsetY = { -it })
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(MaterialTheme.colorScheme.primaryContainer)
+                                    .clickable { onShowNewPosts() }
+                                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "Hay $newPostsCount nuevas ofertas",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
                         }
                     }
                 }
+
             }
 
             // 3. Status Bar Guard — zIndex(2) siempre encima de todo
@@ -804,8 +927,19 @@ fun CommunityContent(
                     .background(MaterialTheme.colorScheme.background)
             )
         }
+
+        if (showNotificationsSheet) {
+            NotificationsBottomSheet(
+                viewModel = notificationsViewModel,
+                onNotificationClick = { postId, scrollToComments, isExpiredNotice ->
+                    onNavigateToPostDetail(postId, scrollToComments, isExpiredNotice)
+                },
+                onDismiss = { showNotificationsSheet = false }
+            )
+        }
     }
 }
+
 
 
 @Preview(showBackground = true)

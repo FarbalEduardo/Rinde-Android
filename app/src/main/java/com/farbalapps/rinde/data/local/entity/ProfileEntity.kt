@@ -13,6 +13,7 @@ data class ProfileEntity(
     val followersCount: Int,
     val followingCount: Int,
     val postsCount: Int,
+    val commentsCount: Int = 0,
     val rating: Float,
     val reviewsCount: Int,
     val isPrivate: Boolean,
@@ -31,6 +32,7 @@ fun ProfileEntity.toDomainModel(): Profile {
         followersCount = followersCount,
         followingCount = followingCount,
         postsCount = postsCount,
+        commentsCount = commentsCount,
         rating = rating,
         reviewsCount = reviewsCount,
         isPrivate = isPrivate,
@@ -50,6 +52,7 @@ fun Profile.toEntity(): ProfileEntity {
         followersCount = followersCount,
         followingCount = followingCount,
         postsCount = postsCount,
+        commentsCount = commentsCount,
         rating = rating,
         reviewsCount = reviewsCount,
         isPrivate = isPrivate,
@@ -59,4 +62,3 @@ fun Profile.toEntity(): ProfileEntity {
         zonasDeCazaCsv = zonasDeCaza.joinToString(",")
     )
 }
-

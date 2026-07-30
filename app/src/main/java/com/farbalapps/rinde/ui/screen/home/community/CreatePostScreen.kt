@@ -411,7 +411,7 @@ fun CreatePostScreen(
                             value = uiState.storeName,
                             onValueChange = viewModel::onStoreNameChange,
                             label = { Text("Nombre de la tienda") },
-                            placeholder = { Text(stringResource(R.string.create_post_hint_store)) },
+                            placeholder = { Text("Puedes escribir el nombre del lugar") },
                             leadingIcon = { Icon(Icons.Default.Store, contentDescription = null) },
                             modifier = Modifier.fillMaxWidth(),
                             shape = MaterialTheme.shapes.medium,
@@ -428,7 +428,7 @@ fun CreatePostScreen(
                             value = uiState.locationName,
                             onValueChange = viewModel::onLocationNameChange,
                             label = { Text(stringResource(R.string.create_post_hint_location)) },
-                            placeholder = { Text(stringResource(R.string.create_post_placeholder_location)) },
+                            placeholder = { Text("Puedes escribir el nombre del lugar") },
                             leadingIcon = { Icon(Icons.Default.Place, contentDescription = null) },
                             modifier = Modifier.fillMaxWidth(),
                             shape = MaterialTheme.shapes.medium,
@@ -437,11 +437,11 @@ fun CreatePostScreen(
                                 focusedLabelColor = RindePrimary
                             ),
                             singleLine = true,
-                            trailingIcon = {
-                                IconButton(onClick = { viewModel.fetchCurrentLocation() }) {
-                                    Icon(Icons.Default.MyLocation, contentDescription = stringResource(id = R.string.action_gps), tint = RindePrimary)
-                                }
-                            }
+//                            trailingIcon = {
+//                                IconButton(onClick = { viewModel.fetchCurrentLocation() }) {
+//                                    Icon(Icons.Default.MyLocation, contentDescription = stringResource(id = R.string.action_gps), tint = RindePrimary)
+//                                }
+//                            }
                         )
                         Text(
                             stringResource(R.string.create_post_location_helper),
@@ -512,7 +512,11 @@ fun CreatePostScreen(
                         fontWeight = FontWeight.SemiBold
                     )
                     
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         OutlinedTextField(
                             value = uiState.normalPriceInput,
                             onValueChange = viewModel::onNormalPriceChange,
@@ -526,7 +530,7 @@ fun CreatePostScreen(
                         OutlinedTextField(
                             value = uiState.discountPriceInput,
                             onValueChange = viewModel::onDiscountPriceChange,
-                            label = { Text("Precio c/ Descuento") },
+                            label = { Text("Precio Oferta") },
                             modifier = Modifier.weight(1f),
                             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal),
                             singleLine = true,
@@ -555,28 +559,28 @@ fun CreatePostScreen(
                         )
                     }
 
-                    OutlinedTextField(
-                        value = uiState.currency,
-                        onValueChange = viewModel::onCurrencyChange,
-                        label = { Text("Moneda") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        shape = MaterialTheme.shapes.medium,
-                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = RindePrimary, focusedLabelColor = RindePrimary)
-                    )
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text("Producto Disponible")
-                        Switch(
-                            checked = uiState.isAvailable,
-                            onCheckedChange = viewModel::onIsAvailableChange,
-                            colors = SwitchDefaults.colors(checkedThumbColor = RindePrimary, checkedTrackColor = RindePrimary.copy(alpha=0.5f))
+                    Text("Moneda", style = MaterialTheme.typography.labelLarge)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        val currencyOptions = listOf(
+                            "MXN" to "MXN ($)",
+                            "USD" to "USD ($)",
+                            "EUR" to "EUR (€)"
                         )
+                        currencyOptions.forEach { (code, labelText) ->
+                            FilterChip(
+                                selected = uiState.currency == code,
+                                onClick = { viewModel.onCurrencyChange(code) },
+                                label = { Text(labelText) },
+                                shape = RoundedCornerShape(50),
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = RindePrimary.copy(alpha = 0.1f),
+                                    selectedLabelColor = RindePrimary
+                                )
+                            )
+                        }
                     }
+
+
 
                     Text("Condición del Producto", style = MaterialTheme.typography.labelLarge)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

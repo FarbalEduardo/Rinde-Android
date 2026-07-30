@@ -54,19 +54,25 @@ class ProfileCrudDelegate @Inject constructor(
                 ?: (data["displayName"] as? String)?.takeIf { it.isNotBlank() }
                 ?: generateGenericName(userId)
 
-            val needsPatch = data["name"] == null || data["followersCount"] == null
+            val authUser = FirebaseAuth.getInstance().currentUser
+            val firebaseAuthPhotoUrl = if (authUser?.uid == userId) authUser.photoUrl?.toString() else null
+            val rawPhotoUrl = ((data["photoUrl"] as? String) ?: (data["photoURL"] as? String))?.takeIf { it.isNotBlank() }
+            val resolvedPhotoUrl = rawPhotoUrl ?: firebaseAuthPhotoUrl
+
+            val needsPatch = data["name"] == null || data["followersCount"] == null || data["commentsCount"] == null || (data["photoUrl"] == null && resolvedPhotoUrl != null)
             if (needsPatch) {
                 val patch = mutableMapOf<String, Any>(
                     "name" to resolvedName,
                     "followersCount" to ((data["followersCount"] as? Number)?.toInt() ?: 0),
                     "followingCount" to ((data["followingCount"] as? Number)?.toInt() ?: 0),
                     "postsCount" to ((data["postsCount"] as? Number)?.toInt() ?: 0),
+                    "commentsCount" to ((data["commentsCount"] as? Number)?.toInt() ?: 0),
                     "rating" to ((data["rating"] as? Number)?.toDouble() ?: 0.0),
                     "reviewsCount" to ((data["reviewsCount"] as? Number)?.toInt() ?: 0),
                     "isPrivate" to (data["isPrivate"] as? Boolean ?: false)
                 )
                 data["email"]?.let { patch["email"] = it as Any }
-                data["photoUrl"]?.let { patch["photoUrl"] = it as Any }
+                resolvedPhotoUrl?.let { patch["photoUrl"] = it }
                 firestore.collection("users").document(userId)
                     .set(patch, SetOptions.merge()).await()
             }
@@ -78,10 +84,11 @@ class ProfileCrudDelegate @Inject constructor(
                 id = userId,
                 name = resolvedName,
                 email = data["email"] as? String ?: "",
-                photoUrl = data["photoUrl"] as? String,
+                photoUrl = resolvedPhotoUrl,
                 followersCount = (data["followersCount"] as? Number)?.toInt() ?: 0,
                 followingCount = (data["followingCount"] as? Number)?.toInt() ?: 0,
                 postsCount = (data["postsCount"] as? Number)?.toInt() ?: 0,
+                commentsCount = (data["commentsCount"] as? Number)?.toInt() ?: 0,
                 rating = (data["rating"] as? Number)?.toFloat() ?: 0f,
                 reviewsCount = (data["reviewsCount"] as? Number)?.toInt() ?: 0,
                 isPrivate = data["isPrivate"] as? Boolean ?: false,
@@ -92,13 +99,17 @@ class ProfileCrudDelegate @Inject constructor(
             )
         } else {
             val newName = generateGenericName(userId)
+            val authUser = FirebaseAuth.getInstance().currentUser
+            val firebaseAuthPhotoUrl = if (authUser?.uid == userId) authUser.photoUrl?.toString() else null
+
             val initialData = mapOf(
                 "name" to newName,
                 "email" to "",
-                "photoUrl" to null,
+                "photoUrl" to firebaseAuthPhotoUrl,
                 "followersCount" to 0,
                 "followingCount" to 0,
                 "postsCount" to 0,
+                "commentsCount" to 0,
                 "rating" to 0.0,
                 "reviewsCount" to 0,
                 "isPrivate" to false,
@@ -106,7 +117,7 @@ class ProfileCrudDelegate @Inject constructor(
                 "zonasDeCaza" to emptyList<String>()
             )
             firestore.collection("users").document(userId).set(initialData, SetOptions.merge()).await()
-            Profile(id = userId, name = newName, isDummy = false)
+            Profile(id = userId, name = newName, photoUrl = firebaseAuthPhotoUrl, isDummy = false)
         }
 
         profileDao.insertProfile(profile.toEntity())
@@ -153,6 +164,10 @@ class ProfileCrudDelegate @Inject constructor(
                     val file = java.io.File(localOptimizedFilePath)
                     if (file.exists()) {
                         finalPhotoUrl = CloudinaryHelper.uploadImage(localOptimizedFilePath, "USERS", userId)
+                        val currentEntity = profileDao.getProfile(userId).firstOrNull()
+                        if (currentEntity != null && !finalPhotoUrl.isNullOrBlank()) {
+                            profileDao.insertProfile(currentEntity.copy(photoUrl = finalPhotoUrl, uploadStatus = "Subida completada ✅"))
+                        }
                         file.delete()
                     }
                 }

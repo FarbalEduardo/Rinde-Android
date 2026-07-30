@@ -283,7 +283,8 @@ fun EditPostScreen(
                             modifier = Modifier.fillMaxWidth(),
                             shape = MaterialTheme.shapes.medium,
                             colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = RindePrimary, focusedLabelColor = RindePrimary),
-                            singleLine = true
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences)
                         )
                         OutlinedTextField(
                             value = uiState.productLink,
@@ -293,7 +294,9 @@ fun EditPostScreen(
                             modifier = Modifier.fillMaxWidth(),
                             shape = MaterialTheme.shapes.medium,
                             colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = RindePrimary, focusedLabelColor = RindePrimary),
-                            singleLine = true
+                            singleLine = true,
+                            isError = uiState.productLinkError != null,
+                            supportingText = uiState.productLinkError?.let { { Text(it, color = MaterialTheme.colorScheme.error) } }
                         )
                     }
                 }
@@ -310,7 +313,8 @@ fun EditPostScreen(
                             modifier = Modifier.fillMaxWidth(),
                             shape = MaterialTheme.shapes.medium,
                             colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = RindePrimary, focusedLabelColor = RindePrimary),
-                            singleLine = true
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences)
                         )
                         OutlinedTextField(
                             value = uiState.locationName,
@@ -321,6 +325,7 @@ fun EditPostScreen(
                             shape = MaterialTheme.shapes.medium,
                             colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = RindePrimary, focusedLabelColor = RindePrimary),
                             singleLine = true,
+                            keyboardOptions = KeyboardOptions(capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences),
                             trailingIcon = {
                                 IconButton(onClick = { viewModel.fetchCurrentLocation() }) {
                                     Icon(Icons.Default.MyLocation, null, tint = RindePrimary)
@@ -340,7 +345,8 @@ fun EditPostScreen(
                     modifier = Modifier.fillMaxWidth(),
                     shape = MaterialTheme.shapes.medium,
                     colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = RindePrimary, focusedLabelColor = RindePrimary),
-                    singleLine = true
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences)
                 )
             }
 
@@ -354,7 +360,8 @@ fun EditPostScreen(
                         .fillMaxWidth()
                         .height(150.dp),
                     shape = MaterialTheme.shapes.medium,
-                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = RindePrimary, focusedLabelColor = RindePrimary)
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = RindePrimary, focusedLabelColor = RindePrimary),
+                    keyboardOptions = KeyboardOptions(capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences)
                 )
             }
 
@@ -372,7 +379,8 @@ fun EditPostScreen(
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                             singleLine = true,
                             shape = MaterialTheme.shapes.medium,
-                            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = RindePrimary, focusedLabelColor = RindePrimary)
+                            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = RindePrimary, focusedLabelColor = RindePrimary),
+                            isError = uiState.priceError != null
                         )
                         OutlinedTextField(
                             value = uiState.discountPriceInput,
@@ -382,13 +390,22 @@ fun EditPostScreen(
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                             singleLine = true,
                             shape = MaterialTheme.shapes.medium,
-                            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = RindePrimary, focusedLabelColor = RindePrimary)
+                            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = RindePrimary, focusedLabelColor = RindePrimary),
+                            isError = uiState.priceError != null
+                        )
+                    }
+
+                    if (uiState.priceError != null) {
+                        Text(
+                            text = uiState.priceError!!,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.labelSmall
                         )
                     }
 
                     val nPrice = uiState.normalPriceInput.toDoubleOrNull()
                     val dPrice = uiState.discountPriceInput.toDoubleOrNull()
-                    if (nPrice != null && dPrice != null && nPrice > 0 && nPrice > dPrice) {
+                    if (nPrice != null && dPrice != null && nPrice > 0 && nPrice > dPrice && uiState.priceError == null) {
                         Text(
                             "Descuento: ${(((nPrice - dPrice) / nPrice) * 100).toInt()}%",
                             color = RindePrimary,

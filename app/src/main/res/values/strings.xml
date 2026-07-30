@@ -137,7 +137,7 @@
     <string name="create_post_label_location">Ubicación</string>
     <string name="create_post_hint_location">¿Dónde está la oferta?</string>
     <string name="create_post_placeholder_location">Ej: Líder Providencia</string>
-    <string name="create_post_location_helper">Puedes escribir el nombre o usar tu GPS.</string>
+    <string name="create_post_location_helper">Puedes escribir el nombre de la tienda o una dirección</string>
     <string name="btn_publish">Publicar Oferta</string>
     <string name="action_gps">Usar GPS</string>
     <string name="error_empty_title">El título no puede estar vacío</string>

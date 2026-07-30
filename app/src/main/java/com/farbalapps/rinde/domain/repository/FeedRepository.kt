@@ -44,6 +44,7 @@ interface FeedRepository {
 
     fun updatePostStatusLocal(postId: String, status: VerificationStatus)
     fun updateSavedStatusLocal(postId: String, isSaved: Boolean)
+    fun updateVoteStatusLocal(postId: String, overlay: VoteOverlay)
 
     suspend fun forceExpireCache()
 

@@ -55,11 +55,22 @@ class ToggleVoteUseCase @Inject constructor(
             val tDelta = (if (nextVote == 1) 1 else 0) - (if (originalVote == 1) 1 else 0)
             val fDelta = (if (nextVote == -1) 1 else 0) - (if (originalVote == -1) 1 else 0)
 
+            val optTruth = (originalTruthCount + tDelta).coerceAtLeast(0)
+            val optFalse = (originalFalseCount + fDelta).coerceAtLeast(0)
+
             postDao.updateVoteState(
                 postId, nextVote,
-                (originalTruthCount + tDelta).coerceAtLeast(0),
-                (originalFalseCount + fDelta).coerceAtLeast(0),
+                optTruth,
+                optFalse,
                 originalScore + (nextVote - originalVote)
+            )
+            feedRepository.updateVoteStatusLocal(
+                postId,
+                com.farbalapps.rinde.domain.repository.VoteOverlay(
+                    truthCount = optTruth,
+                    falseCount = optFalse,
+                    myVote = nextVote
+                )
             )
         }
 
@@ -76,15 +87,32 @@ class ToggleVoteUseCase @Inject constructor(
                 val counts = feedRepository.fetchPostVoteCounts(postId)
                 counts.getOrNull()?.let { (truth, false_, score) ->
                     val local = postDao.getPostById(postId)
+                    val currentVote = local?.myVoteValue ?: (if (originalVote == voteValue) 0 else voteValue)
                     if (local != null) {
-                        postDao.updateVoteState(postId, local.myVoteValue, truth, false_, score)
+                        postDao.updateVoteState(postId, currentVote, truth, false_, score)
                     }
+                    feedRepository.updateVoteStatusLocal(
+                        postId,
+                        com.farbalapps.rinde.domain.repository.VoteOverlay(
+                            truthCount = truth,
+                            falseCount = false_,
+                            myVote = currentVote
+                        )
+                    )
                 }
                 VoteResult.Success(counts.getOrNull())
             } else {
                 // Revert optimistic update
                 if (existingPost != null) {
                     postDao.updateVoteState(postId, originalVote, originalTruthCount, originalFalseCount, originalScore)
+                    feedRepository.updateVoteStatusLocal(
+                        postId,
+                        com.farbalapps.rinde.domain.repository.VoteOverlay(
+                            truthCount = originalTruthCount,
+                            falseCount = originalFalseCount,
+                            myVote = originalVote
+                        )
+                    )
                 }
                 val e = result.exceptionOrNull()
                 classifyFailure(e)
@@ -93,6 +121,14 @@ class ToggleVoteUseCase @Inject constructor(
             // Revert optimistic update
             if (existingPost != null) {
                 postDao.updateVoteState(postId, originalVote, originalTruthCount, originalFalseCount, originalScore)
+                feedRepository.updateVoteStatusLocal(
+                    postId,
+                    com.farbalapps.rinde.domain.repository.VoteOverlay(
+                        truthCount = originalTruthCount,
+                        falseCount = originalFalseCount,
+                        myVote = originalVote
+                    )
+                )
             }
             classifyFailure(e)
         }

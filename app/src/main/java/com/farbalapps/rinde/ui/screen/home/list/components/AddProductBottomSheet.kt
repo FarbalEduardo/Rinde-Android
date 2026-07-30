@@ -3,6 +3,7 @@ package com.farbalapps.rinde.ui.screen.home.list.components
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +19,9 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -50,12 +54,13 @@ fun AddProductBottomSheet(
     catalogItems: List<CatalogItem>,
     productCategories: List<String>,
     targetGroup: String,
-    onProductAdded: (String, String, String, Double, String, String, Boolean) -> Unit, // name, cat, group, qty, unit, emoji, isCustom
-    onProductUpdated: (String, String, String, Double, String, String) -> Unit = { _, _, _, _, _, _ -> },
+    onProductAdded: (name: String, category: String, listGroup: String, quantity: Double, unit: String, emoji: String, isCustom: Boolean, price: Double?, currency: String) -> Unit,
+    onProductUpdated: (id: String, name: String, category: String, quantity: Double, unit: String, emoji: String, price: Double?, currency: String) -> Unit = { _, _, _, _, _, _, _, _ -> },
     onShowMessage: (String) -> Unit = {},
     onAddCategory: (String) -> Unit = {}, // This is now for product categories if needed, but usually fixed from catalog
     initialItem: DomainShoppingItem? = null,
-    customHistory: List<com.farbalapps.rinde.domain.model.CustomProductHistory> = emptyList()
+    customHistory: List<com.farbalapps.rinde.domain.model.CustomProductHistory> = emptyList(),
+    onDeleteCustomHistory: (String) -> Unit = {}
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
     var searchQuery by remember { mutableStateOf("") }
@@ -80,11 +85,15 @@ fun AddProductBottomSheet(
     val msgAdded = stringResource(R.string.msg_product_added)
     val msgUpdated = stringResource(R.string.msg_product_updated)
 
+    var priceText by remember { mutableStateOf("") }
+    val currency = "MXN"
+
     LaunchedEffect(initialItem, catalogItems) {
         initialItem?.let { item ->
             quantity = item.quantity
             selectedUnit = item.unit
             selectedProductCategory = item.category // Pre-select item's category
+            priceText = item.price?.let { if (it % 1.0 == 0.0) it.toInt().toString() else it.toString() } ?: ""
             if (item.emoji.isNotEmpty()) {
                 val matchingItem = catalogItems.find { 
                     it.nombre.equals(item.name, ignoreCase = true) && 
@@ -109,100 +118,109 @@ fun AddProductBottomSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .animateContentSize()
-                .padding(bottom = 32.dp)
+                .navigationBarsPadding()
+                .padding(bottom = 8.dp)
         ) {
-            BottomSheetHeader(
-                titleRes = if (initialItem != null) R.string.edit_item_title else R.string.add_items_title,
-                onDismiss = onDismiss
-            )
-
-            val isEditing = initialItem != null
-
-            if (!isEditing) {
-                PrimaryTabRow(
-                    selectedTabIndex = selectedTab,
-                    containerColor = Color.Transparent,
-                    contentColor = MaterialTheme.colorScheme.primary,
-                    divider = {},
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
-                ) {
-                    Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }) {
-                        Text(stringResource(id = R.string.tab_catalog), modifier = Modifier.padding(vertical = 12.dp))
-                    }
-                    Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }) {
-                        Text(stringResource(id = R.string.tab_custom), modifier = Modifier.padding(vertical = 12.dp))
-                    }
-                }
-            } else {
-                // If editing, make sure the title reflects the item name or type
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-
-            // Product Category Selection (Fruits, Vegetables, etc)
-            // Solo mostramos el selector de categorías si no estamos editando o si estamos en el catálogo
-            AnimatedVisibility(
-                visible = selectedTab == 0 && !isEditing,
-                enter = fadeIn() + expandVertically(),
-                exit = fadeOut() + shrinkVertically()
+            // Scrollable Content Area (Header, Tabs, Catalog/Custom, Price)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f, fill = false)
+                    .verticalScroll(rememberScrollState())
             ) {
-                CategorySelectionRow(
-                    categories = productCategories,
-                    selectedCategory = selectedProductCategory,
-                    onCategorySelected = { selectedProductCategory = it },
-                    onAddCategoryClick = {},
-                    showAddButton = false,
-                    modifier = Modifier.padding(horizontal = 0.dp)
+                BottomSheetHeader(
+                    titleRes = if (initialItem != null) R.string.edit_item_title else R.string.add_items_title,
+                    onDismiss = onDismiss
                 )
-            }
 
-            if (selectedTab == 0) {
-                if (isEditing) {
-                    // Only show the selected item card when editing
-                    selectedItem?.let { item ->
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 24.dp, vertical = 16.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CatalogItemCard(
-                                item = item,
-                                isSelected = true,
-                                onClick = { /* Cannot deselect while editing */ },
-                                modifier = Modifier.size(100.dp)
-                            )
+                val isEditing = initialItem != null
+
+                if (!isEditing) {
+                    PrimaryTabRow(
+                        selectedTabIndex = selectedTab,
+                        containerColor = Color.Transparent,
+                        contentColor = MaterialTheme.colorScheme.primary,
+                        divider = {},
+                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp)
+                    ) {
+                        Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }) {
+                            Text(stringResource(id = R.string.tab_catalog), modifier = Modifier.padding(vertical = 10.dp))
+                        }
+                        Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }) {
+                            Text(stringResource(id = R.string.tab_custom), modifier = Modifier.padding(vertical = 10.dp))
                         }
                     }
                 } else {
-                    CatalogTabContent(
-                        searchQuery = searchQuery,
-                        onSearchQueryChange = { searchQuery = it },
-                        catalogItems = catalogItems,
-                        selectedProductCategory = selectedProductCategory,
-                        selectedItem = selectedItem,
-                        onItemClick = { item ->
-                            selectedItem = if (selectedItem?.id == item.id) null else item
-                            if (selectedItem != null) searchQuery = ""
-                        }
+                    Spacer(modifier = Modifier.height(4.dp))
+                }
+
+                // Product Category Selection (Fruits, Vegetables, etc)
+                AnimatedVisibility(
+                    visible = selectedTab == 0 && !isEditing,
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically()
+                ) {
+                    CategorySelectionRow(
+                        categories = productCategories,
+                        selectedCategory = selectedProductCategory,
+                        onCategorySelected = { selectedProductCategory = it },
+                        onAddCategoryClick = {},
+                        showAddButton = false,
+                        modifier = Modifier.padding(horizontal = 0.dp)
                     )
                 }
-            } else {
-                CustomTabContent(
-                    customName = customName,
-                    onCustomNameChange = { customName = it },
-                    customHistory = if (isEditing) emptyList() else customHistory,
-                    onHistoryItemClick = { customName = it }
-                )
+
+                if (selectedTab == 0) {
+                    if (isEditing) {
+                        selectedItem?.let { item ->
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 24.dp, vertical = 12.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CatalogItemCard(
+                                    item = item,
+                                    isSelected = true,
+                                    onClick = { },
+                                    modifier = Modifier.size(90.dp)
+                                )
+                            }
+                        }
+                    } else {
+                        CatalogTabContent(
+                            searchQuery = searchQuery,
+                            onSearchQueryChange = { searchQuery = it },
+                            catalogItems = catalogItems,
+                            selectedProductCategory = selectedProductCategory,
+                            selectedItem = selectedItem,
+                            onItemClick = { item ->
+                                selectedItem = if (selectedItem?.id == item.id) null else item
+                            }
+                        )
+                    }
+                } else {
+                    CustomTabContent(
+                        customName = customName,
+                        onCustomNameChange = { customName = it },
+                        customHistory = if (isEditing) emptyList() else customHistory,
+                        onHistoryItemClick = { customName = it },
+                        onDeleteHistoryItem = onDeleteCustomHistory
+                    )
+                }
             }
 
-            // Configuration Section — siempre visible, botón habilitado según selección
+            // Pinned Action & Config Section at bottom (Price, Quantity, Unit, CTA Button) — ALWAYS 100% VISIBLE!
             val isItemSelected = (selectedTab == 0 && selectedItem != null) ||
                                  (selectedTab == 1 && customName.isNotBlank()) ||
                                  initialItem != null
 
+            val parsedPrice = priceText.toDoubleOrNull()
+
             BottomSheetConfigSection(
                 enabled = isItemSelected,
+                priceText = priceText,
+                onPriceTextChange = { priceText = it.filter { char -> char.isDigit() || char == '.' } },
                 quantity = quantity,
                 onQuantityChange = { quantity = it },
                 selectedUnit = selectedUnit,
@@ -210,26 +228,27 @@ fun AddProductBottomSheet(
                 onUnitSelected = { selectedUnit = it },
                 onActionClick = {
                     initialItem?.let {
-                        // Preserva el grupo original al editar
-                        onProductUpdated(it.id, it.name, it.category, quantity, selectedUnit, it.emoji)
+                        onProductUpdated(it.id, it.name, it.category, quantity, selectedUnit, it.emoji, parsedPrice, currency)
                         onShowMessage(msgUpdated.format(it.name))
                         onDismiss()
                     } ?: run {
                         if (selectedTab == 0) {
                             selectedItem?.let {
-                                onProductAdded(it.nombre, it.categoria, targetGroup, quantity, selectedUnit, it.emoji, false)
+                                onProductAdded(it.nombre, it.categoria, targetGroup, quantity, selectedUnit, it.emoji, false, parsedPrice, currency)
                                 onShowMessage(msgAdded.format(it.nombre))
                                 selectedItem = null
                                 quantity = 1.0
+                                priceText = ""
                                 searchQuery = ""
                             }
                         } else {
                             if (customName.isNotBlank()) {
                                 val categoryToUse = if (selectedProductCategory == defaultCategory) defaultCustomCategory else selectedProductCategory
-                                onProductAdded(customName, categoryToUse, targetGroup, quantity, selectedUnit, "", true)
+                                onProductAdded(customName, categoryToUse, targetGroup, quantity, selectedUnit, "", true, parsedPrice, currency)
                                 onShowMessage(msgAdded.format(customName))
                                 customName = ""
                                 quantity = 1.0
+                                priceText = ""
                             }
                         }
                     }
@@ -328,7 +347,7 @@ private fun CatalogTabContent(
             contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.heightIn(max = 300.dp)
+            modifier = Modifier.heightIn(max = 210.dp)
         ) {
             items(filteredItems) { item ->
                 CatalogItemCard(
@@ -341,13 +360,17 @@ private fun CatalogTabContent(
     }
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
 @Composable
 private fun CustomTabContent(
     customName: String,
     onCustomNameChange: (String) -> Unit,
     customHistory: List<com.farbalapps.rinde.domain.model.CustomProductHistory>,
-    onHistoryItemClick: (String) -> Unit
+    onHistoryItemClick: (String) -> Unit,
+    onDeleteHistoryItem: (String) -> Unit
 ) {
+    var itemToDelete by remember { mutableStateOf<String?>(null) }
+
     Column(modifier = Modifier.padding(24.dp)) {
         OutlinedTextField(
             value = customName,
@@ -365,27 +388,64 @@ private fun CustomTabContent(
                 modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
             )
             
-            @OptIn(ExperimentalLayoutApi::class)
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 customHistory.take(6).forEach { historyItem ->
-                    AssistChip(
-                        onClick = { onHistoryItemClick(historyItem.name) },
-                        label = { Text(historyItem.name) },
-                        leadingIcon = { Icon(Icons.Default.History, null, modifier = Modifier.size(16.dp)) }
-                    )
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+                        modifier = Modifier.height(32.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .combinedClickable(
+                                    onClick = { onHistoryItemClick(historyItem.name) },
+                                    onLongClick = { itemToDelete = historyItem.name }
+                                )
+                                .padding(horizontal = 12.dp)
+                        ) {
+                            Icon(Icons.Default.History, null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(historyItem.name, style = MaterialTheme.typography.labelLarge)
+                        }
+                    }
                 }
             }
         }
+    }
+
+    if (itemToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { itemToDelete = null },
+            title = { Text("Eliminar sugerencia") },
+            text = { Text("¿Deseas eliminar \"$itemToDelete\" de tu historial de productos?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    itemToDelete?.let { onDeleteHistoryItem(it) }
+                    itemToDelete = null
+                }) {
+                    Text("Eliminar", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { itemToDelete = null }) {
+                    Text("Cancelar")
+                }
+            }
+        )
     }
 }
 
 @Composable
 private fun BottomSheetConfigSection(
     enabled: Boolean,
+    priceText: String,
+    onPriceTextChange: (String) -> Unit,
     quantity: Double,
     onQuantityChange: (Double) -> Unit,
     selectedUnit: String,
@@ -394,46 +454,105 @@ private fun BottomSheetConfigSection(
     onActionClick: () -> Unit,
     isUpdate: Boolean
 ) {
-    Column {
-        HorizontalDivider(modifier = Modifier.padding(horizontal = 24.dp))
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
 
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Bottom,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            QuantitySelector(
-                value = quantity,
-                onValueChange = onQuantityChange
-            )
-
-            UnitSelectorCompact(
-                options = units,
-                selectedOption = selectedUnit,
-                onOptionSelected = onUnitSelected
-            )
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            Button(
-                onClick = onActionClick,
-                enabled = enabled,
-                modifier = Modifier.height(48.dp),
-                contentPadding = PaddingValues(horizontal = 16.dp),
-                shape = RoundedCornerShape(24.dp)
-            ) {
-                val icon = if (isUpdate) Icons.Default.Save else Icons.Default.Add
-                val labelRes = if (isUpdate) R.string.btn_save_changes else R.string.btn_add_to_list
-                Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp))
-                Spacer(modifier = Modifier.width(8.dp))
+            Column(modifier = Modifier.weight(1.1f)) {
                 Text(
-                    text = stringResource(id = labelRes),
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold
+                    text = "Cantidad",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                QuantitySelector(
+                    value = quantity,
+                    onValueChange = onQuantityChange,
+                    modifier = Modifier.fillMaxWidth().height(48.dp)
                 )
             }
+
+            Column(modifier = Modifier.weight(0.9f)) {
+                Text(
+                    text = "Unidad",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                UnitSelectorCompact(
+                    options = units,
+                    selectedOption = selectedUnit,
+                    onOptionSelected = onUnitSelected,
+                    modifier = Modifier.fillMaxWidth().height(48.dp)
+                )
+            }
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Precio",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                OutlinedTextField(
+                    value = priceText,
+                    onValueChange = onPriceTextChange,
+                    placeholder = { Text("0.00", style = MaterialTheme.typography.bodyMedium) },
+                    prefix = { Text("$", style = MaterialTheme.typography.bodyMedium) },
+                    singleLine = true,
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal
+                    ),
+                    textStyle = MaterialTheme.typography.bodyMedium,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = Color.Transparent
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
+                    shape = RoundedCornerShape(12.dp)
+                )
+            }
+        }
+
+        // Prominent Full-Width CTA Button ("Añadir a la lista")
+        Button(
+            onClick = onActionClick,
+            enabled = enabled,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp),
+            shape = RoundedCornerShape(26.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            ),
+            elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
+        ) {
+            val icon = if (isUpdate) Icons.Default.Save else Icons.Default.Add
+            val labelRes = if (isUpdate) R.string.btn_save_changes else R.string.btn_add_to_list
+            Icon(icon, contentDescription = null, modifier = Modifier.size(22.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = stringResource(id = labelRes),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }

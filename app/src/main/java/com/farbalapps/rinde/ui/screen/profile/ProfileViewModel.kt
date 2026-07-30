@@ -21,6 +21,8 @@ import javax.inject.Inject
 data class ProfileUiState(
     val profile: Profile? = null,
     val posts: List<CommunityPost> = emptyList(),
+    val computedRating: Float? = null,
+    val ratedPostsCount: Int = 0,
     val isLoading: Boolean = true,
     val isCurrentUser: Boolean = false,
     val error: String? = null,
@@ -108,14 +110,26 @@ class ProfileViewModel @Inject constructor(
             }
         }
 
-        // 3. Obtener posts
+        // 3. Obtener posts y calcular rating comunitario
         viewModelScope.launch {
             getProfilePostsUseCase(finalUid)
                 .catch { e ->
                     android.util.Log.e("ProfileViewModel", "Error fetching posts", e)
                 }
                 .collect { posts ->
-                    _uiState.update { it.copy(posts = posts) }
+                    val eligiblePosts = posts.filter { 
+                        (it.truthCount + it.falseCount) >= com.farbalapps.rinde.domain.model.VerdictCalculator.MIN_VOTES_THRESHOLD 
+                    }
+                    val (rating, count) = if (eligiblePosts.isNotEmpty()) {
+                        val avgRatio = eligiblePosts.map { 
+                            it.truthCount.toFloat() / (it.truthCount + it.falseCount) 
+                        }.average().toFloat()
+                        val stars = (1f + avgRatio * 4f).coerceIn(1f, 5f)
+                        stars to eligiblePosts.size
+                    } else {
+                        null to 0
+                    }
+                    _uiState.update { it.copy(posts = posts, computedRating = rating, ratedPostsCount = count) }
                 }
         }
 

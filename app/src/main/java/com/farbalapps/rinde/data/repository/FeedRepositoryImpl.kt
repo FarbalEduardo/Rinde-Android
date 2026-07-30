@@ -36,6 +36,10 @@ class FeedRepositoryImpl @Inject constructor(
         interactionDelegate.updateSavedStatusLocal(postId, isSaved)
     }
 
+    override fun updateVoteStatusLocal(postId: String, overlay: VoteOverlay) {
+        interactionDelegate.updateVoteStatusLocal(postId, overlay)
+    }
+
     override fun getPagedFeed(forceRefresh: Boolean): Flow<androidx.paging.PagingData<CommunityPost>> {
         return paginationDelegate.getPagedFeed(forceRefresh) { post ->
             lifecycleDelegate.enrichPost(post)

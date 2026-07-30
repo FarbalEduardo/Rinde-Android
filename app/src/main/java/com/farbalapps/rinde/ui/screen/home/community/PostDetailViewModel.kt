@@ -307,13 +307,23 @@ class PostDetailViewModel @Inject constructor(
                     result.counts?.let { (truth, false_, score) ->
                         _uiState.update { state ->
                             state.copy(
-                                post = state.post?.copy(truthCount = truth, falseCount = false_, votesScore = score),
+                                post = state.post?.copy(
+                                    truthCount = truth,
+                                    falseCount = false_,
+                                    votesScore = score,
+                                    myVoteValue = nextVote
+                                ),
                                 voteState = VoteUiState.IDLE,
                                 isVotePending = false,
                                 voteErrorMessage = null
                             )
                         }
-                    } ?: _uiState.update { it.copy(voteState = VoteUiState.IDLE) }
+                    } ?: _uiState.update { state ->
+                        state.copy(
+                            post = state.post?.copy(myVoteValue = nextVote),
+                            voteState = VoteUiState.IDLE
+                        )
+                    }
                 }
 
                 is VoteResult.Offline -> {

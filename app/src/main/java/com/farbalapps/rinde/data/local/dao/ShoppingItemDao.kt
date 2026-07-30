@@ -36,6 +36,12 @@ interface ShoppingItemDao {
     suspend fun delete(item: ShoppingItemEntity)
 
     /**
+     * Deletes multiple shopping items.
+     */
+    @Delete
+    suspend fun deleteAll(items: List<ShoppingItemEntity>)
+
+    /**
      * Deletes all items belonging to a specific shopping group.
      */
     @Query("DELETE FROM shopping_items WHERE listGroup = :group")

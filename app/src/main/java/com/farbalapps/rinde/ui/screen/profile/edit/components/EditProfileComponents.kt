@@ -30,7 +30,7 @@ fun EditAvatarSection(
         contentAlignment = Alignment.BottomEnd
     ) {
         AsyncImage(
-            model = photoUrl,
+            model = photoUrl?.takeIf { it.isNotBlank() },
             contentDescription = null,
             modifier = Modifier.fillMaxSize().clip(CircleShape),
             contentScale = ContentScale.Crop,

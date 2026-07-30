@@ -53,7 +53,9 @@ data class EditPostUiState(
     val isLoading: Boolean = false,
     val isLoadingPost: Boolean = true,
     val error: String? = null,
-    val isFinished: Boolean = false
+    val isFinished: Boolean = false,
+    val priceError: String? = null,
+    val productLinkError: String? = null
 )
 
 @HiltViewModel
@@ -149,15 +151,48 @@ class EditPostViewModel @Inject constructor(
     // ─────────────────────────────────────────────────────────────────────────
 
     fun onTitleChange(v: String) = _uiState.update { it.copy(title = v, error = null) }
-    fun onDescriptionChange(v: String) = _uiState.update { it.copy(description = v) }
+    fun onDescriptionChange(v: String) = _uiState.update { it.copy(description = v, error = null) }
     fun onCategoryChange(v: String) = _uiState.update { it.copy(category = v) }
     fun onLocationNameChange(v: String) = _uiState.update { it.copy(locationName = v) }
     fun onOfferTypeChange(v: OfferType) = _uiState.update { it.copy(offerType = v) }
     fun onWebsiteNameChange(v: String) = _uiState.update { it.copy(websiteName = v) }
-    fun onProductLinkChange(v: String) = _uiState.update { it.copy(productLink = v) }
+    
+    fun onProductLinkChange(newLink: String) {
+        val error = if (newLink.isNotBlank() && !isValidUrl(newLink)) {
+            "Ingresa una URL válida (ej: https://...)"
+        } else null
+        _uiState.update { it.copy(productLink = newLink, productLinkError = error) }
+    }
+
+    private fun isValidUrl(url: String): Boolean {
+        return try {
+            val uri = android.net.Uri.parse(url)
+            uri.scheme in listOf("http", "https") && uri.host != null
+        } catch (e: Exception) {
+            false
+        }
+    }
+
     fun onStoreNameChange(v: String) = _uiState.update { it.copy(storeName = v) }
-    fun onNormalPriceChange(v: String) = _uiState.update { it.copy(normalPriceInput = v) }
-    fun onDiscountPriceChange(v: String) = _uiState.update { it.copy(discountPriceInput = v) }
+
+    fun onNormalPriceChange(price: String) {
+        val normal = price.toDoubleOrNull()
+        val discount = _uiState.value.discountPriceInput.toDoubleOrNull()
+        val error = if (normal != null && discount != null && discount > normal) {
+            "El precio con descuento no puede ser mayor al precio normal"
+        } else null
+        _uiState.update { it.copy(normalPriceInput = price, priceError = error) }
+    }
+
+    fun onDiscountPriceChange(price: String) {
+        val discount = price.toDoubleOrNull()
+        val normal = _uiState.value.normalPriceInput.toDoubleOrNull()
+        val error = if (normal != null && discount != null && discount > normal) {
+            "El precio con descuento no puede ser mayor al precio normal"
+        } else null
+        _uiState.update { it.copy(discountPriceInput = price, priceError = error) }
+    }
+
     fun onCurrencyChange(v: String) = _uiState.update { it.copy(currency = v) }
     fun onHasCouponChange(v: Boolean) = _uiState.update { it.copy(hasCoupon = v) }
     fun onCouponCodeChange(v: String) = _uiState.update { it.copy(couponCode = v) }
@@ -194,6 +229,10 @@ class EditPostViewModel @Inject constructor(
             _uiState.update { it.copy(error = "El título es obligatorio") }
             return
         }
+        if (state.title.length < 10) {
+            _uiState.update { it.copy(error = "El título debe tener al menos 10 caracteres") }
+            return
+        }
         if (state.description.isBlank()) {
             _uiState.update { it.copy(error = "La descripción es obligatoria") }
             return
@@ -204,8 +243,51 @@ class EditPostViewModel @Inject constructor(
             return
         }
 
+        if (state.offerType == OfferType.ONLINE) {
+            if (state.websiteName.isBlank()) {
+                _uiState.update { it.copy(error = "La página web es obligatoria para ofertas online") }
+                return
+            }
+            if (state.productLink.isBlank()) {
+                _uiState.update { it.copy(error = "El link del producto es obligatorio") }
+                return
+            }
+            if (state.productLinkError != null) {
+                _uiState.update { it.copy(error = "Corrige los errores antes de guardar") }
+                return
+            }
+        }
+        if (state.offerType == OfferType.PHYSICAL) {
+            if (state.storeName.isBlank()) {
+                _uiState.update { it.copy(error = "El nombre de la tienda es obligatorio") }
+                return
+            }
+            if (state.locationName.isBlank()) {
+                _uiState.update { it.copy(error = "La ubicación es obligatoria para ofertas físicas") }
+                return
+            }
+        }
+        if (state.priceError != null) {
+            _uiState.update { it.copy(error = "El precio con descuento no puede ser mayor al precio normal") }
+            return
+        }
+
         val normalPrice = state.normalPriceInput.toDoubleOrNull()
         val discountPrice = state.discountPriceInput.toDoubleOrNull()
+
+        if (state.normalPriceInput.isNotBlank() && normalPrice == null) {
+            _uiState.update { it.copy(error = "El precio normal no es válido") }
+            return
+        }
+        if (state.discountPriceInput.isNotBlank() && discountPrice == null) {
+            _uiState.update { it.copy(error = "El precio con descuento no es válido") }
+            return
+        }
+        if (normalPrice != null && discountPrice != null && discountPrice > normalPrice) {
+            _uiState.update { it.copy(error = "El precio con descuento no puede superar el precio normal") }
+            return
+        }
+
         var discountPercentage: Int? = null
         if (normalPrice != null && discountPrice != null && normalPrice > 0) {
             discountPercentage = (((normalPrice - discountPrice) / normalPrice) * 100).toInt()

@@ -11,6 +11,9 @@ interface SyncMetadataDao {
     @Query("SELECT * FROM sync_metadata WHERE key = :key LIMIT 1")
     suspend fun getMetadata(key: String): SyncMetadataEntity?
 
+    @Query("SELECT * FROM sync_metadata WHERE key = :key LIMIT 1")
+    fun getMetadataSync(key: String): SyncMetadataEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(metadata: SyncMetadataEntity)
 

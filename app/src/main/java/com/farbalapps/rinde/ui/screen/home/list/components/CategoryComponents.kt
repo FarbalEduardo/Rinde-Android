@@ -61,13 +61,20 @@ fun CategorySelectionRow(
                         ),
                     shape = CircleShape,
                     color = if (isSelected) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            else MaterialTheme.colorScheme.surface,
+                    border = if (isSelected) null 
+                             else androidx.compose.foundation.BorderStroke(
+                                 1.dp, 
+                                 MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
+                             ),
                     tonalElevation = if (isSelected) 4.dp else 0.dp
                 ) {
                     Text(
                         text = category,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                         style = MaterialTheme.typography.labelLarge,
+                        fontWeight = if (isSelected) androidx.compose.ui.text.font.FontWeight.SemiBold 
+                                     else androidx.compose.ui.text.font.FontWeight.Medium,
                         color = if (isSelected) MaterialTheme.colorScheme.onPrimary
                                 else MaterialTheme.colorScheme.onSurfaceVariant
                     )

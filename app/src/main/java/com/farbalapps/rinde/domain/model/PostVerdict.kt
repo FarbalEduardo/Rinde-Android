@@ -9,7 +9,7 @@ enum class PostVerdict {
 
 object VerdictCalculator {
     const val MIN_VOTES_THRESHOLD = 2
-    const val MAJORITY_PERCENT = 0.60f
+    const val MAJORITY_PERCENT = 0.75f
 
     fun calculate(truthCount: Int, falseCount: Int): PostVerdict {
         val total = truthCount + falseCount

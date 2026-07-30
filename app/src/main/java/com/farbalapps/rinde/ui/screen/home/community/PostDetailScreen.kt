@@ -1,8 +1,13 @@
 package com.farbalapps.rinde.ui.screen.home.community
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -16,6 +21,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -59,6 +65,8 @@ import java.util.Locale
 @Composable
 fun PostDetailScreen(
     postId: String,
+    scrollToComments: Boolean = false,
+    isExpiredNotice: Boolean = false,
     onBack: () -> Unit,
     onAuthorClick: (String) -> Unit = {},
     onEditPost: (String) -> Unit = {},
@@ -123,6 +131,8 @@ fun PostDetailScreen(
                 PostDetailContent(
                     post = post,
                     uiState = uiState,
+                    scrollToComments = scrollToComments,
+                    isExpiredNotice = isExpiredNotice,
                     onBack = onBack,
                     onAuthorClick = { onAuthorClick(post.authorId) },
                     onSaveClick = { viewModel.toggleSave() },
@@ -187,6 +197,8 @@ fun PostDetailScreen(
 private fun PostDetailContent(
     post: CommunityPost,
     uiState: PostDetailUiState,
+    scrollToComments: Boolean = false,
+    isExpiredNotice: Boolean = false,
     onBack: () -> Unit,
     onAuthorClick: () -> Unit,
     onSaveClick: () -> Unit,
@@ -220,13 +232,29 @@ private fun PostDetailContent(
     val coroutineScope = rememberCoroutineScope()
 
     // Número de items fijos antes de la lista de comentarios en la LazyColumn:
-    // 0: banner voto (condicional), 1: imagen+header, 2: spacer, 3: tienda/cupón,
+    // 0: banner expirado / voto (condicional), 1: imagen+header, 2: spacer, 3: tienda/cupón,
     // 4: spacer, 5: autor+descripción, 6: spacer, 7: votación, 8: spacer, 9: header comentarios
-    // El offset base sin banner es 9; con banner es 10.
-    val commentListOffset = if (uiState.voteState == VoteUiState.OFFLINE || uiState.voteState == VoteUiState.ERROR) 10 else 9
+    val isAuthor = post.authorId == uiState.currentUserId
+    val isPostExpired = post.verificationStatus == VerificationStatus.EXPIRED
+    val hasExpiredBanner = if (isAuthor) (isExpiredNotice || isPostExpired) else isPostExpired
+    val hasOfflineBanner = uiState.voteState == VoteUiState.OFFLINE || uiState.voteState == VoteUiState.ERROR
+    var bannersCount = 0
+    if (hasExpiredBanner) bannersCount++
+    if (hasOfflineBanner) bannersCount++
+
+    val commentListOffset = 9 + bannersCount
 
     // Detectar si el teclado está abierto
     val imeVisible = WindowInsets.ime.getBottom(androidx.compose.ui.platform.LocalDensity.current) > 0
+
+    // Auto-scroll a la sección de comentarios si viene de notificación de comentario (Solución B)
+    LaunchedEffect(scrollToComments, uiState.comments) {
+        if (scrollToComments && uiState.comments.isNotEmpty()) {
+            coroutineScope.launch {
+                lazyListState.animateScrollToItem(commentListOffset)
+            }
+        }
+    }
 
     // Cuando se activa replyingTo Y el teclado ya está visible, scroll al comentario objetivo
     LaunchedEffect(uiState.replyingToComment, imeVisible) {
@@ -255,15 +283,235 @@ private fun PostDetailContent(
         label = "topBarContentColor"
     )
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    // ── FLOATING TOPBAR (se mueve arriba del Column para anclarse) ────────
+    // El banner de expiración aparece como elemento fijo DEBAJO de la barra,
+    // FUERA del scroll, para que siempre sea visible sobre el contenido.
+    Column(modifier = Modifier.fillMaxSize()) {
+        // ── FLOATING TOPBAR ──────────────────────────────────────────────────
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(topBarColor)
+                .statusBarsPadding()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(if (!isScrolled) Color.Black.copy(alpha = 0.35f) else Color.Transparent)
+                        .clickable(onClick = onBack),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Regresar",
+                        tint = topBarContentColor,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.weight(1f))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(if (!isScrolled) Color.Black.copy(alpha = 0.35f) else Color.Transparent)
+                            .clickable(onClick = onSaveClick),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            if (post.isSavedByMe) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                            contentDescription = "Guardar",
+                            tint = if (post.isSavedByMe) RindePrimary else topBarContentColor,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    var showMenu by remember { mutableStateOf(false) }
+                    var showDeleteConfirm by remember { mutableStateOf(false) }
+                    var showReportConfirm by remember { mutableStateOf(false) }
+
+                    if (showDeleteConfirm) {
+                        AlertDialog(
+                            onDismissRequest = { showDeleteConfirm = false },
+                            title = { Text("Eliminar publicación") },
+                            text = { Text("¿Estás seguro que deseas eliminar esta publicación? Esta acción no se puede deshacer.") },
+                            confirmButton = {
+                                TextButton(onClick = {
+                                    showDeleteConfirm = false
+                                    onDeletePost()
+                                }) { Text("Eliminar", color = MaterialTheme.colorScheme.error) }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancelar") }
+                            }
+                        )
+                    }
+
+                    val isExpired = post.verificationStatus == VerificationStatus.EXPIRED
+
+                    if (showReportConfirm) {
+                        val isAuthorLocal = post.authorId == uiState.currentUserId
+                        val titleText = if (isAuthorLocal) {
+                            if (isExpired) "Marcar como disponible" else "Marcar como expirada"
+                        } else {
+                            "Reportar expirada"
+                        }
+                        val bodyText = if (isAuthorLocal) {
+                            if (isExpired) "¿Estás seguro que deseas marcar esta oferta como disponible nuevamente?" else "¿Estás seguro que deseas marcar esta oferta como expirada?"
+                        } else {
+                            "¿Estás seguro que deseas reportar esta oferta como expirada?"
+                        }
+
+                        AlertDialog(
+                            onDismissRequest = { showReportConfirm = false },
+                            title = { Text(titleText) },
+                            text = { Text(bodyText) },
+                            confirmButton = {
+                                TextButton(onClick = {
+                                    showReportConfirm = false
+                                    onReportExpired()
+                                }) { Text("Confirmar") }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { showReportConfirm = false }) { Text("Cancelar") }
+                            }
+                        )
+                    }
+
+                    Box {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(if (!isScrolled) Color.Black.copy(alpha = 0.35f) else Color.Transparent)
+                                .clickable(onClick = { showMenu = true }),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Default.MoreVert,
+                                contentDescription = "Opciones",
+                                tint = topBarContentColor,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                            if (post.authorId == uiState.currentUserId && uiState.currentUserId.isNotEmpty()) {
+                                DropdownMenuItem(
+                                    text = { Text("Editar") },
+                                    leadingIcon = { Icon(Icons.Default.Edit, null) },
+                                    onClick = { showMenu = false; onEditPost() }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Eliminar") },
+                                    leadingIcon = { Icon(Icons.Default.Delete, null) },
+                                    onClick = { showMenu = false; showDeleteConfirm = true }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Compartir") },
+                                    leadingIcon = { Icon(Icons.Default.Share, null) },
+                                    onClick = { showMenu = false; onSharePost() }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text(if (isExpired) "Marcar disponible" else "Marcar expirada") },
+                                    leadingIcon = { Icon(if (isExpired) Icons.Default.CheckCircle else Icons.Default.Warning, null) },
+                                    onClick = { showMenu = false; showReportConfirm = true }
+                                )
+                            } else {
+                                DropdownMenuItem(
+                                    text = { Text("Compartir") },
+                                    leadingIcon = { Icon(Icons.Default.Share, null) },
+                                    onClick = { showMenu = false; onSharePost() }
+                                )
+                                if (!isExpired) {
+                                    DropdownMenuItem(
+                                        text = { Text("Reportar expirada") },
+                                        leadingIcon = { Icon(Icons.Default.Warning, null) },
+                                        onClick = { showMenu = false; showReportConfirm = true }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // ── BANNER EXPIRACIÓN (sticky, debajo del TopBar, fuera del scroll) ─
+        AnimatedVisibility(
+            visible = hasExpiredBanner,
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut()
+        ) {
+            Surface(
+                color = MaterialTheme.colorScheme.errorContainer,
+                contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = null,
+                        modifier = Modifier.size(22.dp),
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = if (isPostExpired) "Publicación Expirada" else "Aviso de Expiración",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = if (isAuthor) {
+                                if (isPostExpired)
+                                    "Has marcado esta oferta como expirada."
+                                else
+                                    "Usuarios reportaron que esta oferta finalizó. ¿Deseas marcarla como expirada?"
+                            } else {
+                                "El creador marcó esta oferta como expirada o agotada."
+                            },
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                    if (isAuthor) {
+                        TextButton(onClick = onReportExpired) {
+                            Text(
+                                text = if (isPostExpired) "Marcar Activa" else "Marcar Expirada",
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // ── SCROLL CONTENT ───────────────────────────────────────────────────
         LazyColumn(
             state = lazyListState,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
             contentPadding = PaddingValues(
-                top = paddingValues.calculateTopPadding(),
                 bottom = paddingValues.calculateBottomPadding() + 16.dp
             )
         ) {
+
+
             // Banner de estado de voto
             if (uiState.voteState == VoteUiState.OFFLINE || uiState.voteState == VoteUiState.ERROR) {
                 item {
@@ -351,11 +599,13 @@ private fun PostDetailContent(
                                     }
                                 }
 
-                                // VerdictBadge — mismo componente que el feed, mismos datos (truthCount/falseCount del post ya enriquecido)
-                                VerdictBadge(
-                                    truthCount = post.truthCount,
-                                    falseCount = post.falseCount
-                                )
+                                // VerdictBadge — solo se muestra si el post NO está expirado
+                                if (!isPostExpired) {
+                                    VerdictBadge(
+                                        truthCount = post.truthCount,
+                                        falseCount = post.falseCount
+                                    )
+                                }
                             }
                             
                             Spacer(modifier = Modifier.height(12.dp))
@@ -428,26 +678,85 @@ private fun PostDetailContent(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         
-                        // Tienda
+                        // Tienda / Enlace o Ubicación Física
                         val storeName = if (post.offerType == OfferType.ONLINE) post.websiteName else post.storeName
-                        if (!storeName.isNullOrBlank()) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Surface(
-                                    shape = CircleShape,
-                                    color = MaterialTheme.colorScheme.surfaceVariant,
-                                    modifier = Modifier.size(40.dp)
+                        val hasStoreInfo = !storeName.isNullOrBlank() || !post.productLink.isNullOrBlank() || post.location.name.isNotBlank()
+
+                        if (hasStoreInfo) {
+                            val context = androidx.compose.ui.platform.LocalContext.current
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.weight(1f)
                                 ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Icon(
-                                            if (post.offerType == OfferType.ONLINE) Icons.Default.Language else Icons.Default.Store,
-                                            null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp)
+                                    Surface(
+                                        shape = CircleShape,
+                                        color = MaterialTheme.colorScheme.surfaceVariant,
+                                        modifier = Modifier.size(40.dp)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Icon(
+                                                if (post.offerType == OfferType.ONLINE) Icons.Default.Language else Icons.Default.Store,
+                                                null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp)
+                                            )
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column {
+                                        Text("Disponible en", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        Text(
+                                            text = storeName?.ifBlank { null } ?: if (post.offerType == OfferType.ONLINE) "Tienda en línea" else "Tienda física",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = RindePrimary
                                         )
+                                        if (post.location.name.isNotBlank()) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                modifier = Modifier.padding(top = 2.dp)
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.LocationOn,
+                                                    null,
+                                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    modifier = Modifier.size(12.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text(
+                                                    text = post.location.name,
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                        }
                                     }
                                 }
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Column {
-                                    Text("Disponible en", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    Text(storeName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = RindePrimary)
+
+                                // Botón "Ir a la oferta" para ofertas online con enlace
+                                if (!post.productLink.isNullOrBlank()) {
+                                    Button(
+                                        onClick = {
+                                            try {
+                                                val url = if (!post.productLink.startsWith("http://") && !post.productLink.startsWith("https://")) {
+                                                    "https://${post.productLink}"
+                                                } else post.productLink
+                                                val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
+                                                context.startActivity(intent)
+                                            } catch (e: Exception) {
+                                                android.widget.Toast.makeText(context, "No se pudo abrir el enlace", android.widget.Toast.LENGTH_SHORT).show()
+                                            }
+                                        },
+                                        shape = RoundedCornerShape(10.dp),
+                                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
+                                    ) {
+                                        Icon(Icons.AutoMirrored.Filled.OpenInNew, null, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text("Ir a la oferta", fontWeight = FontWeight.Bold)
+                                    }
                                 }
                             }
                             Spacer(modifier = Modifier.height(16.dp))
@@ -455,6 +764,7 @@ private fun PostDetailContent(
 
                         // Cupón
                         if (!post.couponCode.isNullOrBlank()) {
+                            val context = androidx.compose.ui.platform.LocalContext.current
                             Surface(
                                 shape = RoundedCornerShape(12.dp),
                                 border = androidx.compose.foundation.BorderStroke(1.dp, RindePrimary.copy(alpha = 0.3f)),
@@ -477,7 +787,12 @@ private fun PostDetailContent(
                                         )
                                     }
                                     Button(
-                                        onClick = { /* Copiar portapapeles */ },
+                                        onClick = {
+                                            val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                            val clip = android.content.ClipData.newPlainText("Cupón Rinde", post.couponCode)
+                                            clipboard.setPrimaryClip(clip)
+                                            android.widget.Toast.makeText(context, "¡Cupón copiado!", android.widget.Toast.LENGTH_SHORT).show()
+                                        },
                                         shape = RoundedCornerShape(8.dp),
                                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                                     ) {
@@ -547,9 +862,10 @@ private fun PostDetailContent(
                                     .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
-                                if (post.authorPhotoUrl != null) {
+                                val authorAvatarUrl = post.authorPhotoUrl?.takeIf { it.isNotBlank() }
+                                if (authorAvatarUrl != null) {
                                     AsyncImage(
-                                        model = post.authorPhotoUrl,
+                                        model = authorAvatarUrl,
                                         contentDescription = "Avatar",
                                         modifier = Modifier.fillMaxSize().clip(CircleShape),
                                         contentScale = ContentScale.Crop
@@ -599,42 +915,44 @@ private fun PostDetailContent(
 
             item { Spacer(modifier = Modifier.height(8.dp)) }
 
-            // ── SECCIÓN 3.5: VOTACIÓN DE VERACIDAD ─────────────────────────
-            item {
-                Surface(
-                    color = MaterialTheme.colorScheme.surface,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp)
+            // ── SECCIÓN 3.5: VOTACIÓN DE VERACIDAD (solo si la oferta NO está expirada) ─
+            if (!isPostExpired) {
+                item {
+                    Surface(
+                        color = MaterialTheme.colorScheme.surface,
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text(
-                            text = "¿Qué te parece esta oferta?",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "Vota para ayudar a otros usuarios a saber si esta oferta es real o falsa.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        VotingActions(
-                            userVote = post.myVoteValue,
-                            truthCount = post.truthCount,
-                            falseCount = post.falseCount,
-                            onVoteTrue = { if (uiState.voteState != VoteUiState.SENDING) onVoteTrue() },
-                            onVoteFalse = { if (uiState.voteState != VoteUiState.SENDING) onVoteFalse() },
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                        Column(
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            Text(
+                                text = "¿Qué te parece esta oferta?",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Vota para ayudar a otros usuarios a saber si esta oferta es real o falsa.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            
+                            VotingActions(
+                                userVote = post.myVoteValue,
+                                truthCount = post.truthCount,
+                                falseCount = post.falseCount,
+                                onVoteTrue = { if (uiState.voteState != VoteUiState.SENDING) onVoteTrue() },
+                                onVoteFalse = { if (uiState.voteState != VoteUiState.SENDING) onVoteFalse() },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
                     }
                 }
-            }
 
-            item { Spacer(modifier = Modifier.height(8.dp)) }
+                item { Spacer(modifier = Modifier.height(8.dp)) }
+            }
 
             // ── SECCIÓN 4: HEADER COMENTARIOS ──────────────────────────────────
             item(key = "comments_header") {
@@ -715,159 +1033,11 @@ private fun PostDetailContent(
                             onEditReply = onEditReplyStart,
                             onReportComment = { onReportComment(comment) },
                             onReportReply = onReportReply,
-                            modifier = Modifier.padding(vertical = 12.dp)
+                            modifier = Modifier.padding(vertical = 4.dp)
                         )
                         HorizontalDivider(
                             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                         )
-                    }
-                }
-            }
-        }
-
-        // ── FLOATING TOPBAR ─────────────────────────────────────────────────
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(topBarColor)
-                .statusBarsPadding()
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
-                    .padding(horizontal = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(
-                    onClick = onBack,
-                    modifier = Modifier
-                        .padding(4.dp)
-                        .background(if (!isScrolled) Color.Black.copy(alpha = 0.3f) else Color.Transparent, CircleShape)
-                ) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Regresar",
-                        tint = topBarContentColor
-                    )
-                }
-                Spacer(modifier = Modifier.weight(1f))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(
-                        onClick = onSaveClick,
-                        modifier = Modifier
-                            .padding(4.dp)
-                            .background(if (!isScrolled) Color.Black.copy(alpha = 0.3f) else Color.Transparent, CircleShape)
-                    ) {
-                        Icon(
-                            if (post.isSavedByMe) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
-                            contentDescription = "Guardar",
-                            tint = if (post.isSavedByMe) RindePrimary else topBarContentColor
-                        )
-                    }
-
-                    var showMenu by remember { mutableStateOf(false) }
-                    var showDeleteConfirm by remember { mutableStateOf(false) }
-                    var showReportConfirm by remember { mutableStateOf(false) }
-
-                    if (showDeleteConfirm) {
-                        AlertDialog(
-                            onDismissRequest = { showDeleteConfirm = false },
-                            title = { Text("Eliminar publicación") },
-                            text = { Text("¿Estás seguro que deseas eliminar esta publicación? Esta acción no se puede deshacer.") },
-                            confirmButton = {
-                                TextButton(onClick = {
-                                    showDeleteConfirm = false
-                                    onDeletePost()
-                                }) { Text("Eliminar", color = MaterialTheme.colorScheme.error) }
-                            },
-                            dismissButton = {
-                                TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancelar") }
-                            }
-                        )
-                    }
-
-                    val isExpired = post.verificationStatus == VerificationStatus.EXPIRED
-
-                    if (showReportConfirm) {
-                        val isAuthor = post.authorId == uiState.currentUserId
-                        val titleText = if (isAuthor) {
-                            if (isExpired) "Marcar como disponible" else "Marcar como expirada"
-                        } else {
-                            "Reportar expirada"
-                        }
-                        val bodyText = if (isAuthor) {
-                            if (isExpired) "¿Estás seguro que deseas marcar esta oferta como disponible nuevamente?" else "¿Estás seguro que deseas marcar esta oferta como expirada?"
-                        } else {
-                            "¿Estás seguro que deseas reportar esta oferta como expirada?"
-                        }
-
-                        AlertDialog(
-                            onDismissRequest = { showReportConfirm = false },
-                            title = { Text(titleText) },
-                            text = { Text(bodyText) },
-                            confirmButton = {
-                                TextButton(onClick = {
-                                    showReportConfirm = false
-                                    onReportExpired()
-                                }) { Text("Confirmar") }
-                            },
-                            dismissButton = {
-                                TextButton(onClick = { showReportConfirm = false }) { Text("Cancelar") }
-                            }
-                        )
-                    }
-
-                    Box {
-                        IconButton(
-                            onClick = { showMenu = true },
-                            modifier = Modifier
-                                .padding(4.dp)
-                                .background(if (!isScrolled) Color.Black.copy(alpha = 0.3f) else Color.Transparent, CircleShape)
-                        ) {
-                            Icon(
-                                Icons.Default.MoreVert,
-                                contentDescription = "Opciones",
-                                tint = topBarContentColor
-                            )
-                        }
-                        DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
-                            if (post.authorId == uiState.currentUserId && uiState.currentUserId.isNotEmpty()) {
-                                DropdownMenuItem(
-                                    text = { Text("Editar") },
-                                    leadingIcon = { Icon(Icons.Default.Edit, null) },
-                                    onClick = { showMenu = false; onEditPost() }
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("Eliminar") },
-                                    leadingIcon = { Icon(Icons.Default.Delete, null) },
-                                    onClick = { showMenu = false; showDeleteConfirm = true }
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("Compartir") },
-                                    leadingIcon = { Icon(Icons.Default.Share, null) },
-                                    onClick = { showMenu = false; onSharePost() }
-                                )
-                                DropdownMenuItem(
-                                    text = { Text(if (isExpired) "Marcar disponible" else "Marcar expirada") },
-                                    leadingIcon = { Icon(if (isExpired) Icons.Default.CheckCircle else Icons.Default.Warning, null) },
-                                    onClick = { showMenu = false; showReportConfirm = true }
-                                )
-                            } else {
-                                DropdownMenuItem(
-                                    text = { Text("Compartir") },
-                                    leadingIcon = { Icon(Icons.Default.Share, null) },
-                                    onClick = { showMenu = false; onSharePost() }
-                                )
-                                if (!isExpired) {
-                                    DropdownMenuItem(
-                                        text = { Text("Reportar expirada") },
-                                        leadingIcon = { Icon(Icons.Default.Warning, null) },
-                                        onClick = { showMenu = false; showReportConfirm = true }
-                                    )
-                                }
-                            }
-                        }
                     }
                 }
             }

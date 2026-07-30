@@ -17,4 +17,7 @@ interface CustomProductHistoryDao {
 
     @Query("DELETE FROM custom_product_history WHERE name = :name")
     suspend fun delete(name: String)
+
+    @Query("DELETE FROM custom_product_history WHERE name NOT IN (SELECT name FROM custom_product_history ORDER BY addedAt DESC LIMIT 6)")
+    suspend fun pruneHistory()
 }

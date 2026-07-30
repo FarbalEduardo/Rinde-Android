@@ -1,6 +1,7 @@
 package com.farbalapps.rinde.ui.screen.home.list.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,6 +23,45 @@ fun QuantitySelector(
     onValueChange: (Double) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var showDialog by remember { mutableStateOf(false) }
+
+    if (showDialog) {
+        var tempText by remember { mutableStateOf(if (value % 1.0 == 0.0) value.toInt().toString() else value.toString()) }
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = { Text("Ingresar cantidad", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) },
+            text = {
+                OutlinedTextField(
+                    value = tempText,
+                    onValueChange = { tempText = it.filter { char -> char.isDigit() || char == '.' } },
+                    singleLine = true,
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val parsed = tempText.toDoubleOrNull()
+                        if (parsed != null && parsed > 0) {
+                            onValueChange(parsed)
+                        }
+                        showDialog = false
+                    }
+                ) {
+                    Text("Aceptar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+
     Surface(
         shape = CircleShape,
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
@@ -29,17 +69,23 @@ fun QuantitySelector(
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(4.dp)
+            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.padding(4.dp).fillMaxWidth()
         ) {
             IconButton(
-                onClick = { if (value > 0.5) onValueChange(value - 0.5) else if (value > 0.1) onValueChange(value - 0.1) },
+                onClick = {
+                    val nextVal = (value - 0.5).coerceAtLeast(0.5)
+                    onValueChange(nextVal)
+                },
                 modifier = Modifier.size(32.dp)
             ) {
                 Icon(Icons.Default.Remove, contentDescription = null, modifier = Modifier.size(16.dp))
             }
             Text(
                 text = if (value % 1.0 == 0.0) value.toInt().toString() else value.toString(),
-                modifier = Modifier.padding(horizontal = 12.dp),
+                modifier = Modifier
+                    .clickable { showDialog = true }
+                    .padding(horizontal = 12.dp),
                 fontWeight = FontWeight.Bold,
                 style = MaterialTheme.typography.bodyLarge
             )
@@ -72,7 +118,8 @@ fun UnitSelectorCompact(
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(horizontal = 12.dp)
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.padding(horizontal = 12.dp).fillMaxWidth()
             ) {
                 Text(
                     text = selectedOption,

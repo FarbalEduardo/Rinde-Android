@@ -49,7 +49,9 @@ fun HomeScreen(
     
     // ViewModels
     val listViewModel: ListViewModel = hiltViewModel()
+    val notificationsViewModel: com.farbalapps.rinde.ui.screen.home.community.NotificationsViewModel = hiltViewModel()
     val uiState by listViewModel.uiState.collectAsStateWithLifecycle()
+    val notificationsState by notificationsViewModel.uiState.collectAsStateWithLifecycle()
 
     // Trigger catalog load
     LaunchedEffect(Unit) {
@@ -92,8 +94,9 @@ fun HomeScreen(
         }
     }
 
-    // Reset FAB visibility when switching tabs
-    LaunchedEffect(destination) {
+    // Reset FAB visibility when switching tabs or when list item count changes (e.g. products deleted)
+    val totalListItemsCount = uiState.activeItems.size + uiState.completedItems.size
+    LaunchedEffect(destination, totalListItemsCount) {
         isFabVisible = true
     }
 
@@ -125,7 +128,10 @@ fun HomeScreen(
         },
         bottomBar = {
             if (isTopLevelRoute) {
-                BottomNavigationBar(navController = navController)
+                BottomNavigationBar(
+                    navController = navController,
+                    unreadNotificationsCount = notificationsState.unreadCount
+                )
             }
         },
         floatingActionButton = {
@@ -161,10 +167,11 @@ fun HomeScreen(
             targetGroup = uiState.selectedFilterGroup,
             initialItem = editingItem,
             onShowMessage = { android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_SHORT).show() },
-            onProductAdded = { n, c, g, q, u, e, ic -> listViewModel.addItem(n, c, g, q, u, e, ic) },
-            onProductUpdated = { id, n, c, q, u, e -> listViewModel.updateItem(id, n, c, q, u, e); listViewModel.stopEditing() },
+            onProductAdded = { n, c, g, q, u, e, ic, p, curr -> listViewModel.addItem(n, c, g, q, u, e, ic, p, curr) },
+            onProductUpdated = { id, n, c, q, u, e, p, curr -> listViewModel.updateItem(id, n, c, q, u, e, p, curr); listViewModel.stopEditing() },
             onAddCategory = { listViewModel.addCategory(it) },
-            customHistory = uiState.customProductsHistory
+            customHistory = uiState.customProductsHistory,
+            onDeleteCustomHistory = { listViewModel.deleteCustomHistory(it) }
         )
     }
 }

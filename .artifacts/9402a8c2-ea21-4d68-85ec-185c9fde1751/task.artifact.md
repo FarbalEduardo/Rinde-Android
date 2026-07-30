@@ -1,0 +1,4 @@
+- [ ] Desactivar KSP incremental y habilitar KSP2 en `gradle.properties`
+- [ ] Limpiar el proyecto (`clean`)
+- [ ] Ejecutar compilación de KSP (`:app:kspDevDebugKotlin`) para verificar la solución
+- [ ] Ejecutar compilación completa (`:app:assembleDevDebug`)

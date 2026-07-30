@@ -59,11 +59,30 @@ class FeedLifecycleDelegate @Inject constructor(
     suspend fun enrichPost(post: CommunityPost): CommunityPost {
         val userId = firebaseAuth.currentUser?.uid ?: ""
         val localPost = postDao.getPostById(post.id)
-        val finalVote = if (userId.isNotEmpty()) {
-            userVoteDao.getVoteOnce(post.id, userId)?.voteValue ?: 0
-        } else 0
+        var finalVote = if (userId.isNotEmpty()) {
+            userVoteDao.getVoteOnce(post.id, userId)?.voteValue
+        } else null
+
+        if (finalVote == null && userId.isNotEmpty()) {
+            try {
+                val voteDoc = firestore.collection("posts").document(post.id)
+                    .collection("votes").document(userId).get().await()
+                if (voteDoc.exists()) {
+                    val v = voteDoc.getLong("value")?.toInt() ?: 0
+                    if (v != 0) {
+                        userVoteDao.upsertVote(UserVoteEntity(post.id, userId, v))
+                    }
+                    finalVote = v
+                } else {
+                    finalVote = 0
+                }
+            } catch (e: Exception) {
+                finalVote = localPost?.myVoteValue ?: 0
+            }
+        }
+
         val isSaved = savedPostsMemoryCache.isSaved(post.id) ?: localPost?.isSavedByMe ?: false
-        return post.copy(myVoteValue = finalVote, isSavedByMe = isSaved)
+        return post.copy(myVoteValue = finalVote ?: 0, isSavedByMe = isSaved)
     }
 
     suspend fun enrichPosts(posts: List<CommunityPost>): List<CommunityPost> {
@@ -75,7 +94,7 @@ class FeedLifecycleDelegate @Inject constructor(
         } else emptyMap()
         return posts.map { post ->
             val local = localMap[post.id]
-            val vote = votesMap[post.id]?.voteValue ?: 0
+            val vote = votesMap[post.id]?.voteValue ?: local?.myVoteValue ?: 0
             val saved = savedPostsMemoryCache.isSaved(post.id) ?: local?.isSavedByMe ?: false
             post.copy(myVoteValue = vote, isSavedByMe = saved)
         }
@@ -115,10 +134,7 @@ class FeedLifecycleDelegate @Inject constructor(
 
                             val existingLocal = postDao.getPostById(postId)
                             val safeEntity = enriched.toEntity().copy(
-                                myVoteValue = enriched.myVoteValue
-                                    .takeIf { it != 0 }
-                                    ?: existingLocal?.myVoteValue
-                                    ?: 0,
+                                myVoteValue = enriched.myVoteValue,
                                 isSavedByMe = if (enriched.isSavedByMe) true
                                     else existingLocal?.isSavedByMe ?: false
                             )
@@ -282,7 +298,14 @@ class FeedLifecycleDelegate @Inject constructor(
     suspend fun deletePost(postId: String, photoUrls: List<String>): Result<Unit> = runCatching {
         postDao.updatePostStatus(postId, false)
         firestore.collection("posts").document(postId).delete().await()
-        android.util.Log.d(TAG, "Post eliminado de Firestore: $postId. Las imágenes quedan huérfanas en Cloudinary.")
+        android.util.Log.d(TAG, "Post eliminado de Firestore: $postId. Eliminando ${photoUrls.size} imágenes de Cloudinary...")
+        photoUrls.forEach { photoUrl ->
+            try {
+                com.farbalapps.rinde.util.CloudinaryHelper.deleteImage(photoUrl)
+            } catch (e: Exception) {
+                android.util.Log.w(TAG, "⚠️ No se pudo eliminar la imagen $photoUrl al borrar el post: ${e.message}")
+            }
+        }
         postDao.deletePostById(postId)
     }
 
@@ -363,5 +386,22 @@ class FeedLifecycleDelegate @Inject constructor(
             "reportedByName" to currentUserName,
             "timestamp" to FieldValue.serverTimestamp()
         )).await()
+
+        if (authorId.isNotEmpty() && authorId != currentUserId) {
+            val notifId = java.util.UUID.randomUUID().toString()
+            firestore.collection("notifications")
+                .document(authorId)
+                .collection("items")
+                .document(notifId)
+                .set(mapOf(
+                    "id" to notifId,
+                    "type" to "POST_EXPIRED",
+                    "postId" to postId,
+                    "postTitle" to postTitle,
+                    "actorName" to currentUserName,
+                    "timestamp" to System.currentTimeMillis(),
+                    "isRead" to false
+                ))
+        }
     }
 }
