@@ -69,7 +69,7 @@ fun ListScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             // Header con búsqueda, categorías y acciones (se oculta al hacer scroll hacia arriba)
-            item {
+            item(key = "header_search_and_categories") {
                 val totalItemsCount = uiState.activeItems.size + uiState.completedItems.size
                 ListStickyHeader(
                     searchQuery = uiState.searchQuery,
@@ -96,12 +96,14 @@ fun ListScreen(
             }
 
             // Presupuesto pegado arriba (Sticky Header) si hay precios
-            stickyHeader {
-                val hasAnyPrice = uiState.activeTotal != null || uiState.completedTotal != null
-                if (hasAnyPrice) {
+            val hasAnyPrice = uiState.activeTotal != null || uiState.completedTotal != null
+            if (hasAnyPrice) {
+                stickyHeader(key = "budget_summary_sticky_header") {
                     Surface(
                         color = MaterialTheme.colorScheme.background,
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
                     ) {
                         BudgetSummaryCard(
                             activeCount = uiState.activeItems.size,
@@ -118,15 +120,18 @@ fun ListScreen(
             }
 
             if (uiState.isLoading) {
-                item { 
+                item(key = "loading_indicator_state") { 
                     Box(modifier = Modifier.fillMaxWidth().padding(top = 64.dp), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator() 
                     }
                 }
             } else if (uiState.activeItems.isEmpty() && uiState.completedItems.isEmpty()) {
-                item { EmptyStateView() }
+                item(key = "empty_list_state") { EmptyStateView() }
             } else {
-                items(uiState.activeItems, key = { it.id }) { item ->
+                items(
+                    items = uiState.activeItems,
+                    key = { "active_${it.id}" }
+                ) { item ->
                     ShoppingListItem(
                         item = item,
                         isHighlighted = uiState.newlyAddedItemIds.contains(item.id),
@@ -153,13 +158,12 @@ fun ListScreen(
                         onQuantitySet = { newQty -> viewModel.setItemQuantity(item, newQty) },
                         onSetPrice = { price, currency ->
                             viewModel.updateItemPrice(item.id, price, currency)
-                        },
-                        modifier = Modifier.animateItem()
+                        }
                     )
                 }
 
                 if (uiState.completedItems.isNotEmpty()) {
-                    item {
+                    item(key = "completed_items_header_title") {
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
                             text = stringResource(id = R.string.filter_completed).uppercase(),
@@ -170,7 +174,10 @@ fun ListScreen(
                         Spacer(modifier = Modifier.height(8.dp))
                     }
 
-                    items(uiState.completedItems, key = { it.id }) { item ->
+                    items(
+                        items = uiState.completedItems,
+                        key = { "completed_${it.id}" }
+                    ) { item ->
                         ShoppingListItem(
                             item = item,
                             isHighlighted = uiState.newlyAddedItemIds.contains(item.id),
@@ -197,8 +204,7 @@ fun ListScreen(
                             onQuantitySet = { newQty -> viewModel.setItemQuantity(item, newQty) },
                             onSetPrice = { price, currency ->
                                 viewModel.updateItemPrice(item.id, price, currency)
-                            },
-                            modifier = Modifier.animateItem()
+                            }
                         )
                     }
                 }
