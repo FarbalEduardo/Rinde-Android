@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.3.0-beta](https://github.com/FarbalEduardo/Rinde-Android/compare/v1.2.0-beta...v1.3.0-beta) (2026-07-24)
+
+
+### Features
+
+* Completed Sprints 1-5 (Security, Arch, Quality, UI, SDK 35) ([dfd0b51](https://github.com/FarbalEduardo/Rinde-Android/commit/dfd0b5191cf2cf68db287d25faa9486a35362b1c))
+* Implement Sprint 6 comments thread design, cascade delete and reporting ([17bf3f0](https://github.com/FarbalEduardo/Rinde-Android/commit/17bf3f00ef5019c1f5dc0d7abb24c8902fefa472))
+* implementacion de notificacion de nuevas ofertas y limpieza de cache Room (7 dias) ([989deb7](https://github.com/FarbalEduardo/Rinde-Android/commit/989deb7c0e18a44fef8b441d1df0042656706257))
+* **ui:** prioritize community tab as home screen and fix profile unit tests ([0404abe](https://github.com/FarbalEduardo/Rinde-Android/commit/0404abe223424c1d15dd7315731d5fbe90a0149c))
+
+
+### Bug Fixes
+
+* Disable lint vital abort on release to bypass AGP bug ([b51114d](https://github.com/FarbalEduardo/Rinde-Android/commit/b51114dbac81bde92b5555deffc70ce6dc035548))
+* Firebase App Check debug dependency in release builds ([b3821cb](https://github.com/FarbalEduardo/Rinde-Android/commit/b3821cba4da2217899e751bda547aa925049809e))
+
 ## [1.2.0-beta](https://github.com/FarbalEduardo/Rinde-Android/compare/v1.1.1-beta...v1.2.0-beta) (2026-05-10)
 
 
