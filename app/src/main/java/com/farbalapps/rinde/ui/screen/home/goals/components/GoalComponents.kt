@@ -56,54 +56,44 @@ fun ChefRandomRecommendationCard(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
-            modifier = Modifier.padding(18.dp)
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Row(
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .background(MaterialTheme.colorScheme.primary, shape = CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.AutoAwesome,
-                        contentDescription = "IA Chef",
-                        tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.width(10.dp))
+                Icon(
+                    imageVector = Icons.Default.AutoAwesome,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(18.dp)
+                )
                 Text(
-                    text = "IA CHEF SUGERENCIA",
-                    style = MaterialTheme.typography.labelSmall,
+                    text = "SUGERENCIA RINDE",
+                    style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary,
-                    letterSpacing = 1.2.sp
+                    letterSpacing = 1.sp
                 )
             }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
             Text(
                 text = randomTip,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface,
-                lineHeight = 20.sp
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                lineHeight = 18.sp
             )
         }
     }
 }
 
 /**
- * Tarjeta comodín punteada para agregar nueva meta si existen slots disponibles (menos de 3 metas).
+ * Tarjeta comodín punteada para agregar nueva meta si existen slots disponibles (menos de 2 metas).
  */
 @Composable
 fun DashedAddGoalCard(
@@ -117,40 +107,52 @@ fun DashedAddGoalCard(
         color = Color.Transparent,
         modifier = modifier
             .fillMaxWidth()
-            .height(100.dp)
+            .height(130.dp)
             .border(
-                width = 1.5.dp,
-                color = MaterialTheme.colorScheme.outlineVariant,
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f),
                 shape = RoundedCornerShape(24.dp)
             )
     ) {
-        Row(
+        DashedAddGoalCardContent(currentGoalCount = currentGoalCount)
+    }
+}
+
+@Composable
+private fun DashedAddGoalCardContent(currentGoalCount: Int) {
+    val availableCount = (2 - currentGoalCount).coerceAtLeast(0)
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
+                .size(36.dp)
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), shape = CircleShape),
+            contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector = Icons.Default.AddCircle,
+                imageVector = Icons.Default.Add,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(28.dp)
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp)
             )
-            Spacer(modifier = Modifier.width(12.dp))
-            Column {
-                Text(
-                    text = "Crea un nuevo objetivo",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = "Disponible $currentGoalCount de 3 metas",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
         }
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "Crea un nuevo objetivo",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = "Disponible $availableCount de 2 metas",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }

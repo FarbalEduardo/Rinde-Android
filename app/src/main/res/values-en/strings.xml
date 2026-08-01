@@ -4,7 +4,7 @@
     
     <!-- Welcome Screen -->
     <string name="welcome_title">Welcome back!</string>
-    <string name="welcome_subtitle">Enter your personal details to access your account</string>
+    <string name="welcome_subtitle">Enter your details to access your account</string>
     <string name="btn_sign_in">Sign In</string>
     <string name="btn_sign_up">Sign Up</string>
     

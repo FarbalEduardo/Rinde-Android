@@ -99,21 +99,8 @@ class AssistantViewModel @Inject constructor(
                     savedLists = savedListsList
 
                     val listNames = listOf("Mi Lista Actual") + savedListsList.map { it.name }
-                    val currentSelected = _uiState.value.selectedListName
-                    val validSelected = if (listNames.contains(currentSelected)) currentSelected else "Mi Lista Actual"
-
-                    val ingredientNames = getIngredientsForListName(validSelected)
-                    val ingredientChips = if (ingredientNames.isNotEmpty()) {
-                        ingredientNames.take(10).mapIndexed { index, name ->
-                            IngredientChipState(
-                                id = "$validSelected-$index-$name",
-                                name = name,
-                                isSelected = index < 3
-                            )
-                        }
-                    } else {
-                        emptyList()
-                    }
+                    val validSelected = getValidSelectedList(listNames)
+                    val ingredientChips = buildIngredientChipsForList(validSelected)
 
                     _uiState.value.copy(
                         availableLists = listNames,
@@ -124,6 +111,26 @@ class AssistantViewModel @Inject constructor(
                     _uiState.value = updatedState
                 }
             } catch (_: Exception) { }
+        }
+    }
+
+    private fun getValidSelectedList(listNames: List<String>): String {
+        val currentSelected = _uiState.value.selectedListName
+        return if (listNames.contains(currentSelected)) currentSelected else "Mi Lista Actual"
+    }
+
+    private fun buildIngredientChipsForList(listName: String): List<IngredientChipState> {
+        val ingredientNames = getIngredientsForListName(listName)
+        return if (ingredientNames.isNotEmpty()) {
+            ingredientNames.take(10).mapIndexed { index, name ->
+                IngredientChipState(
+                    id = "$listName-$index-$name",
+                    name = name,
+                    isSelected = index < 3
+                )
+            }
+        } else {
+            emptyList()
         }
     }
 
@@ -140,36 +147,43 @@ class AssistantViewModel @Inject constructor(
 
         viewModelScope.launch {
             val initialMessageId = UUID.randomUUID().toString()
-            val initialMessage = ChefChatMessage(
-                id = initialMessageId,
-                sender = MessageSender.CHEF,
-                text = "",
-                isStreaming = true
-            )
-
-            _uiState.update { state ->
-                state.copy(messages = listOf(initialMessage))
-            }
-
-            val builder = StringBuilder()
-            for (char in fullGreetingText) {
-                builder.append(char)
-                delay(20)
-                _uiState.update { state ->
-                    val updatedMessages = state.messages.map { msg ->
-                        if (msg.id == initialMessageId) msg.copy(text = builder.toString()) else msg
-                    }
-                    state.copy(messages = updatedMessages)
-                }
-            }
-
-            _uiState.update { state ->
-                val finalMessages = state.messages.map { msg ->
-                    if (msg.id == initialMessageId) msg.copy(isStreaming = false) else msg
-                }
-                state.copy(messages = finalMessages)
-            }
+            addStreamingMessage(initialMessageId)
+            streamGreetingText(initialMessageId)
+            finalizeStreamingMessage(initialMessageId)
             hasPlayedInitialAnimation = true
+        }
+    }
+
+    private fun addStreamingMessage(messageId: String) {
+        val initialMessage = ChefChatMessage(
+            id = messageId,
+            sender = MessageSender.CHEF,
+            text = "",
+            isStreaming = true
+        )
+        _uiState.update { state -> state.copy(messages = state.messages + initialMessage) }
+    }
+
+    private suspend fun streamGreetingText(messageId: String) {
+        val builder = StringBuilder()
+        for (char in fullGreetingText) {
+            builder.append(char)
+            delay(20)
+            _uiState.update { state ->
+                val updatedMessages = state.messages.map { msg ->
+                    if (msg.id == messageId) msg.copy(text = builder.toString()) else msg
+                }
+                state.copy(messages = updatedMessages)
+            }
+        }
+    }
+
+    private fun finalizeStreamingMessage(messageId: String) {
+        _uiState.update { state ->
+            val finalMessages = state.messages.map { msg ->
+                if (msg.id == messageId) msg.copy(isStreaming = false) else msg
+            }
+            state.copy(messages = finalMessages)
         }
     }
 
@@ -178,19 +192,7 @@ class AssistantViewModel @Inject constructor(
     }
 
     fun selectList(listName: String) {
-        val ingredientNames = getIngredientsForListName(listName)
-        val ingredientChips = if (ingredientNames.isNotEmpty()) {
-            ingredientNames.take(10).mapIndexed { index, name ->
-                IngredientChipState(
-                    id = "$listName-$index-$name",
-                    name = name,
-                    isSelected = index < 3
-                )
-            }
-        } else {
-            emptyList()
-        }
-
+        val ingredientChips = buildIngredientChipsForList(listName)
         _uiState.update { state ->
             state.copy(
                 selectedListName = listName,
@@ -212,56 +214,57 @@ class AssistantViewModel @Inject constructor(
         val textToSend = userTextPrompt ?: _uiState.value.inputText.trim()
         if (textToSend.isEmpty()) return
 
-        val selectedIngredients = _uiState.value.availableIngredients
-            .filter { it.isSelected }
-            .map { it.name }
-
-        val userMsg = ChefChatMessage(
-            sender = MessageSender.USER,
-            text = textToSend
-        )
-
-        _uiState.update { state ->
-            state.copy(
-                messages = state.messages + userMsg,
-                inputText = "",
-                isThinking = true
-            )
-        }
+        val selectedIngredients = getSelectedIngredients()
+        addUserMessageToState(textToSend)
 
         viewModelScope.launch {
             delay(1500)
+            val recipe = buildRecipeRecommendation(selectedIngredients, textToSend)
+            addChefResponseToState(recipe, selectedIngredients)
+        }
+    }
 
-            val recipe = if (selectedIngredients.any { it.contains("Salmón", ignoreCase = true) } || textToSend.lowercase().contains("salmón")) {
-                RecipeRecommendation(
-                    title = "Salmón Glaseado al Cítrico",
-                    subtitle = "Alto en Proteína • 340 kcal",
-                    calories = "340 kcal",
-                    prepTime = "20 min",
-                    ingredients = listOf("Salmón", "Limones", "Uvas frescas")
-                )
-            } else {
-                RecipeRecommendation(
-                    title = "Bowl Fresco de la Despensa",
-                    subtitle = "Receta Balanceada • 280 kcal",
-                    calories = "280 kcal",
-                    prepTime = "15 min",
-                    ingredients = selectedIngredients.ifEmpty { listOf("Espinacas", "Limones", "Ajo") }
-                )
-            }
+    private fun getSelectedIngredients(): List<String> {
+        return _uiState.value.availableIngredients
+            .filter { it.isSelected }
+            .map { it.name }
+    }
 
-            val chefResponse = ChefChatMessage(
-                sender = MessageSender.CHEF,
-                text = "¡Excelente idea! Analizando tus ingredientes (${selectedIngredients.joinToString(", ")}), te recomiendo preparar **${recipe.title}**. ¡Toma solo ${recipe.prepTime}!",
-                recipeCard = recipe
+    private fun addUserMessageToState(textToSend: String) {
+        val userMsg = ChefChatMessage(sender = MessageSender.USER, text = textToSend)
+        _uiState.update { state ->
+            state.copy(messages = state.messages + userMsg, inputText = "", isThinking = true)
+        }
+    }
+
+    private fun buildRecipeRecommendation(selectedIngredients: List<String>, textToSend: String): RecipeRecommendation {
+        return if (selectedIngredients.any { it.contains("Salmón", ignoreCase = true) } || textToSend.lowercase().contains("salmón")) {
+            RecipeRecommendation(
+                title = "Salmón Glaseado al Cítrico",
+                subtitle = "Alto en Proteína • 340 kcal",
+                calories = "340 kcal",
+                prepTime = "20 min",
+                ingredients = listOf("Salmón", "Limones", "Uvas frescas")
             )
+        } else {
+            RecipeRecommendation(
+                title = "Bowl Fresco de la Despensa",
+                subtitle = "Receta Balanceada • 280 kcal",
+                calories = "280 kcal",
+                prepTime = "15 min",
+                ingredients = selectedIngredients.ifEmpty { listOf("Espinacas", "Limones", "Ajo") }
+            )
+        }
+    }
 
-            _uiState.update { state ->
-                state.copy(
-                    messages = state.messages + chefResponse,
-                    isThinking = false
-                )
-            }
+    private fun addChefResponseToState(recipe: RecipeRecommendation, selectedIngredients: List<String>) {
+        val chefResponse = ChefChatMessage(
+            sender = MessageSender.CHEF,
+            text = "¡Excelente idea! Analizando tus ingredientes (${selectedIngredients.joinToString(", ")}), te recomiendo preparar **${recipe.title}**. ¡Toma solo ${recipe.prepTime}!",
+            recipeCard = recipe
+        )
+        _uiState.update { state ->
+            state.copy(messages = state.messages + chefResponse, isThinking = false)
         }
     }
 

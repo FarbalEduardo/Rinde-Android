@@ -25,6 +25,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.farbalapps.rinde.R
+import com.farbalapps.rinde.ui.screen.home.community.CommunityTab
+import com.farbalapps.rinde.ui.screen.home.community.EmptyFeedState
 import com.farbalapps.rinde.ui.screen.home.community.components.PostCard
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -48,10 +50,14 @@ fun SavedPostsScreen(
         }
     ) { innerPadding ->
         if (savedPosts.isEmpty()) {
-            EmptyState(
-                icon = Icons.Default.Bookmark,
-                text = "No tienes publicaciones guardadas"
-            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+                contentAlignment = Alignment.Center
+            ) {
+                EmptyFeedState(tab = CommunityTab.SAVED)
+            }
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
@@ -100,35 +106,43 @@ fun BlockedUsersScreen(
                 modifier = Modifier.fillMaxSize().padding(innerPadding)
             ) {
                 items(blockedUsers) { user ->
-                    ListItem(
-                        headlineContent = { Text(user.name) },
-                        leadingContent = {
-                            if (user.photoUrl != null) {
-                                AsyncImage(
-                                    model = user.photoUrl,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(40.dp).clip(CircleShape),
-                                    contentScale = ContentScale.Crop
-                                )
-                            } else {
-                                Box(
-                                    modifier = Modifier.size(40.dp).clip(CircleShape).background(MaterialTheme.colorScheme.secondaryContainer),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(Icons.Default.Person, null)
-                                }
-                            }
-                        },
-                        trailingContent = {
-                            TextButton(onClick = { viewModel.unblockUser(user.id) }) {
-                                Text("Desbloquear")
-                            }
-                        }
-                    )
+                    BlockedUserItem(user = user, onUnblock = { viewModel.unblockUser(user.id) })
                 }
             }
         }
     }
+}
+
+@Composable
+private fun BlockedUserItem(
+    user: com.farbalapps.rinde.domain.model.Profile,
+    onUnblock: () -> Unit
+) {
+    ListItem(
+        headlineContent = { Text(user.name) },
+        leadingContent = {
+            if (user.photoUrl != null) {
+                AsyncImage(
+                    model = user.photoUrl,
+                    contentDescription = null,
+                    modifier = Modifier.size(40.dp).clip(CircleShape),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Box(
+                    modifier = Modifier.size(40.dp).clip(CircleShape).background(MaterialTheme.colorScheme.secondaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.Person, null)
+                }
+            }
+        },
+        trailingContent = {
+            TextButton(onClick = onUnblock) {
+                Text("Desbloquear")
+            }
+        }
+    )
 }
 
 @Composable

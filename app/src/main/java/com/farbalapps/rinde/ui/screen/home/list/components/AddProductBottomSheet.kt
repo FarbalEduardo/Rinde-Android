@@ -380,65 +380,92 @@ private fun CustomTabContent(
             shape = RoundedCornerShape(12.dp)
         )
         
-        if (customHistory.isNotEmpty()) {
-            Text(
-                text = stringResource(R.string.suggestions_label),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
-            )
-            
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                customHistory.take(6).forEach { historyItem ->
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
-                        modifier = Modifier.height(32.dp)
+        CustomHistorySection(
+            customHistory = customHistory,
+            onHistoryItemClick = onHistoryItemClick,
+            onItemToDelete = { itemToDelete = it }
+        )
+    }
+
+    itemToDelete?.let { item ->
+        DeleteHistoryDialog(
+            itemToDelete = item,
+            onDelete = {
+                onDeleteHistoryItem(item)
+                itemToDelete = null
+            },
+            onDismiss = { itemToDelete = null }
+        )
+    }
+}
+
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
+@Composable
+private fun CustomHistorySection(
+    customHistory: List<com.farbalapps.rinde.domain.model.CustomProductHistory>,
+    onHistoryItemClick: (String) -> Unit,
+    onItemToDelete: (String) -> Unit
+) {
+    if (customHistory.isNotEmpty()) {
+        Text(
+            text = stringResource(R.string.suggestions_label),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
+        )
+        
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            customHistory.take(6).forEach { historyItem ->
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+                    modifier = Modifier.height(32.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .combinedClickable(
+                                onClick = { onHistoryItemClick(historyItem.name) },
+                                onLongClick = { onItemToDelete(historyItem.name) }
+                            )
+                            .padding(horizontal = 12.dp)
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .combinedClickable(
-                                    onClick = { onHistoryItemClick(historyItem.name) },
-                                    onLongClick = { itemToDelete = historyItem.name }
-                                )
-                                .padding(horizontal = 12.dp)
-                        ) {
-                            Icon(Icons.Default.History, null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(historyItem.name, style = MaterialTheme.typography.labelLarge)
-                        }
+                        Icon(Icons.Default.History, null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(historyItem.name, style = MaterialTheme.typography.labelLarge)
                     }
                 }
             }
         }
     }
+}
 
-    if (itemToDelete != null) {
-        AlertDialog(
-            onDismissRequest = { itemToDelete = null },
-            title = { Text("Eliminar sugerencia") },
-            text = { Text("¿Deseas eliminar \"$itemToDelete\" de tu historial de productos?") },
-            confirmButton = {
-                TextButton(onClick = {
-                    itemToDelete?.let { onDeleteHistoryItem(it) }
-                    itemToDelete = null
-                }) {
-                    Text("Eliminar", color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { itemToDelete = null }) {
-                    Text("Cancelar")
-                }
+@Composable
+private fun DeleteHistoryDialog(
+    itemToDelete: String,
+    onDelete: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Eliminar sugerencia") },
+        text = { Text("¿Deseas eliminar \"$itemToDelete\" de tu historial de productos?") },
+        confirmButton = {
+            TextButton(onClick = onDelete) {
+                Text("Eliminar", color = MaterialTheme.colorScheme.error)
             }
-        )
-    }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
+        }
+    )
 }
 
 @Composable
@@ -462,97 +489,130 @@ private fun BottomSheetConfigSection(
     ) {
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.Bottom,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Column(modifier = Modifier.weight(1.1f)) {
-                Text(
-                    text = "Cantidad",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                QuantitySelector(
-                    value = quantity,
-                    onValueChange = onQuantityChange,
-                    modifier = Modifier.fillMaxWidth().height(48.dp)
-                )
-            }
+        ConfigInputRow(
+            quantity = quantity,
+            onQuantityChange = onQuantityChange,
+            selectedUnit = selectedUnit,
+            units = units,
+            onUnitSelected = onUnitSelected,
+            priceText = priceText,
+            onPriceTextChange = onPriceTextChange
+        )
 
-            Column(modifier = Modifier.weight(0.9f)) {
-                Text(
-                    text = "Unidad",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                UnitSelectorCompact(
-                    options = units,
-                    selectedOption = selectedUnit,
-                    onOptionSelected = onUnitSelected,
-                    modifier = Modifier.fillMaxWidth().height(48.dp)
-                )
-            }
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Precio",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                OutlinedTextField(
-                    value = priceText,
-                    onValueChange = onPriceTextChange,
-                    placeholder = { Text("0.00", style = MaterialTheme.typography.bodyMedium) },
-                    prefix = { Text("$", style = MaterialTheme.typography.bodyMedium) },
-                    singleLine = true,
-                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal
-                    ),
-                    textStyle = MaterialTheme.typography.bodyMedium,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = Color.Transparent
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp),
-                    shape = RoundedCornerShape(12.dp)
-                )
-            }
-        }
-
-        // Prominent Full-Width CTA Button ("Añadir a la lista")
-        Button(
-            onClick = onActionClick,
+        ConfigActionBtn(
             enabled = enabled,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp),
-            shape = RoundedCornerShape(26.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-            ),
-            elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
-        ) {
-            val icon = if (isUpdate) Icons.Default.Save else Icons.Default.Add
-            val labelRes = if (isUpdate) R.string.btn_save_changes else R.string.btn_add_to_list
-            Icon(icon, contentDescription = null, modifier = Modifier.size(22.dp))
-            Spacer(modifier = Modifier.width(8.dp))
+            isUpdate = isUpdate,
+            onActionClick = onActionClick
+        )
+    }
+}
+
+@Composable
+private fun ConfigInputRow(
+    quantity: Double,
+    onQuantityChange: (Double) -> Unit,
+    selectedUnit: String,
+    units: List<String>,
+    onUnitSelected: (String) -> Unit,
+    priceText: String,
+    onPriceTextChange: (String) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Bottom,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Column(modifier = Modifier.weight(1.1f)) {
             Text(
-                text = stringResource(id = labelRes),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
+                text = "Cantidad",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            QuantitySelector(
+                value = quantity,
+                onValueChange = onQuantityChange,
+                modifier = Modifier.fillMaxWidth().height(48.dp)
             )
         }
+
+        Column(modifier = Modifier.weight(0.9f)) {
+            Text(
+                text = "Unidad",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            UnitSelectorCompact(
+                options = units,
+                selectedOption = selectedUnit,
+                onOptionSelected = onUnitSelected,
+                modifier = Modifier.fillMaxWidth().height(48.dp)
+            )
+        }
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "Precio",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            OutlinedTextField(
+                value = priceText,
+                onValueChange = onPriceTextChange,
+                placeholder = { Text("0.00", style = MaterialTheme.typography.bodyMedium) },
+                prefix = { Text("$", style = MaterialTheme.typography.bodyMedium) },
+                singleLine = true,
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal
+                ),
+                textStyle = MaterialTheme.typography.bodyMedium,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = Color.Transparent
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                shape = RoundedCornerShape(12.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun ConfigActionBtn(
+    enabled: Boolean,
+    isUpdate: Boolean,
+    onActionClick: () -> Unit
+) {
+    Button(
+        onClick = onActionClick,
+        enabled = enabled,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(52.dp),
+        shape = RoundedCornerShape(26.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary
+        ),
+        elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
+    ) {
+        val icon = if (isUpdate) Icons.Default.Save else Icons.Default.Add
+        val labelRes = if (isUpdate) R.string.btn_save_changes else R.string.btn_add_to_list
+        Icon(icon, contentDescription = null, modifier = Modifier.size(22.dp))
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = stringResource(id = labelRes),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
     }
 }

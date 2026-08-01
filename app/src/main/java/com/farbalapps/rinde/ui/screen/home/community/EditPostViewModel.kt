@@ -224,67 +224,18 @@ class EditPostViewModel @Inject constructor(
         val state = _uiState.value
         val postId = state.postId.ifBlank { return }
 
-        // Validación básica
-        if (state.title.isBlank()) {
-            _uiState.update { it.copy(error = "El título es obligatorio") }
-            return
-        }
-        if (state.title.length < 10) {
-            _uiState.update { it.copy(error = "El título debe tener al menos 10 caracteres") }
-            return
-        }
-        if (state.description.isBlank()) {
-            _uiState.update { it.copy(error = "La descripción es obligatoria") }
-            return
-        }
-        val hasPhotos = state.remotePhotoUrls.isNotEmpty() || state.newPhotoUris.isNotEmpty()
-        if (!hasPhotos) {
-            _uiState.update { it.copy(error = "Debes tener al menos 1 imagen") }
-            return
-        }
-
-        if (state.offerType == OfferType.ONLINE) {
-            if (state.websiteName.isBlank()) {
-                _uiState.update { it.copy(error = "La página web es obligatoria para ofertas online") }
-                return
-            }
-            if (state.productLink.isBlank()) {
-                _uiState.update { it.copy(error = "El link del producto es obligatorio") }
-                return
-            }
-            if (state.productLinkError != null) {
-                _uiState.update { it.copy(error = "Corrige los errores antes de guardar") }
-                return
-            }
-        }
-        if (state.offerType == OfferType.PHYSICAL) {
-            if (state.storeName.isBlank()) {
-                _uiState.update { it.copy(error = "El nombre de la tienda es obligatorio") }
-                return
-            }
-            if (state.locationName.isBlank()) {
-                _uiState.update { it.copy(error = "La ubicación es obligatoria para ofertas físicas") }
-                return
-            }
-        }
-        if (state.priceError != null) {
-            _uiState.update { it.copy(error = "El precio con descuento no puede ser mayor al precio normal") }
+        val validationError = validateInput(state)
+        if (validationError != null) {
+            _uiState.update { it.copy(error = validationError) }
             return
         }
 
         val normalPrice = state.normalPriceInput.toDoubleOrNull()
         val discountPrice = state.discountPriceInput.toDoubleOrNull()
+        val priceError = validatePrices(state.normalPriceInput, normalPrice, state.discountPriceInput, discountPrice)
 
-        if (state.normalPriceInput.isNotBlank() && normalPrice == null) {
-            _uiState.update { it.copy(error = "El precio normal no es válido") }
-            return
-        }
-        if (state.discountPriceInput.isNotBlank() && discountPrice == null) {
-            _uiState.update { it.copy(error = "El precio con descuento no es válido") }
-            return
-        }
-        if (normalPrice != null && discountPrice != null && discountPrice > normalPrice) {
-            _uiState.update { it.copy(error = "El precio con descuento no puede superar el precio normal") }
+        if (priceError != null) {
+            _uiState.update { it.copy(error = priceError) }
             return
         }
 
@@ -329,5 +280,36 @@ class EditPostViewModel @Inject constructor(
                 )}
             }
         }
+    }
+
+    private fun validateInput(state: EditPostUiState): String? {
+        if (state.title.isBlank()) return "El título es obligatorio"
+        if (state.title.length < 10) return "El título debe tener al menos 10 caracteres"
+        if (state.description.isBlank()) return "La descripción es obligatoria"
+        
+        val hasPhotos = state.remotePhotoUrls.isNotEmpty() || state.newPhotoUris.isNotEmpty()
+        if (!hasPhotos) return "Debes tener al menos 1 imagen"
+
+        if (state.offerType == OfferType.ONLINE) {
+            if (state.websiteName.isBlank()) return "La página web es obligatoria para ofertas online"
+            if (state.productLink.isBlank()) return "El link del producto es obligatorio"
+            if (state.productLinkError != null) return "Corrige los errores antes de guardar"
+        }
+        if (state.offerType == OfferType.PHYSICAL) {
+            if (state.storeName.isBlank()) return "El nombre de la tienda es obligatorio"
+            if (state.locationName.isBlank()) return "La ubicación es obligatoria para ofertas físicas"
+        }
+        if (state.priceError != null) return "El precio con descuento no puede ser mayor al precio normal"
+        
+        return null
+    }
+
+    private fun validatePrices(normalInput: String, normalDouble: Double?, discountInput: String, discountDouble: Double?): String? {
+        if (normalInput.isNotBlank() && normalDouble == null) return "El precio normal no es válido"
+        if (discountInput.isNotBlank() && discountDouble == null) return "El precio con descuento no es válido"
+        if (normalDouble != null && discountDouble != null && discountDouble > normalDouble) {
+            return "El precio con descuento no puede superar el precio normal"
+        }
+        return null
     }
 }

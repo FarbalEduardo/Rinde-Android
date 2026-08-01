@@ -27,4 +27,7 @@ sealed interface HomeRoute {
 
     @Serializable
     data class EditPost(val postId: String) : HomeRoute
+
+    @Serializable
+    data class GoalDetail(val goalId: String) : HomeRoute
 }

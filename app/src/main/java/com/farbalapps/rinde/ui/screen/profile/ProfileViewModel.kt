@@ -68,17 +68,25 @@ class ProfileViewModel @Inject constructor(
         
         _uiState.update { it.copy(isCurrentUser = isMe, isLoading = true, error = null) }
 
-        // Sincronizar votos si es mi propio perfil para asegurar que el caché esté fresco
         if (isMe) {
-            viewModelScope.launch {
-                feedRepository.syncUserVotes(finalUid)
-                feedRepository.syncUserSavedPosts(finalUid)
-            }
+            syncCurrentUser(finalUid)
         }
 
-        // 1. Single Source of Truth: Observamos Room (Capa de Dominio)
+        observeLocalProfile(finalUid)
+        syncRemoteProfile(finalUid)
+        observeProfilePosts(finalUid)
+    }
+
+    private fun syncCurrentUser(uid: String) {
         viewModelScope.launch {
-            getProfileUseCase(finalUid)
+            feedRepository.syncUserVotes(uid)
+            feedRepository.syncUserSavedPosts(uid)
+        }
+    }
+
+    private fun observeLocalProfile(uid: String) {
+        viewModelScope.launch {
+            getProfileUseCase(uid)
                 .catch { e ->
                     _uiState.update { it.copy(error = "Error local: ${e.message}", isLoading = false) }
                 }
@@ -86,20 +94,19 @@ class ProfileViewModel @Inject constructor(
                     _uiState.update { state ->
                         state.copy(
                             profile = profile, 
-                            // Si es dummy y no hay error, seguimos esperando al sync remoto
                             isLoading = profile.isDummy && state.error == null
                         ) 
                     }
                 }
         }
+    }
 
-        // 2. Fetch remoto: Traemos de Firebase y actualizamos Room (SSOT)
+    private fun syncRemoteProfile(uid: String) {
         viewModelScope.launch {
             try {
-                syncProfileUseCase(finalUid)
+                syncProfileUseCase(uid)
             } catch (e: Exception) {
-                android.util.Log.e("ProfileViewModel", "Sync failed for $finalUid", e)
-                // Obligamos a apagar loading si hay error de red y no tenemos datos reales
+                android.util.Log.e("ProfileViewModel", "Sync failed for $uid", e)
                 val currentProfile = _uiState.value.profile
                 if (currentProfile == null || currentProfile.isDummy) {
                     _uiState.update { it.copy(
@@ -109,30 +116,34 @@ class ProfileViewModel @Inject constructor(
                 }
             }
         }
+    }
 
-        // 3. Obtener posts y calcular rating comunitario
+    private fun observeProfilePosts(uid: String) {
         viewModelScope.launch {
-            getProfilePostsUseCase(finalUid)
+            getProfilePostsUseCase(uid)
                 .catch { e ->
                     android.util.Log.e("ProfileViewModel", "Error fetching posts", e)
                 }
                 .collect { posts ->
-                    val eligiblePosts = posts.filter { 
-                        (it.truthCount + it.falseCount) >= com.farbalapps.rinde.domain.model.VerdictCalculator.MIN_VOTES_THRESHOLD 
-                    }
-                    val (rating, count) = if (eligiblePosts.isNotEmpty()) {
-                        val avgRatio = eligiblePosts.map { 
-                            it.truthCount.toFloat() / (it.truthCount + it.falseCount) 
-                        }.average().toFloat()
-                        val stars = (1f + avgRatio * 4f).coerceIn(1f, 5f)
-                        stars to eligiblePosts.size
-                    } else {
-                        null to 0
-                    }
+                    val (rating, count) = calculateCommunityRating(posts)
                     _uiState.update { it.copy(posts = posts, computedRating = rating, ratedPostsCount = count) }
                 }
         }
+    }
 
+    private fun calculateCommunityRating(posts: List<CommunityPost>): Pair<Float?, Int> {
+        val eligiblePosts = posts.filter { 
+            (it.truthCount + it.falseCount) >= com.farbalapps.rinde.domain.model.VerdictCalculator.MIN_VOTES_THRESHOLD 
+        }
+        return if (eligiblePosts.isNotEmpty()) {
+            val avgRatio = eligiblePosts.map { 
+                it.truthCount.toFloat() / (it.truthCount + it.falseCount) 
+            }.average().toFloat()
+            val stars = (1f + avgRatio * 4f).coerceIn(1f, 5f)
+            stars to eligiblePosts.size
+        } else {
+            null to 0
+        }
     }
 
     fun retry() {

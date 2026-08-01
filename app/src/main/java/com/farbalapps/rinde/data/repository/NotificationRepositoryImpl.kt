@@ -63,34 +63,7 @@ class NotificationRepositoryImpl @Inject constructor(
                     return@addSnapshotListener
                 }
                 val list = snapshot?.documents?.mapNotNull { doc ->
-                    try {
-                        val id = doc.id
-                        val typeStr = doc.getString("type") ?: NotificationType.NEW_COMMENT.name
-                        val type = try {
-                            NotificationType.valueOf(typeStr)
-                        } catch (e: Exception) {
-                            NotificationType.NEW_COMMENT
-                        }
-                        val postId = doc.getString("postId") ?: ""
-                        val postTitle = doc.getString("postTitle") ?: ""
-                        val actorName = doc.getString("actorName")
-                        val actorPhotoUrl = doc.getString("actorPhotoUrl")
-                        val timestamp = doc.getLong("timestamp") ?: System.currentTimeMillis()
-                        val isRead = doc.getBoolean("isRead") ?: false
-
-                        AppNotification(
-                            id = id,
-                            type = type,
-                            postId = postId,
-                            postTitle = postTitle,
-                            actorName = actorName,
-                            actorPhotoUrl = actorPhotoUrl,
-                            timestamp = timestamp,
-                            isRead = isRead
-                        )
-                    } catch (e: Exception) {
-                        null
-                    }
+                    parseNotificationDocument(doc)
                 } ?: emptyList()
 
                 trySend(list)
@@ -98,6 +71,37 @@ class NotificationRepositoryImpl @Inject constructor(
 
         awaitClose {
             listenerRegistration.remove()
+        }
+    }
+
+    private fun parseNotificationDocument(doc: com.google.firebase.firestore.DocumentSnapshot): AppNotification? {
+        return try {
+            val id = doc.id
+            val typeStr = doc.getString("type") ?: NotificationType.NEW_COMMENT.name
+            val type = try {
+                NotificationType.valueOf(typeStr)
+            } catch (e: Exception) {
+                NotificationType.NEW_COMMENT
+            }
+            val postId = doc.getString("postId") ?: ""
+            val postTitle = doc.getString("postTitle") ?: ""
+            val actorName = doc.getString("actorName")
+            val actorPhotoUrl = doc.getString("actorPhotoUrl")
+            val timestamp = doc.getLong("timestamp") ?: System.currentTimeMillis()
+            val isRead = doc.getBoolean("isRead") ?: false
+
+            AppNotification(
+                id = id,
+                type = type,
+                postId = postId,
+                postTitle = postTitle,
+                actorName = actorName,
+                actorPhotoUrl = actorPhotoUrl,
+                timestamp = timestamp,
+                isRead = isRead
+            )
+        } catch (e: Exception) {
+            null
         }
     }
 

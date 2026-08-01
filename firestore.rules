@@ -73,6 +73,16 @@ service cloud.firestore {
       match /voted_posts/{postId} {
         allow read, write: if isAuthenticated() && isOwner(userId);
       }
+
+      // Subcollección: savings_goals — metas de ahorro
+      match /savings_goals/{goalId} {
+        allow read, write: if isAuthenticated() && isOwner(userId);
+        
+        // Subcollección de transacciones dentro de las metas
+        match /transactions/{transactionId} {
+          allow read, write: if isAuthenticated() && isOwner(userId);
+        }
+      }
     }
 
     // ─── posts ────────────────────────────────────────────────────────────────

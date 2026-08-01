@@ -40,7 +40,36 @@ class SearchRepositoryImpl @Inject constructor(
 
         emit(SearchResult.Loading)
 
-        // 1. Búsqueda local FTS4 / LIKE en Room
+        val localList = searchLocalDatabase(cleanQuery)
+        val domainPosts = filterByCategory(localList.map { it.toDomainModel() }, categoryFilter)
+
+        emit(SearchResult.Success(domainPosts))
+
+        val shouldFetchRemote = domainPosts.size < LOCAL_RESULT_THRESHOLD && shouldFetchFromFirestore(cleanQuery)
+        if (!shouldFetchRemote) {
+            return@flow
+        }
+
+        try {
+            val distinctRemoteDtos = fetchFromFirestore(cleanQuery)
+
+            val remoteDomainPosts = distinctRemoteDtos.mapNotNull { it.toDomain() }
+            if (remoteDomainPosts.isNotEmpty()) {
+                postDao.upsertPosts(remoteDomainPosts.map { it.toEntity() })
+            }
+            saveSearchTtl(cleanQuery)
+
+            val updatedLocalList = searchLocalDatabase(cleanQuery)
+            val updatedDomain = filterByCategory(updatedLocalList.map { it.toDomainModel() }, categoryFilter)
+
+            emit(SearchResult.Success(updatedDomain))
+
+        } catch (e: Exception) {
+            android.util.Log.e("SearchRepositoryImpl", "Error querying remote Firestore: ${e.message}")
+        }
+    }
+
+    private suspend fun searchLocalDatabase(cleanQuery: String): List<com.farbalapps.rinde.data.local.entity.CommunityPostEntity> {
         val ftsFormattedQuery = "${cleanQuery.replace("\"", "").replace("'", "")}*"
         var localList = try {
             postDao.searchPostsFts(ftsFormattedQuery, 50)
@@ -48,7 +77,6 @@ class SearchRepositoryImpl @Inject constructor(
             emptyList()
         }
 
-        // Fallback a LIKE si FTS4 no devolvió nada o tuvo un syntax error
         if (localList.isEmpty()) {
             try {
                 localList = postDao.searchPostsLike(cleanQuery, 50)
@@ -56,117 +84,64 @@ class SearchRepositoryImpl @Inject constructor(
                 // Ignore fallback error
             }
         }
+        return localList
+    }
 
-        var domainPosts = localList.map { it.toDomainModel() }
-        if (categoryFilter.isNotBlank()) {
-            domainPosts = domainPosts.filter { post ->
-                val matchesCategory = post.category.equals(categoryFilter, ignoreCase = true)
-                val matchesOfferType = when (categoryFilter.uppercase()) {
-                    "ONLINE", "EN LÍNEA", "EN LINEA" -> post.offerType == OfferType.ONLINE
-                    "PHYSICAL", "FÍSICO", "FISICO", "FÍSICA", "FISICA" -> post.offerType == OfferType.PHYSICAL
-                    else -> false
-                }
-                matchesCategory || matchesOfferType
+    private fun filterByCategory(posts: List<com.farbalapps.rinde.domain.model.CommunityPost>, categoryFilter: String): List<com.farbalapps.rinde.domain.model.CommunityPost> {
+        if (categoryFilter.isBlank()) return posts
+        
+        return posts.filter { post ->
+            val matchesCategory = post.category.equals(categoryFilter, ignoreCase = true)
+            val matchesOfferType = when (categoryFilter.uppercase()) {
+                "ONLINE", "EN LÍNEA", "EN LINEA" -> post.offerType == OfferType.ONLINE
+                "PHYSICAL", "FÍSICO", "FISICO", "FÍSICA", "FISICA" -> post.offerType == OfferType.PHYSICAL
+                else -> false
             }
+            matchesCategory || matchesOfferType
         }
+    }
 
-        // Emitir primera versión de resultados (Locales)
-        emit(SearchResult.Success(domainPosts))
+    private suspend fun fetchFromFirestore(cleanQuery: String): List<CommunityPostDto> {
+        val remoteDtos = mutableListOf<CommunityPostDto>()
+        
+        val byCategory = firestore.collection("posts")
+            .whereEqualTo("isActive", true)
+            .whereEqualTo("category", cleanQuery)
+            .orderBy("timestamp", Query.Direction.DESCENDING)
+            .limit(FIRESTORE_LIMIT)
+            .get()
+            .await()
+        remoteDtos.addAll(byCategory.documents.mapNotNull { doc -> doc.toObject(CommunityPostDto::class.java)?.copy(id = doc.id) })
 
-        // 2. Evaluar si es necesario consultar a Firestore
-        val shouldFetchRemote = domainPosts.size < LOCAL_RESULT_THRESHOLD && shouldFetchFromFirestore(cleanQuery)
-        if (!shouldFetchRemote) {
-            return@flow
-        }
+        val capitalizedQuery = cleanQuery.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
 
-        // 3. Consulta Firestore acotada
-        try {
-            val remoteDtos = mutableListOf<CommunityPostDto>()
-
-            // Query por categoría si el query coincide
-            val byCategory = firestore.collection("posts")
+        if (remoteDtos.size < LOCAL_RESULT_THRESHOLD) {
+            val byStore = firestore.collection("posts")
                 .whereEqualTo("isActive", true)
-                .whereEqualTo("category", cleanQuery)
+                .orderBy("storeName")
+                .whereGreaterThanOrEqualTo("storeName", capitalizedQuery)
+                .whereLessThanOrEqualTo("storeName", capitalizedQuery + "\uf8ff")
                 .orderBy("timestamp", Query.Direction.DESCENDING)
                 .limit(FIRESTORE_LIMIT)
                 .get()
                 .await()
-
-            remoteDtos.addAll(byCategory.documents.mapNotNull { doc ->
-                doc.toObject(CommunityPostDto::class.java)?.copy(id = doc.id)
-            })
-
-            val capitalizedQuery = cleanQuery.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
-
-            // Query por tienda (prefijo) si no hay suficientes
-            if (remoteDtos.size < LOCAL_RESULT_THRESHOLD) {
-                val byStore = firestore.collection("posts")
-                    .whereEqualTo("isActive", true)
-                    .orderBy("storeName")
-                    .whereGreaterThanOrEqualTo("storeName", capitalizedQuery)
-                    .whereLessThanOrEqualTo("storeName", capitalizedQuery + "\uf8ff")
-                    .orderBy("timestamp", Query.Direction.DESCENDING)
-                    .limit(FIRESTORE_LIMIT)
-                    .get()
-                    .await()
-
-                remoteDtos.addAll(byStore.documents.mapNotNull { doc ->
-                    doc.toObject(CommunityPostDto::class.java)?.copy(id = doc.id)
-                })
-            }
-
-            // Query por título (prefijo) si no hay suficientes
-            if (remoteDtos.size < LOCAL_RESULT_THRESHOLD) {
-                val byTitle = firestore.collection("posts")
-                    .whereEqualTo("isActive", true)
-                    .orderBy("title")
-                    .whereGreaterThanOrEqualTo("title", capitalizedQuery)
-                    .whereLessThanOrEqualTo("title", capitalizedQuery + "\uf8ff")
-                    .orderBy("timestamp", Query.Direction.DESCENDING)
-                    .limit(FIRESTORE_LIMIT)
-                    .get()
-                    .await()
-
-                remoteDtos.addAll(byTitle.documents.mapNotNull { doc ->
-                    doc.toObject(CommunityPostDto::class.java)?.copy(id = doc.id)
-                })
-            }
-
-            // Eliminar duplicados si los hubiera
-            val distinctRemoteDtos = remoteDtos.distinctBy { it.id }
-
-            // 4. Guardar resultados remotos en Room y registrar TTL
-            val remoteDomainPosts = distinctRemoteDtos.mapNotNull { it.toDomain() }
-            if (remoteDomainPosts.isNotEmpty()) {
-                postDao.upsertPosts(remoteDomainPosts.map { it.toEntity() })
-            }
-            saveSearchTtl(cleanQuery)
-
-            // 5. Volver a consultar Room para emitir la lista unificada
-            var updatedLocalList = emptyList<com.farbalapps.rinde.data.local.entity.CommunityPostEntity>()
-            try {
-                updatedLocalList = postDao.searchPostsLike(cleanQuery, 50)
-            } catch (_: Exception) {}
-
-            var updatedDomain = updatedLocalList.map { it.toDomainModel() }
-            if (categoryFilter.isNotBlank()) {
-                updatedDomain = updatedDomain.filter { post ->
-                    val matchesCategory = post.category.equals(categoryFilter, ignoreCase = true)
-                    val matchesOfferType = when (categoryFilter.uppercase()) {
-                        "ONLINE", "EN LÍNEA", "EN LINEA" -> post.offerType == OfferType.ONLINE
-                        "PHYSICAL", "FÍSICO", "FISICO", "FÍSICA", "FISICA" -> post.offerType == OfferType.PHYSICAL
-                        else -> false
-                    }
-                    matchesCategory || matchesOfferType
-                }
-            }
-
-            emit(SearchResult.Success(updatedDomain))
-
-        } catch (e: Exception) {
-            // Si Firestore falla (offline o error cuota), conservamos lo local sin romper UI
-            android.util.Log.e("SearchRepositoryImpl", "Error querying remote Firestore: ${e.message}")
+            remoteDtos.addAll(byStore.documents.mapNotNull { doc -> doc.toObject(CommunityPostDto::class.java)?.copy(id = doc.id) })
         }
+
+        if (remoteDtos.size < LOCAL_RESULT_THRESHOLD) {
+            val byTitle = firestore.collection("posts")
+                .whereEqualTo("isActive", true)
+                .orderBy("title")
+                .whereGreaterThanOrEqualTo("title", capitalizedQuery)
+                .whereLessThanOrEqualTo("title", capitalizedQuery + "\uf8ff")
+                .orderBy("timestamp", Query.Direction.DESCENDING)
+                .limit(FIRESTORE_LIMIT)
+                .get()
+                .await()
+            remoteDtos.addAll(byTitle.documents.mapNotNull { doc -> doc.toObject(CommunityPostDto::class.java)?.copy(id = doc.id) })
+        }
+
+        return remoteDtos.distinctBy { it.id }
     }
 
     private suspend fun shouldFetchFromFirestore(query: String): Boolean {

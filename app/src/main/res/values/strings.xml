@@ -4,7 +4,7 @@
     
     <!-- Welcome Screen (Default Spanish) -->
     <string name="welcome_title">¡Bienvenido de nuevo!</string>
-    <string name="welcome_subtitle">Ingresa tus datos personales para acceder a tu cuenta</string>
+    <string name="welcome_subtitle">Ingresa tus datos para acceder a tu cuenta</string>
     <string name="btn_sign_in">Iniciar sesión</string>
     <string name="btn_sign_up">Registrarse</string>
     

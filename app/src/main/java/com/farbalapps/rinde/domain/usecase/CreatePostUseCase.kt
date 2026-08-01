@@ -54,7 +54,51 @@ class CreatePostUseCase @Inject constructor(
 
         // 3. Orchestration
         val user = authRepository.getCurrentUser()
-        val post = CommunityPost(
+        val post = buildCommunityPost(
+            user = user,
+            title = title,
+            description = description,
+            category = category,
+            locationName = locationName,
+            offerType = offerType,
+            websiteName = websiteName,
+            productLink = productLink,
+            storeName = storeName,
+            normalPrice = normalPrice,
+            discountPrice = discountPrice,
+            currency = currency,
+            couponCode = couponCode,
+            discountPercentage = discountPercentage,
+            isAvailable = isAvailable,
+            condition = condition,
+            latitude = latitude,
+            longitude = longitude
+        )
+
+        return feedRepository.uploadPost(post, photoUris.map { it.toString() })
+    }
+
+    private fun buildCommunityPost(
+        user: com.farbalapps.rinde.domain.model.User?,
+        title: String,
+        description: String,
+        category: String,
+        locationName: String,
+        offerType: com.farbalapps.rinde.domain.model.OfferType,
+        websiteName: String?,
+        productLink: String?,
+        storeName: String?,
+        normalPrice: Double?,
+        discountPrice: Double?,
+        currency: String,
+        couponCode: String?,
+        discountPercentage: Int?,
+        isAvailable: Boolean,
+        condition: String,
+        latitude: Double?,
+        longitude: Double?
+    ): CommunityPost {
+        return CommunityPost(
             id = "", // Generado por el repositorio o Firestore
             authorId = user?.id ?: "anonymous",
             authorName = user?.displayName?.takeIf { it.isNotBlank() } ?: "Usuario",
@@ -90,8 +134,6 @@ class CreatePostUseCase @Inject constructor(
             isAvailable = isAvailable,
             condition = condition
         )
-
-        return feedRepository.uploadPost(post, photoUris.map { it.toString() })
     }
 
 }

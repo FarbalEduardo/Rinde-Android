@@ -148,48 +148,60 @@ class ListViewModel @Inject constructor(
                 }
                 .collect { items ->
                     _uiState.update { currentState ->
-                        val groupFiltered = if (currentState.selectedFilterGroup == "All") {
-                            items
-                        } else {
-                            items.filter { it.listGroup == currentState.selectedFilterGroup }
-                        }
-                        
-                        val searchFiltered = if (currentState.searchQuery.isBlank()) {
-                            groupFiltered
-                        } else {
-                            groupFiltered.filter { 
-                                it.name.contains(currentState.searchQuery, ignoreCase = true) ||
-                                it.category.contains(currentState.searchQuery, ignoreCase = true)
-                            }
-                        }
-                        
-                        val active = searchFiltered.filter { !it.isCompleted }
-                        val completed = searchFiltered.filter { it.isCompleted }
-
-                        // Compute totals & budget progress
-                        val activePriced = active.filter { it.price != null }
-                        val completedPriced = completed.filter { it.price != null }
-
-                        val actTotal = if (activePriced.isNotEmpty()) activePriced.sumOf { (it.price ?: 0.0) * it.quantity } else null
-                        val compTotal = if (completedPriced.isNotEmpty()) completedPriced.sumOf { (it.price ?: 0.0) * it.quantity } else null
-
-                        val totalItemsCount = active.size + completed.size
-                        val progress = if (totalItemsCount > 0) completed.size.toFloat() / totalItemsCount.toFloat() else 0f
-                        val currency = items.firstOrNull { it.price != null }?.currency ?: "MXN"
+                        val filteredItems = filterItems(items, currentState.selectedFilterGroup, currentState.searchQuery)
+                        val active = filteredItems.filter { !it.isCompleted }
+                        val completed = filteredItems.filter { it.isCompleted }
+                        val totals = calculateTotals(active, completed, items)
 
                         currentState.copy(
                             activeItems = active,
                             completedItems = completed,
-                            activeTotal = actTotal,
-                            completedTotal = compTotal,
-                            budgetCurrency = currency,
-                            budgetProgress = progress,
+                            activeTotal = totals.activeTotal,
+                            completedTotal = totals.completedTotal,
+                            budgetCurrency = totals.currency,
+                            budgetProgress = totals.progress,
                             isLoading = false,
                             errorMessage = null
                         )
                     }
                 }
         }
+    }
+
+    private fun filterItems(items: List<DomainShoppingItem>, group: String, query: String): List<DomainShoppingItem> {
+        val groupFiltered = if (group == "All") items else items.filter { it.listGroup == group }
+        return if (query.isBlank()) {
+            groupFiltered
+        } else {
+            groupFiltered.filter { 
+                it.name.contains(query, ignoreCase = true) || it.category.contains(query, ignoreCase = true)
+            }
+        }
+    }
+
+    private data class BudgetTotals(
+        val activeTotal: Double?,
+        val completedTotal: Double?,
+        val currency: String,
+        val progress: Float
+    )
+
+    private fun calculateTotals(
+        active: List<DomainShoppingItem>, 
+        completed: List<DomainShoppingItem>, 
+        allItems: List<DomainShoppingItem>
+    ): BudgetTotals {
+        val activePriced = active.filter { it.price != null }
+        val completedPriced = completed.filter { it.price != null }
+
+        val actTotal = if (activePriced.isNotEmpty()) activePriced.sumOf { (it.price ?: 0.0) * it.quantity } else null
+        val compTotal = if (completedPriced.isNotEmpty()) completedPriced.sumOf { (it.price ?: 0.0) * it.quantity } else null
+
+        val totalItemsCount = active.size + completed.size
+        val progress = if (totalItemsCount > 0) completed.size.toFloat() / totalItemsCount.toFloat() else 0f
+        val currency = allItems.firstOrNull { it.price != null }?.currency ?: "MXN"
+
+        return BudgetTotals(actTotal, compTotal, currency, progress)
     }
 
     fun onSearchQueryChanged(query: String) {

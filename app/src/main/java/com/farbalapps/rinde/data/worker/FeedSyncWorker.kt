@@ -57,31 +57,7 @@ class FeedSyncWorker @AssistedInject constructor(
             val newCount = countQuery.count().get(AggregateSource.SERVER).await().count.toInt()
 
             if (newCount > 0) {
-                // Descargar los 20 más recientes
-                val snapshot = firestore.collection("posts")
-                    .whereEqualTo("isActive", true)
-                    .whereGreaterThan("timestamp", Date(sinceTimestamp))
-                    .orderBy("timestamp", Query.Direction.DESCENDING)
-                    .limit(20)
-                    .get()
-                    .await()
-
-                val posts = snapshot.documents.mapNotNull { doc ->
-                    doc.toObject(CommunityPostDto::class.java)?.copy(id = doc.id)?.toDomain()
-                }
-
-                if (posts.isNotEmpty()) {
-                    postDao.upsertPosts(posts.map { it.toEntity() })
-                }
-
-                // Guardar metadatos actualizados
-                val newMeta = (meta ?: SyncMetadataEntity(key = "feed_global")).copy(
-                    lastSyncTimestamp = now
-                )
-                syncMetadataDao.upsert(newMeta)
-
-                // Lanzar notificación local
-                NotificationHelper.showNewPostsNotification(context, newCount)
+                fetchAndSaveNewPosts(sinceTimestamp, now, newCount, meta)
             }
 
             Result.success()
@@ -89,5 +65,32 @@ class FeedSyncWorker @AssistedInject constructor(
             android.util.Log.e("FeedSyncWorker", "Error al sincronizar feed en background: ${e.message}", e)
             Result.success() // Retornamos success para evitar reintentos continuos si hay fallos de red
         }
+    }
+
+    private suspend fun fetchAndSaveNewPosts(sinceTimestamp: Long, now: Long, newCount: Int, meta: SyncMetadataEntity?) {
+        val snapshot = firestore.collection("posts")
+            .whereEqualTo("isActive", true)
+            .whereGreaterThan("timestamp", Date(sinceTimestamp))
+            .orderBy("timestamp", Query.Direction.DESCENDING)
+            .limit(20)
+            .get()
+            .await()
+
+        val posts = snapshot.documents.mapNotNull { doc ->
+            doc.toObject(CommunityPostDto::class.java)?.copy(id = doc.id)?.toDomain()
+        }
+
+        if (posts.isNotEmpty()) {
+            postDao.upsertPosts(posts.map { it.toEntity() })
+        }
+
+        // Guardar metadatos actualizados
+        val newMeta = (meta ?: SyncMetadataEntity(key = "feed_global")).copy(
+            lastSyncTimestamp = now
+        )
+        syncMetadataDao.upsert(newMeta)
+
+        // Lanzar notificación local
+        NotificationHelper.showNewPostsNotification(context, newCount)
     }
 }

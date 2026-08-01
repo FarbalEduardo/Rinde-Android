@@ -21,6 +21,7 @@ data class SavingsGoal(
     val title: String,
     val targetAmount: Double,
     val currentAmount: Double,
+    val targetDate: Long?, // Nueva fecha límite de la meta
     val iconKey: String,
     val colorKey: String,
     val isCompleted: Boolean,

@@ -115,25 +115,7 @@ fun ShoppingListItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // LADO IZQUIERDO: Imagen/Emoji del producto
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                modifier = Modifier
-                    .size(72.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    if (item.emoji.isNotEmpty()) {
-                        Text(item.emoji, fontSize = 40.sp)
-                    } else {
-                        Icon(
-                            imageVector = uiCategory.icon,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(36.dp)
-                        )
-                    }
-                }
-            }
+            ShoppingItemImage(emoji = item.emoji, uiCategory = uiCategory)
 
             Spacer(modifier = Modifier.width(16.dp))
 
@@ -142,213 +124,28 @@ fun ShoppingListItem(
                 modifier = Modifier.weight(1f)
             ) {
                 // FILA SUPERIOR: Título, Categoría y Botones (X, Check)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Top
-                ) {
-                    // Título y Categoría
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = item.name,
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = FontWeight.Bold,
-                                textDecoration = if (item.isCompleted) TextDecoration.LineThrough else TextDecoration.None
-                            ),
-                            color = if (item.isCompleted) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                            else MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        
-                        Spacer(modifier = Modifier.height(2.dp))
-                        
-                        val categoryText = if (uiCategory == com.farbalapps.rinde.ui.screen.home.list.ProductCategory.OTHERS) {
-                            item.category
-                        } else {
-                            stringResource(id = uiCategory.displayNameRes)
-                        }
-                        Text(
-                            text = categoryText,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-
-                    // Acciones superiores (Tachita y Checkbox)
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        if (!isSelectionMode) {
-                            IconButton(
-                                onClick = onDelete,
-                                modifier = Modifier.size(32.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Delete,
-                                    contentDescription = "Quitar producto",
-                                    tint = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                        }
-                        Spacer(modifier = Modifier.width(4.dp))
-                        
-                        if (isSelectionMode) {
-                            Checkbox(
-                                checked = isSelected,
-                                onCheckedChange = { onSelectionToggle() },
-                                modifier = Modifier.size(32.dp)
-                            )
-                        } else {
-                            Checkbox(
-                                checked = item.isCompleted,
-                                onCheckedChange = onCheckedChange,
-                                modifier = Modifier.size(32.dp)
-                            )
-                        }
-                    }
-                }
+                ShoppingItemTopRow(
+                    item = item,
+                    uiCategory = uiCategory,
+                    isSelectionMode = isSelectionMode,
+                    isSelected = isSelected,
+                    onDelete = onDelete,
+                    onSelectionToggle = onSelectionToggle,
+                    onCheckedChange = onCheckedChange
+                )
 
                 Spacer(modifier = Modifier.height(12.dp))
 
                 // FILA INFERIOR: Precio, Botón Editar, Botón Precio, y Cápsula de Cantidad
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // SECCIÓN IZQUIERDA: Precio e Íconos
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.weight(1f, fill = false)
-                    ) {
-                        // Si hay precio, mostrar el texto. Si no, mostrar el ícono de agregar precio.
-                        if (item.price != null && item.price > 0.0) {
-                            Text(
-                                text = String.format(Locale.getDefault(), "$%.2f", item.price * item.quantity),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier
-                                    .clickable { showQuickPriceDialog = true }
-                                    .weight(1f, fill = false)
-                            )
-                        } else if (!isSelectionMode) {
-                            // Icono de Agregar Precio
-                            IconButton(
-                                onClick = { showQuickPriceDialog = true },
-                                modifier = Modifier.size(36.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.RequestQuote,
-                                    contentDescription = "Agregar Precio",
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(22.dp)
-                                )
-                            }
-                        }
-
-                        if (!isSelectionMode) {
-                            // Icono de Editar Producto
-                            IconButton(
-                                onClick = onEdit,
-                                modifier = Modifier.size(36.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Edit,
-                                    contentDescription = "Editar Producto",
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(22.dp)
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    // SECCIÓN DERECHA: Cápsula de Cantidad (+ / -)
-                    if (!isSelectionMode) {
-                        Surface(
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(4.dp)
-                            ) {
-                                // Botón (-) Menos
-                                Surface(
-                                    shape = CircleShape,
-                                    color = MaterialTheme.colorScheme.surface,
-                                    onClick = onDecrement,
-                                    modifier = Modifier.size(28.dp),
-                                    shadowElevation = 1.dp
-                                ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Icon(
-                                            Icons.Default.Remove,
-                                            contentDescription = "Disminuir",
-                                            modifier = Modifier.size(16.dp),
-                                            tint = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
-                                }
-
-                                // Texto de Cantidad y Unidad
-                                val quantityText = if (item.quantity % 1.0 == 0.0) item.quantity.toInt().toString() else item.quantity.toString()
-                                val shortUnit = when (item.unit.lowercase(Locale.getDefault())) {
-                                    "piezas", "pieza" -> "pza"
-                                    "kilogramos", "kilogramo", "kilos", "kilo" -> "kg"
-                                    "gramos", "gramo" -> "g"
-                                    "litros", "litro" -> "L"
-                                    "mililitros", "mililitro" -> "ml"
-                                    "paquetes", "paquete" -> "paq"
-                                    "cajas", "caja" -> "cj"
-                                    "botellas", "botella" -> "bot"
-                                    "latas", "lata" -> "lat"
-                                    else -> item.unit
-                                }
-                                Text(
-                                    text = "$quantityText $shortUnit",
-                                    style = MaterialTheme.typography.labelLarge,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier
-                                        .clickable { showQuantityDialog = true }
-                                        .padding(horizontal = 12.dp)
-                                        .widthIn(max = 100.dp)
-                                )
-
-                                // Botón (+) Más
-                                Surface(
-                                    shape = CircleShape,
-                                    color = MaterialTheme.colorScheme.surface,
-                                    onClick = onIncrement,
-                                    modifier = Modifier.size(28.dp),
-                                    shadowElevation = 1.dp
-                                ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Icon(
-                                            Icons.Default.Add,
-                                            contentDescription = "Aumentar",
-                                            modifier = Modifier.size(16.dp),
-                                            tint = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                ShoppingItemBottomRow(
+                    item = item,
+                    isSelectionMode = isSelectionMode,
+                    onEdit = onEdit,
+                    onIncrement = onIncrement,
+                    onDecrement = onDecrement,
+                    onShowQuickPriceDialog = { showQuickPriceDialog = true },
+                    onShowQuantityDialog = { showQuantityDialog = true }
+                )
             }
         }
     }
@@ -376,6 +173,253 @@ fun ShoppingListItem(
                 showQuantityDialog = false
             }
         )
+    }
+}
+
+@Composable
+private fun ShoppingItemImage(
+    emoji: String,
+    uiCategory: com.farbalapps.rinde.ui.screen.home.list.ProductCategory
+) {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+        modifier = Modifier.size(72.dp)
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            if (emoji.isNotEmpty()) {
+                Text(emoji, fontSize = 40.sp)
+            } else {
+                Icon(
+                    imageVector = uiCategory.icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(36.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ShoppingItemTopRow(
+    item: DomainShoppingItem,
+    uiCategory: com.farbalapps.rinde.ui.screen.home.list.ProductCategory,
+    isSelectionMode: Boolean,
+    isSelected: Boolean,
+    onDelete: () -> Unit,
+    onSelectionToggle: () -> Unit,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.Top
+    ) {
+        // Título y Categoría
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = item.name,
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    textDecoration = if (item.isCompleted) TextDecoration.LineThrough else TextDecoration.None
+                ),
+                color = if (item.isCompleted) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                else MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            
+            Spacer(modifier = Modifier.height(2.dp))
+            
+            val categoryText = if (uiCategory == com.farbalapps.rinde.ui.screen.home.list.ProductCategory.OTHERS) {
+                item.category
+            } else {
+                stringResource(id = uiCategory.displayNameRes)
+            }
+            Text(
+                text = categoryText,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+
+        // Acciones superiores (Tachita y Checkbox)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.End
+        ) {
+            if (!isSelectionMode) {
+                IconButton(
+                    onClick = onDelete,
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Delete,
+                        contentDescription = "Quitar producto",
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.width(4.dp))
+            
+            if (isSelectionMode) {
+                Checkbox(
+                    checked = isSelected,
+                    onCheckedChange = { onSelectionToggle() },
+                    modifier = Modifier.size(32.dp)
+                )
+            } else {
+                Checkbox(
+                    checked = item.isCompleted,
+                    onCheckedChange = onCheckedChange,
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ShoppingItemBottomRow(
+    item: DomainShoppingItem,
+    isSelectionMode: Boolean,
+    onEdit: () -> Unit,
+    onIncrement: () -> Unit,
+    onDecrement: () -> Unit,
+    onShowQuickPriceDialog: () -> Unit,
+    onShowQuantityDialog: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // SECCIÓN IZQUIERDA: Precio e Íconos
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.weight(1f, fill = false)
+        ) {
+            if (item.price != null && item.price > 0.0) {
+                Text(
+                    text = String.format(Locale.getDefault(), "$%.2f", item.price * item.quantity),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .clickable { onShowQuickPriceDialog() }
+                        .weight(1f, fill = false)
+                )
+            } else if (!isSelectionMode) {
+                IconButton(
+                    onClick = onShowQuickPriceDialog,
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.RequestQuote,
+                        contentDescription = "Agregar Precio",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            }
+
+            if (!isSelectionMode) {
+                IconButton(
+                    onClick = onEdit,
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Edit,
+                        contentDescription = "Editar Producto",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        // SECCIÓN DERECHA: Cápsula de Cantidad (+ / -)
+        if (!isSelectionMode) {
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(4.dp)
+                ) {
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.surface,
+                        onClick = onDecrement,
+                        modifier = Modifier.size(28.dp),
+                        shadowElevation = 1.dp
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                Icons.Default.Remove,
+                                contentDescription = "Disminuir",
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+
+                    val quantityText = if (item.quantity % 1.0 == 0.0) item.quantity.toInt().toString() else item.quantity.toString()
+                    val shortUnit = when (item.unit.lowercase(Locale.getDefault())) {
+                        "piezas", "pieza" -> "pza"
+                        "kilogramos", "kilogramo", "kilos", "kilo" -> "kg"
+                        "gramos", "gramo" -> "g"
+                        "litros", "litro" -> "L"
+                        "mililitros", "mililitro" -> "ml"
+                        "paquetes", "paquete" -> "paq"
+                        "cajas", "caja" -> "cj"
+                        "botellas", "botella" -> "bot"
+                        "latas", "lata" -> "lat"
+                        else -> item.unit
+                    }
+                    Text(
+                        text = "$quantityText $shortUnit",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .clickable { onShowQuantityDialog() }
+                            .padding(horizontal = 12.dp)
+                            .widthIn(max = 100.dp)
+                    )
+
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.surface,
+                        onClick = onIncrement,
+                        modifier = Modifier.size(28.dp),
+                        shadowElevation = 1.dp
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                Icons.Default.Add,
+                                contentDescription = "Aumentar",
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

@@ -1,0 +1,139 @@
+Created At: 2026-07-28T01:03:51Z
+Completed At: 2026-07-28T01:03:51Z
+File Path: `file:///d:/PROYECTOSANDROID/Rinde/app/src/main/java/com/farbalapps/rinde/ui/screen/home/list/components/ShoppingListItem.kt`
+Total Lines: 289
+Total Bytes: 12958
+Showing lines 135 to 265
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+135:                     }
+136:                 }
+137:             }
+138:         },
+139:         content = {
+140:             Surface(
+141:                 shape = RoundedCornerShape(12.dp),
+142:                 color = containerColor,
+143:                 shadowElevation = elevation,
+144:                 tonalElevation = elevation,
+145:                 modifier = Modifier
+146:                     .fillMaxWidth()
+147:                     .defaultMinSize(minHeight = 56.dp)
+148:                     .combinedClickable(
+149:                         onClick = {
+150:                             if (isSelectionMode) {
+151:                                 onSelectionToggle()
+152:                             }
+153:                         },
+154:                         onLongClick = {
+155:                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+156:                             onLongClick()
+157:                         }
+158:                     )
+159:             ) {
+160:                 ListItem(
+161:                     headlineContent = {
+162:                         Text(
+163:                             text = item.name,
+164:                             style = MaterialTheme.typography.titleMedium.copy(
+165:                                 textDecoration = if (item.isCompleted) TextDecoration.LineThrough else TextDecoration.None,
+166:                                 fontWeight = FontWeight.SemiBold
+167:                             ),
+168:                             color = if (item.isCompleted) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f) 
+169:                                     else MaterialTheme.colorScheme.onSurface,
+170:                             maxLines = 1,
+171:                             overflow = TextOverflow.Ellipsis
+172:                         )
+173:                     },
+174:                     supportingContent = {
+175:                         val categoryText = if (uiCategory == com.farbalapps.rinde.ui.screen.home.list.ProductCategory.OTHERS) {
+176:                             item.category
+177:                         } else {
+178:                             stringResource(id = uiCategory.displayNameRes)
+179:                         }
+180:                         
+181:                         val priceText = item.price?.let {
+182:                             String.format(Locale.getDefault(), " · $%.2f %s", it * item.quantity, item.currency)
+183:                         } ?: ""
+184: 
+185:                         Text(
+186:                             text = "$categoryText$priceText",
+187:                             style = MaterialTheme.typography.labelMedium,
+188:                             color = if (item.isCompleted) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f) 
+189:                                     else if (item.price != null) MaterialTheme.colorScheme.tertiary
+190:                                     else MaterialTheme.colorScheme.primary,
+191:                             fontWeight = FontWeight.Medium
+192:                         )
+193:                     },
+194:                     leadingContent = {
+195:                         Row(verticalAlignment = Alignment.CenterVertically) {
+196:                             androidx.compose.animation.AnimatedVisibility(
+197:                                 visible = isSelectionMode,
+198:                                 enter = scaleIn() + fadeIn(),
+199:                                 exit = scaleOut() + fadeOut()
+200:                             ) {
+201:                                 Checkbox(
+202:                                     checked = isSelected,
+203:                                     onCheckedChange = { onSelectionToggle() },
+204:                                     colors = CheckboxDefaults.colors(
+205:                                         checkedColor = MaterialTheme.colorScheme.primary
+206:                                     )
+207:                                 )
+208:                                 Spacer(modifier = Modifier.width(4.dp))
+209:                             }
+210: 
+211:                             Surface(
+212:                                 shape = RoundedCornerShape(14.dp),
+213:                                 color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
+214:                                 modifier = Modifier.size(56.dp)
+215:                             ) {
+216:                                 Box(contentAlignment = Alignment.Center) {
+217:                                     if (item.emoji.isNotEmpty()) {
+218:                                         Text(item.emoji, fontSize = 32.sp)
+219:                                     } else {
+220:                                         Icon(
+221:                                             imageVector = uiCategory.icon,
+222:                                             contentDescription = null,
+223:                                             tint = MaterialTheme.colorScheme.primary,
+224:                                             modifier = Modifier.size(32.dp)
+225:                                         )
+226:                                     }
+227:                                 }
+228:                             }
+229:                         }
+230:                     },
+231:                     trailingContent = {
+232:                         Row(verticalAlignment = Alignment.CenterVertically) {
+233:                             val quantityText = if (item.quantity % 1.0 == 0.0) item.quantity.toInt().toString() else item.quantity.toString()
+234:                             Text(
+235:                                 text = "$quantityText ${item.unit}",
+236:                                 style = MaterialTheme.typography.titleMedium,
+237:                                 fontWeight = FontWeight.SemiBold,
+238:                                 color = MaterialTheme.colorScheme.onSurfaceVariant
+239:                             )
+240:                             if (!isSelectionMode) {
+241:                                 IconButton(onClick = onEdit) {
+242:                                     Icon(
+243:                                         imageVector = Icons.Default.Edit,
+244:                                         contentDescription = stringResource(id = R.string.action_edit),
+245:                                         modifier = Modifier.size(18.dp),
+246:                                         tint = MaterialTheme.colorScheme.primary
+247:                                     )
+248:                                 }
+249:                                 Checkbox(
+250:                                     checked = item.isCompleted,
+251:                                     onCheckedChange = onCheckedChange,
+252:                                     colors = CheckboxDefaults.colors(
+253:                                         checkedColor = MaterialTheme.colorScheme.primary
+254:                                     ),
+255:                                     modifier = Modifier.scale(0.85f)
+256:                                 )
+257:                             }
+258:                         }
+259:                     }
+260:                 )
+261:             }
+262:         }
+263:     )
+264: }
+265: 
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

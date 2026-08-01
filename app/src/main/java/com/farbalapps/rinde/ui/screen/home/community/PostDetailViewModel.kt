@@ -295,68 +295,70 @@ class PostDetailViewModel @Inject constructor(
         val post = _uiState.value.post ?: return
         if (_uiState.value.voteState == VoteUiState.SENDING) return
 
-        val currentVote = post.myVoteValue
-        val nextVote = if (currentVote == voteValue) 0 else voteValue
-
+        val nextVote = if (post.myVoteValue == voteValue) 0 else voteValue
         _uiState.update { it.copy(voteState = VoteUiState.SENDING, voteErrorMessage = null) }
 
         viewModelScope.launch {
-            // 2. Enviar voto (el UseCase maneja la persistencia en Room)
             when (val result = toggleVoteUseCase(post.id, voteValue, post.authorId)) {
-                is VoteResult.Success -> {
-                    result.counts?.let { (truth, false_, score) ->
-                        _uiState.update { state ->
-                            state.copy(
-                                post = state.post?.copy(
-                                    truthCount = truth,
-                                    falseCount = false_,
-                                    votesScore = score,
-                                    myVoteValue = nextVote
-                                ),
-                                voteState = VoteUiState.IDLE,
-                                isVotePending = false,
-                                voteErrorMessage = null
-                            )
-                        }
-                    } ?: _uiState.update { state ->
-                        state.copy(
-                            post = state.post?.copy(myVoteValue = nextVote),
-                            voteState = VoteUiState.IDLE
-                        )
-                    }
-                }
-
-                is VoteResult.Offline -> {
-                    _uiState.update {
-                        it.copy(
-                            voteState = VoteUiState.OFFLINE,
-                            isVotePending = true,
-                            voteErrorMessage = "Sin conexión. Tu voto se enviará cuando vuelva internet."
-                        )
-                    }
-                }
-
-                is VoteResult.NetworkError -> {
-                    feedRepository.savePendingVote(currentUserId, post.id, voteValue, post.authorId)
-                    _uiState.update {
-                        it.copy(
-                            voteState = VoteUiState.OFFLINE,
-                            isVotePending = true,
-                            voteErrorMessage = result.message
-                        )
-                    }
-                }
-
-                is VoteResult.ServerError -> {
-                    _uiState.update {
-                        it.copy(
-                            post = post, // Revertir
-                            voteState = VoteUiState.ERROR,
-                            voteErrorMessage = result.message
-                        )
-                    }
-                }
+                is VoteResult.Success -> handleVoteSuccess(result, nextVote)
+                is VoteResult.Offline -> handleVoteOffline()
+                is VoteResult.NetworkError -> handleVoteNetworkError(result, post.id, voteValue, post.authorId)
+                is VoteResult.ServerError -> handleVoteServerError(result, post)
             }
+        }
+    }
+
+    private fun handleVoteSuccess(result: VoteResult.Success, nextVote: Int) {
+        result.counts?.let { (truth, false_, score) ->
+            _uiState.update { state ->
+                state.copy(
+                    post = state.post?.copy(
+                        truthCount = truth,
+                        falseCount = false_,
+                        votesScore = score,
+                        myVoteValue = nextVote
+                    ),
+                    voteState = VoteUiState.IDLE,
+                    isVotePending = false,
+                    voteErrorMessage = null
+                )
+            }
+        } ?: _uiState.update { state ->
+            state.copy(
+                post = state.post?.copy(myVoteValue = nextVote),
+                voteState = VoteUiState.IDLE
+            )
+        }
+    }
+
+    private fun handleVoteOffline() {
+        _uiState.update {
+            it.copy(
+                voteState = VoteUiState.OFFLINE,
+                isVotePending = true,
+                voteErrorMessage = "Sin conexión. Tu voto se enviará cuando vuelva internet."
+            )
+        }
+    }
+
+    private suspend fun handleVoteNetworkError(result: VoteResult.NetworkError, postId: String, voteValue: Int, authorId: String) {
+        feedRepository.savePendingVote(currentUserId, postId, voteValue, authorId)
+        _uiState.update {
+            it.copy(
+                voteState = VoteUiState.OFFLINE,
+                isVotePending = true,
+                voteErrorMessage = result.message
+            )
+        }
+    }
+
+    private fun handleVoteServerError(result: VoteResult.ServerError, post: CommunityPost) {
+        _uiState.update {
+            it.copy(
+                post = post, // Revertir
+                voteState = VoteUiState.ERROR,
+                voteErrorMessage = result.message
+            )
         }
     }
 

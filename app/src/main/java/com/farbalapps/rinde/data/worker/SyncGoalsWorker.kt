@@ -13,9 +13,14 @@ import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.tasks.await
 import java.io.IOException
 
-class SyncGoalsWorker(
-    context: Context,
-    params: WorkerParameters,
+import androidx.hilt.work.HiltWorker
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedInject
+
+@HiltWorker
+class SyncGoalsWorker @AssistedInject constructor(
+    @Assisted context: Context,
+    @Assisted params: WorkerParameters,
     private val dao: GoalsDao,
     private val firestore: FirebaseFirestore,
     private val auth: FirebaseAuth

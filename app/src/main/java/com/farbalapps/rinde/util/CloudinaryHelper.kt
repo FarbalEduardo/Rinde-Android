@@ -43,6 +43,35 @@ object CloudinaryHelper {
             throw Exception("Cloudinary Error: El archivo no existe: $filePath")
         }
 
+        val request = createUploadRequest(file, folder, publicId)
+
+        android.util.Log.d("CloudinaryHelper", "🌐 Enviando a: ${request.url}")
+
+        val response = client.newCall(request).execute()
+        val responseBody = response.body?.string() ?: ""
+
+        if (!response.isSuccessful) {
+            android.util.Log.e("CloudinaryHelper", "❌ ERROR HTTP ${response.code}: $responseBody")
+            throw Exception("Cloudinary Error HTTP ${response.code}: $responseBody")
+        }
+
+        val json = JSONObject(responseBody)
+        val secureUrl = json.optString("secure_url", "")
+
+        if (secureUrl.isBlank()) {
+            android.util.Log.e("CloudinaryHelper", "❌ No se encontró secure_url en la respuesta: $responseBody")
+            throw Exception("Cloudinary: No URL in response")
+        }
+
+        android.util.Log.i("CloudinaryHelper", "✅ ÉXITO: $secureUrl")
+        secureUrl
+    }
+
+    private fun createUploadRequest(
+        file: File,
+        folder: String,
+        publicId: String?
+    ): Request {
         val timestamp = (System.currentTimeMillis() / 1000).toString()
         val paramsToSign = mutableMapOf<String, String>()
         paramsToSign["folder"] = folder
@@ -72,31 +101,10 @@ object CloudinaryHelper {
         val requestBody = requestBuilder.build()
         val url = "https://api.cloudinary.com/v1_1/${Config.CLOUDINARY_CLOUD_NAME}/image/upload"
 
-        val request = Request.Builder()
+        return Request.Builder()
             .url(url)
             .post(requestBody)
             .build()
-
-        android.util.Log.d("CloudinaryHelper", "🌐 Enviando a: $url")
-
-        val response = client.newCall(request).execute()
-        val responseBody = response.body?.string() ?: ""
-
-        if (!response.isSuccessful) {
-            android.util.Log.e("CloudinaryHelper", "❌ ERROR HTTP ${response.code}: $responseBody")
-            throw Exception("Cloudinary Error HTTP ${response.code}: $responseBody")
-        }
-
-        val json = JSONObject(responseBody)
-        val secureUrl = json.optString("secure_url", "")
-
-        if (secureUrl.isBlank()) {
-            android.util.Log.e("CloudinaryHelper", "❌ No se encontró secure_url en la respuesta: $responseBody")
-            throw Exception("Cloudinary: No URL in response")
-        }
-
-        android.util.Log.i("CloudinaryHelper", "✅ ÉXITO: $secureUrl")
-        secureUrl
     }
 
     /**

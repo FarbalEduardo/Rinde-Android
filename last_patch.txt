@@ -1,0 +1,423 @@
+Created At: 2026-07-28T01:03:58Z
+Completed At: 2026-07-28T01:04:02Z
+The following changes were made by the replace_file_content tool to: d:\PROYECTOSANDROID\Rinde\app\src\main\java\com\farbalapps\rinde\ui\screen\home\list\components\ShoppingListItem.kt. If relevant, proactively run terminal commands to execute this code for the USER. Don't ask for permission.
+[diff_block_start]
+@@ -45,7 +45,8 @@
+     onLongClick: () -> Unit = {},
+     onSelectionToggle: () -> Unit = {},
+     onEdit: () -> Unit,
+-    onDelete: () -> Unit
++    onDelete: () -> Unit,
++    onSetPrice: (price: Double?, currency: String) -> Unit = { _, _ -> }
+ ) {
+     val uiCategory = item.category.toProductCategory()
+     val dismissState = rememberSwipeToDismissBoxState()
+@@ -52,3 +52,4 @@
++    var showQuickPriceDialog by remember { mutableStateOf(false) }
+ 
+     LaunchedEffect(dismissState.currentValue) {
+         when (dismissState.currentValue) {
+@@ -65,7 +65,7 @@
+     }
+ 
+     val elevation by animateDpAsState(
+-        targetValue = if (isSelected) 6.dp else if (isHighlighted) 12.dp else 1.dp,
++        targetValue = if (isSelected) 4.dp else if (isHighlighted) 8.dp else 1.dp,
+         animationSpec = if (isHighlighted) {
+             infiniteRepeatable(
+                 animation = tween(500),
+@@ -113,7 +113,7 @@
+                         )
+                     }
+                     
+-                    Spacer(modifier = Modifier.width(24.dp))
++                    Spacer(modifier = Modifier.width(16.dp))
+                     
+                     IconButton(
+                         onClick = { 
+@@ -120,6 +120,6 @@
+                         },
+                         modifier = Modifier
+-                            .size(36.dp)
++                            .size(32.dp)
+                             .background(MaterialTheme.colorScheme.error, CircleShape)
+                     ) {
+                         Icon(
+@@ -126,6 +126,6 @@
+                             contentDescription = stringResource(id = R.string.action_delete),
+                             tint = MaterialTheme.colorScheme.onError,
+-                            modifier = Modifier.size(20.dp)
++                            modifier = Modifier.size(18.dp)
+                         )
+                     }
+                 }
+@@ -138,7 +138,7 @@
+                 tonalElevation = elevation,
+                 modifier = Modifier
+                     .fillMaxWidth()
+-                    .defaultMinSize(minHeight = 56.dp)
++                    .defaultMinSize(minHeight = 44.dp)
+                     .combinedClickable(
+                         onClick = {
+                             if (isSelectionMode) {
+@@ -150,71 +150,106 @@
+                         }
+                     )
+             ) {
+-                ListItem(
+-                    headlineContent = {
+-                        Text(
+-                            text = item.name,
+-                            style = MaterialTheme.typography.titleMedium.copy(
+-                                textDecoration = if (item.isCompleted) TextDecoration.LineThrough else TextDecoration.None,
+-                                fontWeight = FontWeight.SemiBold
+-                            ),
+-                            color = if (item.isCompleted) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f) 
+-                                    else MaterialTheme.colorScheme.onSurface,
+-                            maxLines = 1,
+-                            overflow = TextOverflow.Ellipsis
+-                        )
+-                    },
+-                    supportingContent = {
+-                        val categoryText = if (uiCategory == com.farbalapps.rinde.ui.screen.home.list.ProductCategory.OTHERS) {
+-                            item.category
+-                        } else {
+-                            stringResource(id = uiCategory.displayNameRes)
+-                        }
+-                        
+-                        val priceText = item.price?.let {
+-                            String.format(Locale.getDefault(), " · $%.2f %s", it * item.quantity, item.currency)
+-                        } ?: ""
+-
+-                        Text(
+-                            text = "$categoryText$priceText",
+-                            style = MaterialTheme.typography.labelMedium,
+-                            color = if (item.isCompleted) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f) 
+-                                    else if (item.price != null) MaterialTheme.colorScheme.tertiary
+-                                    else MaterialTheme.colorScheme.primary,
+-                            fontWeight = FontWeight.Medium
+-                        )
+-                    },
+-                    leadingContent = {
+-                        Row(verticalAlignment = Alignment.CenterVertically) {
+-                            androidx.compose.animation.AnimatedVisibility(
+-                                visible = isSelectionMode,
+-                                enter = scaleIn() + fadeIn(),
+-                                exit = scaleOut() + fadeOut()
+-                            ) {
+-                                Checkbox(
+-                                    checked = isSelected,
+-                                    onCheckedChange = { onSelectionToggle() },
+-                                    colors = CheckboxDefaults.colors(
+-                                        checkedColor = MaterialTheme.colorScheme.primary
+-                                    )
+-                                )
+-                                Spacer(modifier = Modifier.width(4.dp))
+-                            }
+-
+-                            Surface(
+-                                shape = RoundedCornerShape(14.dp),
+-                                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
+-                                modifier = Modifier.size(56.dp)
+-                            ) {
+-                                Box(contentAlignment = Alignment.Center) {
+-                                    if (item.emoji.isNotEmpty()) {
+-                                        Text(item.emoji, fontSize = 32.sp)
+-                                    } else {
+-                                        Icon(
+-                                            imageVector = uiCategory.icon,
+-                                            contentDescription = null,
+-                                            tint = MaterialTheme.colorScheme.primary,
+-                                            modifier = Modifier.size(32.dp)
++                Row(
++                    modifier = Modifier
++                        .fillMaxWidth()
++                        .padding(horizontal = 12.dp, vertical = 6.dp),
++                    verticalAlignment = Alignment.CenterVertically,
++                    horizontalArrangement = Arrangement.SpaceBetween
++                ) {
++                    // Leading Content (Checkbox + Emoji/Icon)
++                    Row(
++                        verticalAlignment = Alignment.CenterVertically,
++                        modifier = Modifier.weight(1f)
++                    ) {
++                        androidx.compose.animation.AnimatedVisibility(
++                            visible = isSelectionMode,
++                            enter = scaleIn() + fadeIn(),
++                            exit = scaleOut() + fadeOut()
++                        ) {
++                            Checkbox(
++                                checked = isSelected,
++                                onCheckedChange = { onSelectionToggle() },
++                                colors = CheckboxDefaults.colors(
++                                    checkedColor = MaterialTheme.colorScheme.primary
++                                ),
++                                modifier = Modifier.scale(0.85f)
++                            )
++                            Spacer(modifier = Modifier.width(2.dp))
++                        }
++
++                        Surface(
++                            shape = RoundedCornerShape(10.dp),
++                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
++                            modifier = Modifier.size(42.dp)
++                        ) {
++                            Box(contentAlignment = Alignment.Center) {
++                                if (item.emoji.isNotEmpty()) {
++                                    Text(item.emoji, fontSize = 24.sp)
++                                } else {
++                                    Icon(
++                                        imageVector = uiCategory.icon,
++                                        contentDescription = null,
++                                        tint = MaterialTheme.colorScheme.primary,
++                                        modifier = Modifier.size(24.dp)
++                                    )
++                                }
++                            }
++                        }
++
++                        Spacer(modifier = Modifier.width(10.dp))
++
++                        // Text content (Name + Category/Price badge)
++                        Column(modifier = Modifier.weight(1f)) {
++                            Text(
++                                text = item.name,
++                                style = MaterialTheme.typography.titleSmall.copy(
++                                    textDecoration = if (item.isCompleted) TextDecoration.LineThrough else TextDecoration.None,
++                                    fontWeight = FontWeight.SemiBold
++                                ),
++                                color = if (item.isCompleted) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f) 
++                                        else MaterialTheme.colorScheme.onSurface,
++                                maxLines = 1,
++                                overflow = TextOverflow.Ellipsis
++                            )
++
++                            val categoryText = if (uiCategory == com.farbalapps.rinde.ui.screen.home.list.ProductCategory.OTHERS) {
++                                item.category
++                            } else {
++                                stringResource(id = uiCategory.displayNameRes)
++                            }
++                            
++                            Row(
++                                verticalAlignment = Alignment.CenterVertically,
++                                horizontalArrangement = Arrangement.spacedBy(4.dp)
++                            ) {
++                                Text(
++                                    text = categoryText,
++                                    style = MaterialTheme.typography.labelSmall,
++                                    color = if (item.isCompleted) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f) 
++                                            else MaterialTheme.colorScheme.onSurfaceVariant,
++                                    fontWeight = FontWeight.Normal
++                                )
++
++                                if (!isSelectionMode) {
++                                    Text("·", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
++
++                                    // Quick Price Badge Button
++                                    Surface(
++                                        onClick = { showQuickPriceDialog = true },
++                                        shape = RoundedCornerShape(6.dp),
++                                        color = if (item.price != null) MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
++                                                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
++                                    ) {
++                                        Text(
++                                            text = item.price?.let {
++                                                String.format(Locale.getDefault(), "$%.2f %s", it * item.quantity, item.currency)
++                                            } ?: "+ 💲",
++                                            style = MaterialTheme.typography.labelSmall,
++                                            fontWeight = if (item.price != null) FontWeight.Bold else FontWeight.Normal,
++                                            color = if (item.price != null) MaterialTheme.colorScheme.onTertiaryContainer
++                                                    else MaterialTheme.colorScheme.primary,
++                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                         )
+                                     }
+                                 }
+@@ -221,37 +221,153 @@
+                         }
+-                    },
+-                    trailingContent = {
+-                        Row(verticalAlignment = Alignment.CenterVertically) {
+-                            val quantityText = if (item.quantity % 1.0 == 0.0) item.quantity.toInt().toString() else item.quantity.toString()
+-                            Text(
+-                                text = "$quantityText ${item.unit}",
+-                                style = MaterialTheme.typography.titleMedium,
+-                                fontWeight = FontWeight.SemiBold,
+-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+-                            )
+-                            if (!isSelectionMode) {
+-                                IconButton(onClick = onEdit) {
+-                                    Icon(
+-                                        imageVector = Icons.Default.Edit,
+-                                        contentDescription = stringResource(id = R.string.action_edit),
+-                                        modifier = Modifier.size(18.dp),
+-                                        tint = MaterialTheme.colorScheme.primary
+-                                    )
+-                                }
+-                                Checkbox(
+-                                    checked = item.isCompleted,
+-                                    onCheckedChange = onCheckedChange,
+-                                    colors = CheckboxDefaults.colors(
+-                                        checkedColor = MaterialTheme.colorScheme.primary
+-                                    ),
+-                                    modifier = Modifier.scale(0.85f)
+-                                )
+-                            }
+-                        }
+-                    }
++                    }
++
++                    // Trailing Content (Quantity + Edit/Check actions)
++                    Row(
++                        verticalAlignment = Alignment.CenterVertically,
++                        horizontalArrangement = Arrangement.spacedBy(2.dp)
++                    ) {
++                        val quantityText = if (item.quantity % 1.0 == 0.0) item.quantity.toInt().toString() else item.quantity.toString()
++                        Text(
++                            text = "$quantityText ${item.unit}",
++                            style = MaterialTheme.typography.bodyMedium,
++                            fontWeight = FontWeight.SemiBold,
++                            color = MaterialTheme.colorScheme.onSurfaceVariant
++                        )
++
++                        if (!isSelectionMode) {
++                            IconButton(
++                                onClick = onEdit,
++                                modifier = Modifier.size(32.dp)
++                            ) {
++                                Icon(
++                                    imageVector = Icons.Default.Edit,
++                                    contentDescription = stringResource(id = R.string.action_edit),
++                                    modifier = Modifier.size(16.dp),
++                                    tint = MaterialTheme.colorScheme.primary
++                                )
++                            }
++
++                            Checkbox(
++                                checked = item.isCompleted,
++                                onCheckedChange = onCheckedChange,
++                                colors = CheckboxDefaults.colors(
++                                    checkedColor = MaterialTheme.colorScheme.primary
++                                ),
++                                modifier = Modifier.scale(0.8f)
++                            )
++                        }
++                    }
++                }
++            }
++        }
++    )
++
++    if (showQuickPriceDialog) {
++        QuickPriceDialog(
++            itemName = item.name,
++            initialPrice = item.price,
++            initialCurrency = item.currency,
++            onDismiss = { showQuickPriceDialog = false },
++            onConfirm = { price, currency ->
++                onSetPrice(price, currency)
++                showQuickPriceDialog = false
++            }
++        )
++    }
++}
++
++@OptIn(ExperimentalMaterial3Api::class)
++@Composable
++fun QuickPriceDialog(
++    itemName: String,
++    initialPrice: Double?,
++    initialCurrency: String,
++    onDismiss: () -> Unit,
++    onConfirm: (price: Double?, currency: String) -> Unit
++) {
++    var priceText by remember {
++        mutableStateOf(initialPrice?.let { if (it % 1.0 == 0.0) it.toInt().toString() else it.toString() } ?: "")
++    }
++    var currency by remember { mutableStateOf(if (initialCurrency.isNotBlank()) initialCurrency else "MXN") }
++    val currencies = listOf("MXN", "USD", "EUR")
++
++    AlertDialog(
++        onDismissRequest = onDismiss,
++        icon = {
++            Icon(
++                imageVector = Icons.Default.AttachMoney,
++                contentDescription = null,
++                tint = MaterialTheme.colorScheme.primary
++            )
++        },
++        title = {
++            Text(
++                text = "Precio para \"$itemName\"",
++                style = MaterialTheme.typography.titleMedium,
++                fontWeight = FontWeight.Bold
++            )
++        },
++        text = {
++            Column(
++                modifier = Modifier.fillMaxWidth(),
++                verticalArrangement = Arrangement.spacedBy(12.dp)
++            ) {
++                OutlinedTextField(
++                    value = priceText,
++                    onValueChange = { priceText = it.filter { char -> char.isDigit() || char == '.' } },
++                    label = { Text("Precio") },
++                    prefix = { Text("$ ") },
++                    singleLine = true,
++                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
++                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal
++                    ),
++                    shape = RoundedCornerShape(12.dp),
++                    modifier = Modifier.fillMaxWidth()
+                 )
+-            }
+-        }
++
++                SingleChoiceSegmentedButtonRow(
++                    modifier = Modifier.fillMaxWidth().height(44.dp)
++                ) {
++                    currencies.forEachIndexed { index, curr ->
++                        SegmentedButton(
++                            shape = SegmentedButtonDefaults.itemShape(index = index, count = currencies.size),
++                            onClick = { currency = curr },
++                            selected = currency == curr
++                        ) {
++                            Text(curr, fontSize = 12.sp)
++                        }
++                    }
++                }
++            }
++        },
++        confirmButton = {
++            Button(
++                onClick = {
++                    val parsed = priceText.toDoubleOrNull()
++                    onConfirm(parsed, currency)
++                },
++                shape = RoundedCornerShape(12.dp)
++            ) {
++                Text("Guardar")
++            }
++        },
++        dismissButton = {
++            Row {
++                if (initialPrice != null) {
++                    TextButton(
++                        onClick = { onConfirm(null, currency) },
++                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
++                    ) {
++                        Text("Quitar")
++                    }
++                }
++                TextButton(onClick = onDismiss) {
++                    Text("Cancelar")
++                }
++            }
++        },
++        containerColor = MaterialTheme.colorScheme.surface,
++        shape = RoundedCornerShape(24.dp)
+     )
+ }
+ 
+[diff_block_end]
+
+Please note that the above snippet only shows the MODIFIED lines from the last change. It shows up to 3 lines of unchanged lines before and after the modified lines. The actual file contents may have many more lines not shown.

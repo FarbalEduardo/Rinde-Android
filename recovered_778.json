@@ -1,0 +1,54 @@
+﻿
+{"step_index":778,"source":"MODEL","type":"VIEW_FILE","status":"DONE","created_at":"2026-07-29T03:36:26Z","content":"Cr
+eated At: 2026-07-29T03:36:26Z\nCompleted At: 2026-07-29T03:36:28Z\nFile Path: `file:///d:/PROYECTOSANDROID/Rinde/app/s
+rc/main/java/com/farbalapps/rinde/ui/screen/home/list/components/ShoppingListItem.kt`\nTotal Lines: 558\nTotal Bytes: 
+26281\nShowing lines 1 to 100\nThe following code has been modified to include a line number before every line, in the 
+format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the 
+line number, colon, and leading space.\n1: package com.farbalapps.rinde.ui.screen.home.list.components\r\n2: \r\n3: 
+import androidx.compose.animation.*\r\n4: import androidx.compose.animation.core.*\r\n5: import 
+androidx.compose.foundation.background\r\n6: import androidx.compose.foundation.layout.*\r\n7: import 
+androidx.compose.foundation.shape.CircleShape\r\n8: import androidx.compose.foundation.shape.RoundedCornerShape\r\n9: 
+import androidx.compose.material.icons.Icons\r\n10: import androidx.compose.material.icons.filled.*\r\n11: import 
+androidx.compose.material3.*\r\n12: import androidx.compose.runtime.*\r\n13: import 
+androidx.compose.ui.Alignment\r\n14: import androidx.compose.ui.Modifier\r\n15: import 
+androidx.compose.ui.draw.clip\r\n16: import androidx.compose.ui.draw.scale\r\n17: import 
+androidx.compose.ui.graphics.Color\r\n18: import androidx.compose.ui.res.stringResource\r\n19: import 
+androidx.compose.ui.text.font.FontWeight\r\n20: import androidx.compose.ui.text.style.TextDecoration\r\n21: import 
+androidx.compose.ui.text.style.TextOverflow\r\n22: import androidx.compose.ui.unit.dp\r\n23: import 
+androidx.compose.ui.unit.sp\r\n24: import androidx.compose.ui.tooling.preview.Preview\r\n25: import 
+com.farbalapps.rinde.R\r\n26: import com.farbalapps.rinde.domain.model.ShoppingItem as DomainShoppingItem\r\n27: 
+import com.farbalapps.rinde.ui.screen.home.list.toProductCategory\r\n28: import kotlinx.coroutines.launch\r\n29: 
+\r\n30: import androidx.compose.foundation.ExperimentalFoundationApi\r\n31: import 
+androidx.compose.foundation.combinedClickable\r\n32: import 
+androidx.compose.ui.hapticfeedback.HapticFeedbackType\r\n33: import 
+androidx.compose.ui.platform.LocalHapticFeedback\r\n34: import java.util.Locale\r\n35: import 
+androidx.compose.animation.core.Spring\r\n36: import androidx.compose.animation.core.spring\r\n37: import 
+androidx.compose.ui.draw.alpha\r\n38: \r\n39: @OptIn(ExperimentalMaterial3Api::class, 
+ExperimentalFoundationApi::class)\r\n40: @Composable\r\n41: fun ShoppingListItem(\r\n42:     item: 
+DomainShoppingItem,\r\n43:     isHighlighted: Boolean = false,\r\n44:     isSwiped: Boolean,\r\n45:     
+isSelectionMode: Boolean = false,\r\n46:     isSelected: Boolean = false,\r\n47:     onSwipeStateChange: (Boolean) -> 
+Unit,\r\n48:     onCheckedChange: (Boolean) -> Unit,\r\n49:     onLongClick: () -> Unit = {},\r\n50:     
+onSelectionToggle: () -> Unit = {},\r\n51:     onEdit: () -> Unit,\r\n52:     onDelete: () -> Unit,\r\n53:     
+onIncrement: () -> Unit = {},\r\n54:     onDecrement: () -> Unit = {},\r\n55:     onSetPrice: (price: Double?, 
+currency: String) -> Unit = { _, _ -> },\r\n56:     modifier: Modifier = Modifier\r\n57: ) {\r\n58:     val uiCategory 
+= item.category.toProductCategory()\r\n59:     val dismissState = rememberSwipeToDismissBoxState()\r\n60:     val 
+haptic = LocalHapticFeedback.current\r\n61:     var showQuickPriceDialog by remember { mutableStateOf(false) }\r\n62: 
+\r\n63:     LaunchedEffect(dismissState.currentValue) {\r\n64:         when (dismissState.currentValue) {\r\n65:       
+      SwipeToDismissBoxValue.EndToStart -> onSwipeStateChange(true)\r\n66:             SwipeToDismissBoxValue.Settled 
+-> onSwipeStateChange(false)\r\n67:             else -> {}\r\n68:         }\r\n69:     }\r\n70:     val scope = 
+rememberCoroutineScope()\r\n71: \r\n72:     LaunchedEffect(isSwiped) {\r\n73:         if (!isSwiped && 
+dismissState.currentValue != SwipeToDismissBoxValue.Settled) {\r\n74:             dismissState.reset()\r\n75:         
+}\r\n76:     }\r\n77: \r\n78:     // Smooth border glow on highlight (newly added item) â€” no pulsing shadow\r\n79:   
+  val elevation by animateDpAsState(\r\n80:         targetValue = if (isSelected) 4.dp else 1.dp,\r\n81:         
+animationSpec = tween(250),\r\n82:         label = \"elevation\"\r\n83:     )\r\n84:     val containerColor by 
+animateColorAsState(\r\n85:         targetValue = if (isSelected) 
+MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)\r\n86:                       else 
+MaterialTheme.colorScheme.surface,\r\n87:         animationSpec = tween(300),\r\n88:         label = \"color\"\r\n89:  
+   )\r\n90:     // Highlight border alpha: bright on entry, fades to zero in ~1.5s\r\n91:     val highlightBorderAlpha 
+by animateFloatAsState(\r\n92:         targetValue = if (isHighlighted) 1f else 0f,\r\n93:         animationSpec = 
+spring(\r\n94:             dampingRatio = Spring.DampingRatioNoBouncy,\r\n95:             stiffness = 
+Spring.StiffnessVeryLow\r\n96:         ),\r\n97:         label = \"highlightBorder\"\r\n98:     )\r\n99: \r\n100:     
+SwipeToDismissBox(\r\nThe above content does NOT show the entire file contents. If you need to view any lines of the 
+file which were not shown to complete your task, call this tool again to view those lines.\n"}
+
+

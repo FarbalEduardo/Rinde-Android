@@ -12,7 +12,7 @@ class CreateGoalUseCase @Inject constructor(
     private val repository: GoalsRepository
 ) {
     companion object {
-        const val FREE_TIER_LIMIT = 3
+        const val FREE_TIER_LIMIT = 2
     }
 
     suspend operator fun invoke(goal: SavingsGoal): Result<Unit> {

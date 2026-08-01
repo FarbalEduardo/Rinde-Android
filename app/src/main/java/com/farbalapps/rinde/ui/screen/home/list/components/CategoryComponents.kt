@@ -44,67 +44,89 @@ fun CategorySelectionRow(
         items(categories) { category ->
             val isSelected = selectedCategory == category
 
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier.height(36.dp)
-            ) {
-                Surface(
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .combinedClickable(
-                            onClick = { onCategorySelected(category) },
-                            onLongClick = {
-                                if (category != "All") {
-                                    onCategoryLongClick(category)
-                                }
-                            }
-                        ),
-                    shape = CircleShape,
-                    color = if (isSelected) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.surface,
-                    border = if (isSelected) null 
-                             else androidx.compose.foundation.BorderStroke(
-                                 1.dp, 
-                                 MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
-                             ),
-                    tonalElevation = if (isSelected) 4.dp else 0.dp
-                ) {
-                    Text(
-                        text = category,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = if (isSelected) androidx.compose.ui.text.font.FontWeight.SemiBold 
-                                     else androidx.compose.ui.text.font.FontWeight.Medium,
-                        color = if (isSelected) MaterialTheme.colorScheme.onPrimary
-                                else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+            CategoryChip(
+                category = category,
+                isSelected = isSelected,
+                onClick = { onCategorySelected(category) },
+                onLongClick = {
+                    if (category != "All") {
+                        onCategoryLongClick(category)
+                    }
                 }
-            }
+            )
         }
 
         // Add Category button at the END — same 36dp height as chips
         if (showAddButton) {
             item {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier.height(36.dp)
-                ) {
-                    Surface(
-                        onClick = onAddCategoryClick,
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Default.Add,
-                                contentDescription = stringResource(R.string.add_category),
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    }
-                }
+                AddCategoryButton(onClick = onAddCategoryClick)
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun CategoryChip(
+    category: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit
+) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier.height(36.dp)
+    ) {
+        Surface(
+            modifier = Modifier
+                .clip(CircleShape)
+                .combinedClickable(
+                    onClick = onClick,
+                    onLongClick = onLongClick
+                ),
+            shape = CircleShape,
+            color = if (isSelected) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.surface,
+            border = if (isSelected) null 
+                     else androidx.compose.foundation.BorderStroke(
+                         1.dp, 
+                         MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
+                     ),
+            tonalElevation = if (isSelected) 4.dp else 0.dp
+        ) {
+            Text(
+                text = category,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = if (isSelected) androidx.compose.ui.text.font.FontWeight.SemiBold 
+                             else androidx.compose.ui.text.font.FontWeight.Medium,
+                color = if (isSelected) MaterialTheme.colorScheme.onPrimary
+                        else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AddCategoryButton(onClick: () -> Unit) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier.height(36.dp)
+    ) {
+        Surface(
+            onClick = onClick,
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+            modifier = Modifier.size(36.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = stringResource(R.string.add_category),
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(18.dp)
+                )
             }
         }
     }

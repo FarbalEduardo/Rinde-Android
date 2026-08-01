@@ -16,7 +16,17 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Whatshot
+import androidx.compose.material.icons.filled.LocalOffer
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Stars
+import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
+import androidx.compose.material.icons.filled.ThumbUp
+import androidx.compose.material.icons.filled.StarOutline
+import androidx.compose.material.icons.filled.Savings
+import androidx.compose.material.icons.filled.Sell
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.Notifications
@@ -36,7 +46,11 @@ import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.border
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -153,83 +167,269 @@ fun EmptyFeedState(
     tab: CommunityTab,
     modifier: Modifier = Modifier
 ) {
-    val icon = when (tab) {
-        CommunityTab.DISCOVER -> Icons.Default.Explore
-        CommunityTab.HOT -> Icons.Default.Whatshot
-        CommunityTab.SAVED -> Icons.Default.BookmarkBorder
+    val (title, subtitle) = when (tab) {
+        CommunityTab.DISCOVER -> Pair(
+            "Aún no hay publicaciones",
+            "Las nuevas ofertas publicadas por la comunidad aparecerán en esta sección."
+        )
+        CommunityTab.HOT -> Pair(
+            "Aún no hay publicaciones Hot",
+            "Las publicaciones con más votos y mejor valoración de la comunidad aparecerán aquí."
+        )
+        CommunityTab.SAVED -> Pair(
+            "No tienes publicaciones guardadas",
+            "Guarda las ofertas que te interesen para acceder a ellas fácilmente en cualquier momento."
+        )
     }
-    val title = when (tab) {
-        CommunityTab.DISCOVER -> "Aún no hay ofertas"
-        CommunityTab.HOT -> "Sin publicaciones destacadas"
-        CommunityTab.SAVED -> "Nada guardado aún"
-    }
-    val subtitle = when (tab) {
-        CommunityTab.DISCOVER -> "Sé el primero en publicar una oferta para la comunidad."
-        CommunityTab.HOT -> "Las ofertas con más votos de la comunidad aparecerán aquí."
-        CommunityTab.SAVED -> "Guarda las mejores ofertas para acceder a ellas más tarde."
-    }
+
+    val primaryColor = RindePrimary
+
+    val infiniteTransition = rememberInfiniteTransition(label = "communityEmptyTransition")
+
+    val pulseScale by infiniteTransition.animateFloat(
+        initialValue = 0.94f,
+        targetValue = 1.06f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2800, easing = EaseInOutQuad),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulseScale"
+    )
+
+    val glowAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.15f,
+        targetValue = 0.38f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2800, easing = EaseInOutSine),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "glowAlpha"
+    )
+
+    val floatingOffset by infiniteTransition.animateFloat(
+        initialValue = -10f,
+        targetValue = 10f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2400, easing = EaseInOutSine),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "floatingOffset"
+    )
+
+    val swingAngle by infiniteTransition.animateFloat(
+        initialValue = -6f,
+        targetValue = 6f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(3200, easing = EaseInOutSine),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "swingAngle"
+    )
 
     androidx.compose.animation.AnimatedVisibility(
         visible = true,
-        enter = androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(500)) + 
-                androidx.compose.animation.slideInVertically(initialOffsetY = { it / 2 }),
+        enter = androidx.compose.animation.fadeIn(animationSpec = tween(500)) + 
+                slideInVertically(initialOffsetY = { it / 2 }),
         modifier = modifier
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 80.dp, bottom = 40.dp),
+                .padding(top = 40.dp, bottom = 40.dp, start = 24.dp, end = 24.dp),
             contentAlignment = Alignment.Center
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                // Icon with subtle pulse animation
-                val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-                val scale by infiniteTransition.animateFloat(
-                    initialValue = 0.95f,
-                    targetValue = 1.05f,
-                    animationSpec = infiniteRepeatable(
-                        animation = tween(1500, easing = androidx.compose.animation.core.FastOutSlowInEasing),
-                        repeatMode = RepeatMode.Reverse
-                    ),
-                    label = "scale"
-                )
-                
-                Surface(
-                    modifier = Modifier.size(80.dp),
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
-                    tonalElevation = 2.dp
+                // Contenedor Ilustrativo de 220dp con ícono central grande + 3 íconos flotantes
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(220.dp)
+                        .padding(bottom = 8.dp)
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
+                    // Resplandor radial de fondo
+                    Box(
+                        modifier = Modifier
+                            .size(170.dp)
+                            .graphicsLayer {
+                                scaleX = pulseScale
+                                scaleY = pulseScale
+                            }
+                            .clip(CircleShape)
+                            .background(
+                                androidx.compose.ui.graphics.Brush.radialGradient(
+                                    colors = listOf(
+                                        primaryColor.copy(alpha = glowAlpha),
+                                        primaryColor.copy(alpha = 0.05f),
+                                        androidx.compose.ui.graphics.Color.Transparent
+                                    )
+                                )
+                            )
+                    )
+
+                    // 3 Íconos flotantes decorativos contextuales
+                    when (tab) {
+                        CommunityTab.DISCOVER -> {
+                            // Flotante 1 (Top Start)
+                            Icon(
+                                imageVector = Icons.Default.LocalOffer,
+                                contentDescription = null,
+                                tint = primaryColor.copy(alpha = 0.28f),
+                                modifier = Modifier
+                                    .size(46.dp)
+                                    .align(Alignment.TopStart)
+                                    .offset(x = 10.dp, y = (24 + floatingOffset).dp)
+                                    .rotate(-18f)
+                            )
+                            // Flotante 2 (Top End)
+                            Icon(
+                                imageVector = Icons.Default.AutoAwesome,
+                                contentDescription = null,
+                                tint = primaryColor.copy(alpha = 0.32f),
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .align(Alignment.TopEnd)
+                                    .offset(x = (-14).dp, y = (18 + floatingOffset).dp)
+                                    .rotate(14f)
+                            )
+                            // Flotante 3 (Bottom End)
+                            Icon(
+                                imageVector = Icons.Default.Stars,
+                                contentDescription = null,
+                                tint = primaryColor.copy(alpha = 0.24f),
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .align(Alignment.BottomEnd)
+                                    .offset(x = (-20).dp, y = (-20 - floatingOffset).dp)
+                                    .rotate(-10f)
+                            )
+                        }
+                        CommunityTab.HOT -> {
+                            // Flotante 1 (Top Start)
+                            Icon(
+                                imageVector = Icons.Default.LocalFireDepartment,
+                                contentDescription = null,
+                                tint = primaryColor.copy(alpha = 0.30f),
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .align(Alignment.TopStart)
+                                    .offset(x = 10.dp, y = (20 + floatingOffset).dp)
+                                    .rotate(-15f)
+                            )
+                            // Flotante 2 (Top End)
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.TrendingUp,
+                                contentDescription = null,
+                                tint = primaryColor.copy(alpha = 0.35f),
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .align(Alignment.TopEnd)
+                                    .offset(x = (-16).dp, y = (22 + floatingOffset).dp)
+                                    .rotate(15f)
+                            )
+                            // Flotante 3 (Bottom Start)
+                            Icon(
+                                imageVector = Icons.Default.ThumbUp,
+                                contentDescription = null,
+                                tint = primaryColor.copy(alpha = 0.25f),
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .align(Alignment.BottomStart)
+                                    .offset(x = 16.dp, y = (-18 - floatingOffset).dp)
+                                    .rotate(-12f)
+                            )
+                        }
+                        CommunityTab.SAVED -> {
+                            // Flotante 1 (Top Start)
+                            Icon(
+                                imageVector = Icons.Default.BookmarkBorder,
+                                contentDescription = null,
+                                tint = primaryColor.copy(alpha = 0.28f),
+                                modifier = Modifier
+                                    .size(46.dp)
+                                    .align(Alignment.TopStart)
+                                    .offset(x = 12.dp, y = (22 + floatingOffset).dp)
+                                    .rotate(-14f)
+                            )
+                            // Flotante 2 (Top End)
+                            Icon(
+                                imageVector = Icons.Default.StarOutline,
+                                contentDescription = null,
+                                tint = primaryColor.copy(alpha = 0.32f),
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .align(Alignment.TopEnd)
+                                    .offset(x = (-14).dp, y = (16 + floatingOffset).dp)
+                                    .rotate(16f)
+                            )
+                            // Flotante 3 (Bottom End)
+                            Icon(
+                                imageVector = Icons.Default.Savings,
+                                contentDescription = null,
+                                tint = primaryColor.copy(alpha = 0.25f),
+                                modifier = Modifier
+                                    .size(42.dp)
+                                    .align(Alignment.BottomEnd)
+                                    .offset(x = (-22).dp, y = (-18 - floatingOffset).dp)
+                                    .rotate(-10f)
+                            )
+                        }
+                    }
+
+                    // Contenedor Principal con el Ícono Central Grande (130dp)
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .graphicsLayer {
+                                rotationZ = swingAngle
+                                scaleX = pulseScale
+                                scaleY = pulseScale
+                            }
+                            .size(130.dp)
+                            .shadow(
+                                elevation = 16.dp,
+                                shape = CircleShape,
+                                spotColor = primaryColor.copy(alpha = 0.40f)
+                            )
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surface)
+                            .border(
+                                width = 2.dp,
+                                color = primaryColor.copy(alpha = 0.35f),
+                                shape = CircleShape
+                            )
+                    ) {
+                        val mainIcon = when (tab) {
+                            CommunityTab.DISCOVER -> Icons.Default.Explore
+                            CommunityTab.HOT -> Icons.Default.Whatshot
+                            CommunityTab.SAVED -> Icons.Default.Bookmark
+                        }
                         Icon(
-                            imageVector = icon,
+                            imageVector = mainIcon,
                             contentDescription = null,
-                            modifier = Modifier
-                                .size(40.dp)
-                                .graphicsLayer {
-                                    scaleX = scale
-                                    scaleY = scale
-                                },
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = primaryColor,
+                            modifier = Modifier.size(64.dp)
                         )
                     }
                 }
-                
+
+                // Textos informativos
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = TextAlign.Center
                 )
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f),
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(horizontal = 40.dp)
+                    modifier = Modifier.padding(horizontal = 24.dp)
                 )
             }
         }
@@ -481,7 +681,9 @@ fun CommunityContent(
                     when (currentTab) {
                         CommunityTab.DISCOVER -> {
                             val loadState = discoverItems.loadState
-                            val isDiscoverLoading = loadState.refresh is androidx.paging.LoadState.Loading
+                            val isDiscoverLoading = loadState.refresh is androidx.paging.LoadState.Loading ||
+                                    loadState.mediator?.refresh is androidx.paging.LoadState.Loading ||
+                                    loadState.source.refresh is androidx.paging.LoadState.Loading
                             val isDiscoverError = loadState.refresh is androidx.paging.LoadState.Error || 
                                     loadState.mediator?.refresh is androidx.paging.LoadState.Error
                             val endOfPaginationReached = (loadState.refresh as? androidx.paging.LoadState.NotLoading)?.endOfPaginationReached == true
@@ -499,7 +701,7 @@ fun CommunityContent(
                                 items(5) {
                                     PostCardSkeleton(modifier = Modifier.padding(horizontal = paddingMedium / 2, vertical = 2.dp))
                                 }
-                            } else if (discoverItems.itemCount == 0 && endOfPaginationReached) {
+                            } else if (discoverItems.itemCount == 0) {
                                 item {
                                     EmptyFeedState(tab = CommunityTab.DISCOVER)
                                 }
@@ -597,11 +799,11 @@ fun CommunityContent(
                                         onRetry = { hotItems.retry() }
                                     )
                                 }
-                            } else if (hotItems.itemCount == 0 && (isHotLoading || !endOfPaginationReached)) {
+                            } else if (hotItems.itemCount == 0 && isHotLoading) {
                                 items(5) {
                                     PostCardSkeleton(modifier = Modifier.padding(horizontal = paddingMedium / 2, vertical = 2.dp))
                                 }
-                            } else if (hotItems.itemCount == 0 && endOfPaginationReached) {
+                            } else if (hotItems.itemCount == 0) {
                                 item {
                                     EmptyFeedState(tab = CommunityTab.HOT)
                                 }

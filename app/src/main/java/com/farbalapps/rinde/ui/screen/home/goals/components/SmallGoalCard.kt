@@ -50,68 +50,108 @@ fun SmallGoalCard(
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
-            Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .background(progressColor.copy(alpha = 0.15f), shape = CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = goal.title,
-                        tint = progressColor,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
+            val progressPercent = (fraction * 100).toInt()
 
-                val progressPercent = (fraction * 100).toInt()
-                Text(
-                    text = "$progressPercent%",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = progressColor
-                )
-            }
+            SmallGoalHeader(
+                icon = icon,
+                progressColor = progressColor,
+                progressPercent = progressPercent,
+                title = goal.title
+            )
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Text(
-                text = goal.title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            Spacer(modifier = Modifier.height(2.dp))
-
-            Text(
-                text = String.format("$%,.0f / $%,.0f", goal.currentAmount, goal.targetAmount),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+            SmallGoalInfo(
+                title = goal.title,
+                currentAmount = goal.currentAmount,
+                targetAmount = goal.targetAmount
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            LinearProgressIndicator(
-                progress = { animatedProgress },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(6.dp)
-                    .clip(RoundedCornerShape(50)),
-                color = progressColor,
-                trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                gapSize = 0.dp,
-                drawStopIndicator = {}
+            SmallGoalProgressBar(
+                animatedProgress = animatedProgress,
+                progressColor = progressColor
             )
         }
     }
+}
+
+@Composable
+private fun SmallGoalHeader(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    progressColor: androidx.compose.ui.graphics.Color,
+    progressPercent: Int,
+    title: String
+) {
+    Row(
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .background(progressColor.copy(alpha = 0.15f), shape = CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = title,
+                tint = progressColor,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+
+        Text(
+            text = "$progressPercent%",
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = progressColor
+        )
+    }
+}
+
+@Composable
+private fun SmallGoalInfo(
+    title: String,
+    currentAmount: Double,
+    targetAmount: Double
+) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.onSurface,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis
+    )
+
+    Spacer(modifier = Modifier.height(2.dp))
+
+    Text(
+        text = String.format("$%,.0f / $%,.0f", currentAmount, targetAmount),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis
+    )
+}
+
+@Composable
+private fun SmallGoalProgressBar(
+    animatedProgress: Float,
+    progressColor: androidx.compose.ui.graphics.Color
+) {
+    LinearProgressIndicator(
+        progress = { animatedProgress },
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(6.dp)
+            .clip(RoundedCornerShape(50)),
+        color = progressColor,
+        trackColor = MaterialTheme.colorScheme.surfaceVariant,
+        gapSize = 0.dp,
+        drawStopIndicator = {}
+    )
 }

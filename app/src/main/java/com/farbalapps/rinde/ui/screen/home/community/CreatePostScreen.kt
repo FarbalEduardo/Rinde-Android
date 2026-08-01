@@ -158,506 +158,66 @@ fun CreatePostScreen(
                 .padding(horizontal = dimensionResource(id = R.dimen.padding_medium)),
             verticalArrangement = Arrangement.spacedBy(dimensionResource(id = R.dimen.padding_large))
         ) {
-            // Privacy Alert
-            if (uiState.isPrivateProfile) {
-                item {
-                    Surface(
-                        color = MaterialTheme.colorScheme.errorContainer,
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.error)
-                            Spacer(Modifier.width(12.dp))
-                            Text(
-                                text = stringResource(R.string.privacy_restriction_msg),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onErrorContainer
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Error Message
-            if (uiState.error != null) {
-                item {
-                    Surface(
-                        color = MaterialTheme.colorScheme.errorContainer,
-                        shape = MaterialTheme.shapes.medium
-                    ) {
-                        Row(Modifier.padding(dimensionResource(id = R.dimen.padding_medium)), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.ErrorOutline, contentDescription = null, tint = MaterialTheme.colorScheme.error)
-                            Spacer(Modifier.width(dimensionResource(id = R.dimen.padding_medium)))
-                            Text(
-                                text = uiState.error!!, 
-                                color = MaterialTheme.colorScheme.onErrorContainer, 
-                                fontSize = dimensionResource(id = R.dimen.text_size_small).value.sp
-                            )
-                        }
-                    }
-                }
-            }
-
-            // ── 1. FOTOS ──────────────────────────────────────────────────────
-            item {
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            stringResource(R.string.create_post_label_photos),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Text(
-                            text = "${uiState.photoUris.size}/4",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = if (uiState.photoUris.size == 4) RindePrimary
-                                    else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Text(
-                        "Mínimo 1, máximo 4 imágenes (obligatorio)",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(Modifier.height(dimensionResource(id = R.dimen.padding_medium)))
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(dimensionResource(id = R.dimen.padding_medium))) {
-                        items(uiState.photoUris) { uri ->
-                            Box(
-                                modifier = Modifier
-                                    .size(110.dp)
-                                    .clip(MaterialTheme.shapes.medium)
-                                    .border(dimensionResource(id = R.dimen.stroke_thin), MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.medium)
-                            ) {
-                                AsyncImage(
-                                    model = uri,
-                                    contentDescription = null,
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Crop
-                                )
-                                // Botón para remover foto
-                                Box(
-                                    modifier = Modifier
-                                        .align(Alignment.TopEnd)
-                                        .padding(4.dp)
-                                        .size(22.dp)
-                                        .background(Color.Black.copy(alpha = 0.5f), androidx.compose.foundation.shape.CircleShape)
-                                        .clickable { viewModel.onPhotoRemoved(uri) },
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        Icons.Default.Close,
-                                        contentDescription = "Quitar foto",
-                                        tint = Color.White,
-                                        modifier = Modifier.size(14.dp)
-                                    )
-                                }
-                            }
-                        }
-                        if (uiState.photoUris.size < 4) {
-                            item {
-                                val canAdd = remainingSlots > 0
-                                Surface(
-                                    modifier = Modifier.size(110.dp),
-                                    shape = MaterialTheme.shapes.medium,
-                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                    border = androidx.compose.foundation.BorderStroke(
-                                        1.dp,
-                                        MaterialTheme.colorScheme.outlineVariant
-                                    ),
-                                    onClick = {
-                                        if (canAdd) {
-                                            galleryLauncher.launch(
-                                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                                            )
-                                        }
-                                    }
-                                ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                            Icon(
-                                                Icons.Default.AddPhotoAlternate,
-                                                contentDescription = null,
-                                                tint = RindePrimary
-                                            )
-                                            Spacer(Modifier.height(4.dp))
-                                            Text(
-                                                text = "Agregar",
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = RindePrimary,
-                                                fontWeight = FontWeight.Bold
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // ── 2. TIPO DE OFERTA ─────────────────────────────────────────────
-            item {
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            stringResource(R.string.offer_type_label),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        val isOnline = uiState.offerType == com.farbalapps.rinde.domain.model.OfferType.ONLINE
-                        val isPhysical = uiState.offerType == com.farbalapps.rinde.domain.model.OfferType.PHYSICAL
-                        Surface(
-                            onClick = { viewModel.onOfferTypeChange(com.farbalapps.rinde.domain.model.OfferType.ONLINE) },
-                            shape = RoundedCornerShape(50),
-                            color = if (isOnline) RindePrimary.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant,
-                            border = androidx.compose.foundation.BorderStroke(
-                                1.dp,
-                                if (isOnline) RindePrimary else MaterialTheme.colorScheme.outlineVariant
-                            )
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    stringResource(R.string.offer_type_online),
-                                    style = MaterialTheme.typography.labelLarge,
-                                    color = if (isOnline) RindePrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                    fontWeight = if (isOnline) FontWeight.SemiBold else FontWeight.Normal
-                                )
-                            }
-                        }
-                        Surface(
-                            onClick = { viewModel.onOfferTypeChange(com.farbalapps.rinde.domain.model.OfferType.PHYSICAL) },
-                            shape = RoundedCornerShape(50),
-                            color = if (isPhysical) RindePrimary.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant,
-                            border = androidx.compose.foundation.BorderStroke(
-                                1.dp,
-                                if (isPhysical) RindePrimary else MaterialTheme.colorScheme.outlineVariant
-                            )
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    stringResource(R.string.offer_type_physical),
-                                    style = MaterialTheme.typography.labelLarge,
-                                    color = if (isPhysical) RindePrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                    fontWeight = if (isPhysical) FontWeight.SemiBold else FontWeight.Normal
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            // ── 3A. CAMPOS DE OFERTA ONLINE (Sitio web + Link) ───────────────
-            if (uiState.offerType == com.farbalapps.rinde.domain.model.OfferType.ONLINE) {
-                item {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        OutlinedTextField(
-                            value = uiState.websiteName,
-                            onValueChange = viewModel::onWebsiteNameChange,
-                            label = { Text("Página web") },
-                            placeholder = { Text(stringResource(R.string.create_post_hint_website)) },
-                            leadingIcon = { Icon(Icons.Default.Language, contentDescription = null) },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = MaterialTheme.shapes.medium,
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = RindePrimary,
-                                focusedLabelColor = RindePrimary
-                            ),
-                            singleLine = true,
-                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                                capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences
-                            )
-                        )
-                        OutlinedTextField(
-                            value = uiState.productLink,
-                            onValueChange = viewModel::onProductLinkChange,
-                            label = { Text("Link del producto") },
-                            placeholder = { Text(stringResource(R.string.create_post_hint_link)) },
-                            leadingIcon = { Icon(Icons.Default.Link, contentDescription = null) },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = MaterialTheme.shapes.medium,
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = RindePrimary,
-                                focusedLabelColor = RindePrimary
-                            ),
-                            singleLine = true,
-                            isError = uiState.productLinkError != null,
-                            supportingText = {
-                                uiState.productLinkError?.let {
-                                    Text(it, color = MaterialTheme.colorScheme.error)
-                                }
-                            }
-                        )
-                    }
-                }
-            }
-
-            // ── 3B. CAMPOS DE OFERTA FÍSICA (Tienda → Ubicación) ─────────────
-            if (uiState.offerType == com.farbalapps.rinde.domain.model.OfferType.PHYSICAL) {
-                item {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        OutlinedTextField(
-                            value = uiState.storeName,
-                            onValueChange = viewModel::onStoreNameChange,
-                            label = { Text("Nombre de la tienda") },
-                            placeholder = { Text("Puedes escribir el nombre del lugar") },
-                            leadingIcon = { Icon(Icons.Default.Store, contentDescription = null) },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = MaterialTheme.shapes.medium,
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = RindePrimary,
-                                focusedLabelColor = RindePrimary
-                            ),
-                            singleLine = true,
-                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                                capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences
-                            )
-                        )
-                        OutlinedTextField(
-                            value = uiState.locationName,
-                            onValueChange = viewModel::onLocationNameChange,
-                            label = { Text(stringResource(R.string.create_post_hint_location)) },
-                            placeholder = { Text("Puedes escribir el nombre del lugar") },
-                            leadingIcon = { Icon(Icons.Default.Place, contentDescription = null) },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = MaterialTheme.shapes.medium,
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = RindePrimary,
-                                focusedLabelColor = RindePrimary
-                            ),
-                            singleLine = true,
-//                            trailingIcon = {
-//                                IconButton(onClick = { viewModel.fetchCurrentLocation() }) {
-//                                    Icon(Icons.Default.MyLocation, contentDescription = stringResource(id = R.string.action_gps), tint = RindePrimary)
-//                                }
-//                            }
-                        )
-                        Text(
-                            stringResource(R.string.create_post_location_helper),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(start = dimensionResource(id = R.dimen.padding_xsmall))
-                        )
-                    }
-                }
-            }
-
-            // ── 4. TÍTULO ─────────────────────────────────────────────────────
-            item {
-                Column {
-                    OutlinedTextField(
-                        value = uiState.title,
-                        onValueChange = viewModel::onTitleChange,
-                        label = { Text(stringResource(R.string.create_post_hint_title)) },
-                        placeholder = { Text(stringResource(R.string.create_post_placeholder_title)) },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = MaterialTheme.shapes.medium,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = RindePrimary,
-                            focusedLabelColor = RindePrimary
-                        ),
-                        singleLine = true,
-                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                            capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences
-                        )
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        text = "El título debe llevar al menos 10 caracteres (ej: \"Oferta de audífonos Sony\").",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(start = 4.dp)
+            PrivacyAlertItem(uiState.isPrivateProfile)
+            ErrorItem(uiState.error)
+            PhotosSectionItem(
+                photoUris = uiState.photoUris,
+                remainingSlots = remainingSlots,
+                onPhotoRemoved = { viewModel.onPhotoRemoved(it) },
+                onLaunchGallery = {
+                    galleryLauncher.launch(
+                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
                     )
                 }
-            }
-
-            // ── 5. DESCRIPCIÓN ────────────────────────────────────────────────
-            item {
-                OutlinedTextField(
-                    value = uiState.description,
-                    onValueChange = viewModel::onDescriptionChange,
-                    label = { Text(stringResource(R.string.create_post_label_description)) },
-                    placeholder = { Text(stringResource(R.string.create_post_placeholder_description)) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(150.dp),
-                    shape = MaterialTheme.shapes.medium,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = RindePrimary,
-                        focusedLabelColor = RindePrimary
-                    ),
-                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                        capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences
-                    )
-                )
-            }
-
-            // ── 5.1 PRECIO Y DETALLES ──────────────────────────────────────────
-            item {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(
-                        "Precio y Detalles",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        OutlinedTextField(
-                            value = uiState.normalPriceInput,
-                            onValueChange = viewModel::onNormalPriceChange,
-                            label = { Text("Precio Normal") },
-                            modifier = Modifier.weight(1f),
-                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal),
-                            singleLine = true,
-                            shape = MaterialTheme.shapes.medium,
-                            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = RindePrimary, focusedLabelColor = RindePrimary)
-                        )
-                        OutlinedTextField(
-                            value = uiState.discountPriceInput,
-                            onValueChange = viewModel::onDiscountPriceChange,
-                            label = { Text("Precio Oferta") },
-                            modifier = Modifier.weight(1f),
-                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal),
-                            singleLine = true,
-                            shape = MaterialTheme.shapes.medium,
-                            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = RindePrimary, focusedLabelColor = RindePrimary),
-                            isError = uiState.priceError != null
-                        )
-                    }
-                    if (uiState.priceError != null) {
-                        Text(
-                            text = uiState.priceError!!,
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-
-                    // Porcentaje calculado
-                    val nPrice = uiState.normalPriceInput.toDoubleOrNull()
-                    val dPrice = uiState.discountPriceInput.toDoubleOrNull()
-                    if (nPrice != null && dPrice != null && nPrice > 0 && nPrice > dPrice) {
-                        val pct = (((nPrice - dPrice) / nPrice) * 100).toInt()
-                        Text(
-                            text = "Descuento calculado: $pct%",
-                            color = RindePrimary,
-                            style = MaterialTheme.typography.labelMedium
-                        )
-                    }
-
-                    Text("Moneda", style = MaterialTheme.typography.labelLarge)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        val currencyOptions = listOf(
-                            "MXN" to "MXN ($)",
-                            "USD" to "USD ($)",
-                            "EUR" to "EUR (€)"
-                        )
-                        currencyOptions.forEach { (code, labelText) ->
-                            FilterChip(
-                                selected = uiState.currency == code,
-                                onClick = { viewModel.onCurrencyChange(code) },
-                                label = { Text(labelText) },
-                                shape = RoundedCornerShape(50),
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = RindePrimary.copy(alpha = 0.1f),
-                                    selectedLabelColor = RindePrimary
-                                )
-                            )
-                        }
-                    }
-
-
-
-                    Text("Condición del Producto", style = MaterialTheme.typography.labelLarge)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf("Nuevo", "Usado", "Reacondicionado").forEach { cond ->
-                            FilterChip(
-                                selected = uiState.condition == cond,
-                                onClick = { viewModel.onConditionChange(cond) },
-                                label = { Text(cond) },
-                                shape = RoundedCornerShape(50),
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = RindePrimary.copy(alpha = 0.1f),
-                                    selectedLabelColor = RindePrimary
-                                )
-                            )
-                        }
-                    }
-
-                    if (uiState.offerType == com.farbalapps.rinde.domain.model.OfferType.ONLINE) {
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text("¿Requiere Código de Cupón?")
-                            Switch(
-                                checked = uiState.hasCoupon,
-                                onCheckedChange = viewModel::onHasCouponChange,
-                                colors = SwitchDefaults.colors(checkedThumbColor = RindePrimary, checkedTrackColor = RindePrimary.copy(alpha=0.5f))
-                            )
-                        }
-                        if (uiState.hasCoupon) {
-                            OutlinedTextField(
-                                value = uiState.couponCode,
-                                onValueChange = viewModel::onCouponCodeChange,
-                                label = { Text("Código de Cupón") },
-                                modifier = Modifier.fillMaxWidth(),
-                                singleLine = true,
-                                shape = MaterialTheme.shapes.medium,
-                                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = RindePrimary, focusedLabelColor = RindePrimary)
-                            )
-                        }
-                    }
-                }
-            }
-
-            // ── 6. CATEGORÍA (sin valor por defecto, el usuario debe elegir) ──
-            item {
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            stringResource(R.string.create_post_label_category),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    Spacer(Modifier.height(dimensionResource(id = R.dimen.padding_small)))
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(dimensionResource(id = R.dimen.padding_small))) {
-                        items(com.farbalapps.rinde.domain.model.Category.FIXED_COMMUNITY_CATEGORIES) { cat ->
-                            FilterChip(
-                                selected = uiState.category == cat,
-                                onClick = { viewModel.onCategoryChange(cat) },
-                                label = { Text(cat) },
-                                shape = RoundedCornerShape(50),
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = RindePrimary.copy(alpha = 0.1f),
-                                    selectedLabelColor = RindePrimary
-                                )
-                            )
-                        }
-                    }
-                }
-            }
-
+            )
+            OfferTypeSectionItem(
+                offerType = uiState.offerType,
+                onOfferTypeChange = { viewModel.onOfferTypeChange(it) }
+            )
+            OnlineFieldsSectionItem(
+                offerType = uiState.offerType,
+                websiteName = uiState.websiteName,
+                productLink = uiState.productLink,
+                productLinkError = uiState.productLinkError,
+                onWebsiteNameChange = viewModel::onWebsiteNameChange,
+                onProductLinkChange = viewModel::onProductLinkChange
+            )
+            PhysicalFieldsSectionItem(
+                offerType = uiState.offerType,
+                storeName = uiState.storeName,
+                locationName = uiState.locationName,
+                onStoreNameChange = viewModel::onStoreNameChange,
+                onLocationNameChange = viewModel::onLocationNameChange
+            )
+            TitleSectionItem(
+                title = uiState.title,
+                onTitleChange = viewModel::onTitleChange
+            )
+            DescriptionSectionItem(
+                description = uiState.description,
+                onDescriptionChange = viewModel::onDescriptionChange
+            )
+            PriceAndDetailsSectionItem(
+                offerType = uiState.offerType,
+                normalPriceInput = uiState.normalPriceInput,
+                discountPriceInput = uiState.discountPriceInput,
+                priceError = uiState.priceError,
+                currency = uiState.currency,
+                condition = uiState.condition,
+                hasCoupon = uiState.hasCoupon,
+                couponCode = uiState.couponCode,
+                onNormalPriceChange = viewModel::onNormalPriceChange,
+                onDiscountPriceChange = viewModel::onDiscountPriceChange,
+                onCurrencyChange = viewModel::onCurrencyChange,
+                onConditionChange = viewModel::onConditionChange,
+                onHasCouponChange = viewModel::onHasCouponChange,
+                onCouponCodeChange = viewModel::onCouponCodeChange
+            )
+            CategorySectionItem(
+                category = uiState.category,
+                onCategoryChange = viewModel::onCategoryChange
+            )
             item { Spacer(Modifier.height(dimensionResource(id = R.dimen.padding_xlarge))) }
-
         }
     }
 }
@@ -667,5 +227,547 @@ fun CreatePostScreen(
 fun CreatePostScreenPreview() {
     RindeTheme {
         CreatePostScreen(onBack = {})
+    }
+}
+
+private fun androidx.compose.foundation.lazy.LazyListScope.PrivacyAlertItem(isPrivateProfile: Boolean) {
+    if (isPrivateProfile) {
+        item {
+            Surface(
+                color = MaterialTheme.colorScheme.errorContainer,
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                    Spacer(Modifier.width(12.dp))
+                    Text(
+                        text = stringResource(R.string.privacy_restriction_msg),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun androidx.compose.foundation.lazy.LazyListScope.ErrorItem(error: String?) {
+    if (error != null) {
+        item {
+            Surface(
+                color = MaterialTheme.colorScheme.errorContainer,
+                shape = MaterialTheme.shapes.medium
+            ) {
+                Row(Modifier.padding(dimensionResource(id = R.dimen.padding_medium)), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.ErrorOutline, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                    Spacer(Modifier.width(dimensionResource(id = R.dimen.padding_medium)))
+                    Text(
+                        text = error, 
+                        color = MaterialTheme.colorScheme.onErrorContainer, 
+                        fontSize = dimensionResource(id = R.dimen.text_size_small).value.sp
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun androidx.compose.foundation.lazy.LazyListScope.PhotosSectionItem(
+    photoUris: List<android.net.Uri>,
+    remainingSlots: Int,
+    onPhotoRemoved: (android.net.Uri) -> Unit,
+    onLaunchGallery: () -> Unit
+) {
+    item {
+        Column {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    stringResource(R.string.create_post_label_photos),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    text = "${photoUris.size}/4",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (photoUris.size == 4) RindePrimary
+                            else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Text(
+                "Mínimo 1, máximo 4 imágenes (obligatorio)",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(dimensionResource(id = R.dimen.padding_medium)))
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(dimensionResource(id = R.dimen.padding_medium))) {
+                items(photoUris) { uri ->
+                    Box(
+                        modifier = Modifier
+                            .size(110.dp)
+                            .clip(MaterialTheme.shapes.medium)
+                            .border(dimensionResource(id = R.dimen.stroke_thin), MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.medium)
+                    ) {
+                        AsyncImage(
+                            model = uri,
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(4.dp)
+                                .size(22.dp)
+                                .background(Color.Black.copy(alpha = 0.5f), androidx.compose.foundation.shape.CircleShape)
+                                .clickable { onPhotoRemoved(uri) },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "Quitar foto",
+                                tint = Color.White,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                    }
+                }
+                if (photoUris.size < 4) {
+                    item {
+                        val canAdd = remainingSlots > 0
+                        Surface(
+                            modifier = Modifier.size(110.dp),
+                            shape = MaterialTheme.shapes.medium,
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.dp,
+                                MaterialTheme.colorScheme.outlineVariant
+                            ),
+                            onClick = {
+                                if (canAdd) {
+                                    onLaunchGallery()
+                                }
+                            }
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Icon(
+                                        Icons.Default.AddPhotoAlternate,
+                                        contentDescription = null,
+                                        tint = RindePrimary
+                                    )
+                                    Spacer(Modifier.height(4.dp))
+                                    Text(
+                                        text = "Agregar",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = RindePrimary,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun androidx.compose.foundation.lazy.LazyListScope.OfferTypeSectionItem(
+    offerType: com.farbalapps.rinde.domain.model.OfferType,
+    onOfferTypeChange: (com.farbalapps.rinde.domain.model.OfferType) -> Unit
+) {
+    item {
+        Column {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    stringResource(R.string.offer_type_label),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                val isOnline = offerType == com.farbalapps.rinde.domain.model.OfferType.ONLINE
+                val isPhysical = offerType == com.farbalapps.rinde.domain.model.OfferType.PHYSICAL
+                Surface(
+                    onClick = { onOfferTypeChange(com.farbalapps.rinde.domain.model.OfferType.ONLINE) },
+                    shape = RoundedCornerShape(50),
+                    color = if (isOnline) RindePrimary.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant,
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        if (isOnline) RindePrimary else MaterialTheme.colorScheme.outlineVariant
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            stringResource(R.string.offer_type_online),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = if (isOnline) RindePrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = if (isOnline) FontWeight.SemiBold else FontWeight.Normal
+                        )
+                    }
+                }
+                Surface(
+                    onClick = { onOfferTypeChange(com.farbalapps.rinde.domain.model.OfferType.PHYSICAL) },
+                    shape = RoundedCornerShape(50),
+                    color = if (isPhysical) RindePrimary.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant,
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        if (isPhysical) RindePrimary else MaterialTheme.colorScheme.outlineVariant
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            stringResource(R.string.offer_type_physical),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = if (isPhysical) RindePrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = if (isPhysical) FontWeight.SemiBold else FontWeight.Normal
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun androidx.compose.foundation.lazy.LazyListScope.OnlineFieldsSectionItem(
+    offerType: com.farbalapps.rinde.domain.model.OfferType,
+    websiteName: String,
+    productLink: String,
+    productLinkError: String?,
+    onWebsiteNameChange: (String) -> Unit,
+    onProductLinkChange: (String) -> Unit
+) {
+    if (offerType == com.farbalapps.rinde.domain.model.OfferType.ONLINE) {
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = websiteName,
+                    onValueChange = onWebsiteNameChange,
+                    label = { Text("Página web") },
+                    placeholder = { Text(stringResource(R.string.create_post_hint_website)) },
+                    leadingIcon = { Icon(Icons.Default.Language, contentDescription = null) },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = RindePrimary,
+                        focusedLabelColor = RindePrimary
+                    ),
+                    singleLine = true,
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences
+                    )
+                )
+                OutlinedTextField(
+                    value = productLink,
+                    onValueChange = onProductLinkChange,
+                    label = { Text("Link del producto") },
+                    placeholder = { Text(stringResource(R.string.create_post_hint_link)) },
+                    leadingIcon = { Icon(Icons.Default.Link, contentDescription = null) },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = RindePrimary,
+                        focusedLabelColor = RindePrimary
+                    ),
+                    singleLine = true,
+                    isError = productLinkError != null,
+                    supportingText = {
+                        productLinkError?.let {
+                            Text(it, color = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                )
+            }
+        }
+    }
+}
+
+private fun androidx.compose.foundation.lazy.LazyListScope.PhysicalFieldsSectionItem(
+    offerType: com.farbalapps.rinde.domain.model.OfferType,
+    storeName: String,
+    locationName: String,
+    onStoreNameChange: (String) -> Unit,
+    onLocationNameChange: (String) -> Unit
+) {
+    if (offerType == com.farbalapps.rinde.domain.model.OfferType.PHYSICAL) {
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = storeName,
+                    onValueChange = onStoreNameChange,
+                    label = { Text("Nombre de la tienda") },
+                    placeholder = { Text("Puedes escribir el nombre del lugar") },
+                    leadingIcon = { Icon(Icons.Default.Store, contentDescription = null) },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = RindePrimary,
+                        focusedLabelColor = RindePrimary
+                    ),
+                    singleLine = true,
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences
+                    )
+                )
+                OutlinedTextField(
+                    value = locationName,
+                    onValueChange = onLocationNameChange,
+                    label = { Text(stringResource(R.string.create_post_hint_location)) },
+                    placeholder = { Text("Puedes escribir el nombre del lugar") },
+                    leadingIcon = { Icon(Icons.Default.Place, contentDescription = null) },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = RindePrimary,
+                        focusedLabelColor = RindePrimary
+                    ),
+                    singleLine = true
+                )
+                Text(
+                    stringResource(R.string.create_post_location_helper),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = dimensionResource(id = R.dimen.padding_xsmall))
+                )
+            }
+        }
+    }
+}
+
+private fun androidx.compose.foundation.lazy.LazyListScope.TitleSectionItem(
+    title: String,
+    onTitleChange: (String) -> Unit
+) {
+    item {
+        Column {
+            OutlinedTextField(
+                value = title,
+                onValueChange = onTitleChange,
+                label = { Text(stringResource(R.string.create_post_hint_title)) },
+                placeholder = { Text(stringResource(R.string.create_post_placeholder_title)) },
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.medium,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = RindePrimary,
+                    focusedLabelColor = RindePrimary
+                ),
+                singleLine = true,
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                    capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences
+                )
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = "El título debe llevar al menos 10 caracteres (ej: \"Oferta de audífonos Sony\").",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 4.dp)
+            )
+        }
+    }
+}
+
+private fun androidx.compose.foundation.lazy.LazyListScope.DescriptionSectionItem(
+    description: String,
+    onDescriptionChange: (String) -> Unit
+) {
+    item {
+        OutlinedTextField(
+            value = description,
+            onValueChange = onDescriptionChange,
+            label = { Text(stringResource(R.string.create_post_label_description)) },
+            placeholder = { Text(stringResource(R.string.create_post_placeholder_description)) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(150.dp),
+            shape = MaterialTheme.shapes.medium,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = RindePrimary,
+                focusedLabelColor = RindePrimary
+            ),
+            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences
+            )
+        )
+    }
+}
+
+private fun androidx.compose.foundation.lazy.LazyListScope.PriceAndDetailsSectionItem(
+    offerType: com.farbalapps.rinde.domain.model.OfferType,
+    normalPriceInput: String,
+    discountPriceInput: String,
+    priceError: String?,
+    currency: String,
+    condition: String,
+    hasCoupon: Boolean,
+    couponCode: String,
+    onNormalPriceChange: (String) -> Unit,
+    onDiscountPriceChange: (String) -> Unit,
+    onCurrencyChange: (String) -> Unit,
+    onConditionChange: (String) -> Unit,
+    onHasCouponChange: (Boolean) -> Unit,
+    onCouponCodeChange: (String) -> Unit
+) {
+    item {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(
+                "Precio y Detalles",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = normalPriceInput,
+                    onValueChange = onNormalPriceChange,
+                    label = { Text("Precio Normal") },
+                    modifier = Modifier.weight(1f),
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal),
+                    singleLine = true,
+                    shape = MaterialTheme.shapes.medium,
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = RindePrimary, focusedLabelColor = RindePrimary)
+                )
+                OutlinedTextField(
+                    value = discountPriceInput,
+                    onValueChange = onDiscountPriceChange,
+                    label = { Text("Precio Oferta") },
+                    modifier = Modifier.weight(1f),
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal),
+                    singleLine = true,
+                    shape = MaterialTheme.shapes.medium,
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = RindePrimary, focusedLabelColor = RindePrimary),
+                    isError = priceError != null
+                )
+            }
+            if (priceError != null) {
+                Text(
+                    text = priceError,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+
+            val nPrice = normalPriceInput.toDoubleOrNull()
+            val dPrice = discountPriceInput.toDoubleOrNull()
+            if (nPrice != null && dPrice != null && nPrice > 0 && nPrice > dPrice) {
+                val pct = (((nPrice - dPrice) / nPrice) * 100).toInt()
+                Text(
+                    text = "Descuento calculado: $pct%",
+                    color = RindePrimary,
+                    style = MaterialTheme.typography.labelMedium
+                )
+            }
+
+            Text("Moneda", style = MaterialTheme.typography.labelLarge)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                val currencyOptions = listOf(
+                    "MXN" to "MXN ($)",
+                    "USD" to "USD ($)",
+                    "EUR" to "EUR (€)"
+                )
+                currencyOptions.forEach { (code, labelText) ->
+                    FilterChip(
+                        selected = currency == code,
+                        onClick = { onCurrencyChange(code) },
+                        label = { Text(labelText) },
+                        shape = RoundedCornerShape(50),
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = RindePrimary.copy(alpha = 0.1f),
+                            selectedLabelColor = RindePrimary
+                        )
+                    )
+                }
+            }
+
+            Text("Condición del Producto", style = MaterialTheme.typography.labelLarge)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("Nuevo", "Usado", "Reacondicionado").forEach { cond ->
+                    FilterChip(
+                        selected = condition == cond,
+                        onClick = { onConditionChange(cond) },
+                        label = { Text(cond) },
+                        shape = RoundedCornerShape(50),
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = RindePrimary.copy(alpha = 0.1f),
+                            selectedLabelColor = RindePrimary
+                        )
+                    )
+                }
+            }
+
+            if (offerType == com.farbalapps.rinde.domain.model.OfferType.ONLINE) {
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("¿Requiere Código de Cupón?")
+                    Switch(
+                        checked = hasCoupon,
+                        onCheckedChange = onHasCouponChange,
+                        colors = SwitchDefaults.colors(checkedThumbColor = RindePrimary, checkedTrackColor = RindePrimary.copy(alpha=0.5f))
+                    )
+                }
+                if (hasCoupon) {
+                    OutlinedTextField(
+                        value = couponCode,
+                        onValueChange = onCouponCodeChange,
+                        label = { Text("Código de Cupón") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        shape = MaterialTheme.shapes.medium,
+                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = RindePrimary, focusedLabelColor = RindePrimary)
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun androidx.compose.foundation.lazy.LazyListScope.CategorySectionItem(
+    category: String,
+    onCategoryChange: (String) -> Unit
+) {
+    item {
+        Column {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    stringResource(R.string.create_post_label_category),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            Spacer(Modifier.height(dimensionResource(id = R.dimen.padding_small)))
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(dimensionResource(id = R.dimen.padding_small))) {
+                items(com.farbalapps.rinde.domain.model.Category.FIXED_COMMUNITY_CATEGORIES) { cat ->
+                    FilterChip(
+                        selected = category == cat,
+                        onClick = { onCategoryChange(cat) },
+                        label = { Text(cat) },
+                        shape = RoundedCornerShape(50),
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = RindePrimary.copy(alpha = 0.1f),
+                            selectedLabelColor = RindePrimary
+                        )
+                    )
+                }
+            }
+        }
     }
 }

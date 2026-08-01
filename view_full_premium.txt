@@ -1,0 +1,297 @@
+Created At: 2026-07-28T00:57:26Z
+Completed At: 2026-07-28T00:57:27Z
+File Path: `file:///d:/PROYECTOSANDROID/Rinde/app/src/main/java/com/farbalapps/rinde/ui/screen/home/list/components/ShoppingListItem.kt`
+Total Lines: 289
+Total Bytes: 12958
+Showing lines 1 to 289
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+1: package com.farbalapps.rinde.ui.screen.home.list.components
+2: 
+3: import androidx.compose.animation.*
+4: import androidx.compose.animation.core.*
+5: import androidx.compose.foundation.background
+6: import androidx.compose.foundation.layout.*
+7: import androidx.compose.foundation.shape.CircleShape
+8: import androidx.compose.foundation.shape.RoundedCornerShape
+9: import androidx.compose.material.icons.Icons
+10: import androidx.compose.material.icons.filled.*
+11: import androidx.compose.material3.*
+12: import androidx.compose.runtime.*
+13: import androidx.compose.ui.Alignment
+14: import androidx.compose.ui.Modifier
+15: import androidx.compose.ui.draw.scale
+16: import androidx.compose.ui.graphics.Color
+17: import androidx.compose.ui.res.stringResource
+18: import androidx.compose.ui.text.font.FontWeight
+19: import androidx.compose.ui.text.style.TextDecoration
+20: import androidx.compose.ui.text.style.TextOverflow
+21: import androidx.compose.ui.unit.dp
+22: import androidx.compose.ui.unit.sp
+23: import androidx.compose.ui.tooling.preview.Preview
+24: import com.farbalapps.rinde.R
+25: import com.farbalapps.rinde.domain.model.ShoppingItem as DomainShoppingItem
+26: import com.farbalapps.rinde.ui.screen.home.list.toProductCategory
+27: import kotlinx.coroutines.launch
+28: 
+29: import androidx.compose.foundation.ExperimentalFoundationApi
+30: import androidx.compose.foundation.combinedClickable
+31: import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+32: import androidx.compose.ui.platform.LocalHapticFeedback
+33: import java.util.Locale
+34: 
+35: @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+36: @Composable
+37: fun ShoppingListItem(
+38:     item: DomainShoppingItem,
+39:     isHighlighted: Boolean = false,
+40:     isSwiped: Boolean,
+41:     isSelectionMode: Boolean = false,
+42:     isSelected: Boolean = false,
+43:     onSwipeStateChange: (Boolean) -> Unit,
+44:     onCheckedChange: (Boolean) -> Unit,
+45:     onLongClick: () -> Unit = {},
+46:     onSelectionToggle: () -> Unit = {},
+47:     onEdit: () -> Unit,
+48:     onDelete: () -> Unit
+49: ) {
+50:     val uiCategory = item.category.toProductCategory()
+51:     val dismissState = rememberSwipeToDismissBoxState()
+52:     val haptic = LocalHapticFeedback.current
+53: 
+54:     LaunchedEffect(dismissState.currentValue) {
+55:         when (dismissState.currentValue) {
+56:             SwipeToDismissBoxValue.EndToStart -> onSwipeStateChange(true)
+57:             SwipeToDismissBoxValue.Settled -> onSwipeStateChange(false)
+58:             else -> {}
+59:         }
+60:     }
+61:     val scope = rememberCoroutineScope()
+62: 
+63:     LaunchedEffect(isSwiped) {
+64:         if (!isSwiped && dismissState.currentValue != SwipeToDismissBoxValue.Settled) {
+65:             dismissState.reset()
+66:         }
+67:     }
+68: 
+69:     val elevation by animateDpAsState(
+70:         targetValue = if (isSelected) 6.dp else if (isHighlighted) 12.dp else 1.dp,
+71:         animationSpec = if (isHighlighted) {
+72:             infiniteRepeatable(
+73:                 animation = tween(500),
+74:                 repeatMode = RepeatMode.Reverse
+75:             )
+76:         } else {
+77:             tween(300)
+78:         },
+79:         label = "elevation"
+80:     )
+81:     val containerColor by animateColorAsState(
+82:         targetValue = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+83:                       else if (isHighlighted) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+84:                       else MaterialTheme.colorScheme.surface,
+85:         label = "color"
+86:     )
+87: 
+88:     SwipeToDismissBox(
+89:         state = dismissState,
+90:         enableDismissFromStartToEnd = false,
+91:         backgroundContent = {
+92:             val direction = dismissState.dismissDirection
+93:             
+94:             if (direction == SwipeToDismissBoxValue.EndToStart) {
+95:                 Row(
+96:                     Modifier
+97:                         .fillMaxSize()
+98:                         .background(MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+99:                         .padding(horizontal = 8.dp),
+100:                     horizontalArrangement = Arrangement.End,
+101:                     verticalAlignment = Alignment.CenterVertically
+102:                 ) {
+103:                     IconButton(
+104:                         onClick = { 
+105:                             scope.launch { dismissState.reset() }
+106:                         },
+107:                         modifier = Modifier
+108:                             .size(28.dp)
+109:                             .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+110:                     ) {
+111:                         Icon(
+112:                             imageVector = Icons.Default.Close,
+113:                             contentDescription = stringResource(id = R.string.btn_cancel),
+114:                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
+115:                             modifier = Modifier.size(16.dp)
+116:                         )
+117:                     }
+118:                     
+119:                     Spacer(modifier = Modifier.width(24.dp))
+120:                     
+121:                     IconButton(
+122:                         onClick = { 
+123:                             onDelete() 
+124:                         },
+125:                         modifier = Modifier
+126:                             .size(36.dp)
+127:                             .background(MaterialTheme.colorScheme.error, CircleShape)
+128:                     ) {
+129:                         Icon(
+130:                             imageVector = Icons.Default.Delete,
+131:                             contentDescription = stringResource(id = R.string.action_delete),
+132:                             tint = MaterialTheme.colorScheme.onError,
+133:                             modifier = Modifier.size(20.dp)
+134:                         )
+135:                     }
+136:                 }
+137:             }
+138:         },
+139:         content = {
+140:             Surface(
+141:                 shape = RoundedCornerShape(12.dp),
+142:                 color = containerColor,
+143:                 shadowElevation = elevation,
+144:                 tonalElevation = elevation,
+145:                 modifier = Modifier
+146:                     .fillMaxWidth()
+147:                     .defaultMinSize(minHeight = 56.dp)
+148:                     .combinedClickable(
+149:                         onClick = {
+150:                             if (isSelectionMode) {
+151:                                 onSelectionToggle()
+152:                             }
+153:                         },
+154:                         onLongClick = {
+155:                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+156:                             onLongClick()
+157:                         }
+158:                     )
+159:             ) {
+160:                 ListItem(
+161:                     headlineContent = {
+162:                         Text(
+163:                             text = item.name,
+164:                             style = MaterialTheme.typography.titleMedium.copy(
+165:                                 textDecoration = if (item.isCompleted) TextDecoration.LineThrough else TextDecoration.None,
+166:                                 fontWeight = FontWeight.SemiBold
+167:                             ),
+168:                             color = if (item.isCompleted) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f) 
+169:                                     else MaterialTheme.colorScheme.onSurface,
+170:                             maxLines = 1,
+171:                             overflow = TextOverflow.Ellipsis
+172:                         )
+173:                     },
+174:                     supportingContent = {
+175:                         val categoryText = if (uiCategory == com.farbalapps.rinde.ui.screen.home.list.ProductCategory.OTHERS) {
+176:                             item.category
+177:                         } else {
+178:                             stringResource(id = uiCategory.displayNameRes)
+179:                         }
+180:                         
+181:                         val priceText = item.price?.let {
+182:                             String.format(Locale.getDefault(), " · $%.2f %s", it * item.quantity, item.currency)
+183:                         } ?: ""
+184: 
+185:                         Text(
+186:                             text = "$categoryText$priceText",
+187:                             style = MaterialTheme.typography.labelMedium,
+188:                             color = if (item.isCompleted) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f) 
+189:                                     else if (item.price != null) MaterialTheme.colorScheme.tertiary
+190:                                     else MaterialTheme.colorScheme.primary,
+191:                             fontWeight = FontWeight.Medium
+192:                         )
+193:                     },
+194:                     leadingContent = {
+195:                         Row(verticalAlignment = Alignment.CenterVertically) {
+196:                             androidx.compose.animation.AnimatedVisibility(
+197:                                 visible = isSelectionMode,
+198:                                 enter = scaleIn() + fadeIn(),
+199:                                 exit = scaleOut() + fadeOut()
+200:                             ) {
+201:                                 Checkbox(
+202:                                     checked = isSelected,
+203:                                     onCheckedChange = { onSelectionToggle() },
+204:                                     colors = CheckboxDefaults.colors(
+205:                                         checkedColor = MaterialTheme.colorScheme.primary
+206:                                     )
+207:                                 )
+208:                                 Spacer(modifier = Modifier.width(4.dp))
+209:                             }
+210: 
+211:                             Surface(
+212:                                 shape = RoundedCornerShape(14.dp),
+213:                                 color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
+214:                                 modifier = Modifier.size(56.dp)
+215:                             ) {
+216:                                 Box(contentAlignment = Alignment.Center) {
+217:                                     if (item.emoji.isNotEmpty()) {
+218:                                         Text(item.emoji, fontSize = 32.sp)
+219:                                     } else {
+220:                                         Icon(
+221:                                             imageVector = uiCategory.icon,
+222:                                             contentDescription = null,
+223:                                             tint = MaterialTheme.colorScheme.primary,
+224:                                             modifier = Modifier.size(32.dp)
+225:                                         )
+226:                                     }
+227:                                 }
+228:                             }
+229:                         }
+230:                     },
+231:                     trailingContent = {
+232:                         Row(verticalAlignment = Alignment.CenterVertically) {
+233:                             val quantityText = if (item.quantity % 1.0 == 0.0) item.quantity.toInt().toString() else item.quantity.toString()
+234:                             Text(
+235:                                 text = "$quantityText ${item.unit}",
+236:                                 style = MaterialTheme.typography.titleMedium,
+237:                                 fontWeight = FontWeight.SemiBold,
+238:                                 color = MaterialTheme.colorScheme.onSurfaceVariant
+239:                             )
+240:                             if (!isSelectionMode) {
+241:                                 IconButton(onClick = onEdit) {
+242:                                     Icon(
+243:                                         imageVector = Icons.Default.Edit,
+244:                                         contentDescription = stringResource(id = R.string.action_edit),
+245:                                         modifier = Modifier.size(18.dp),
+246:                                         tint = MaterialTheme.colorScheme.primary
+247:                                     )
+248:                                 }
+249:                                 Checkbox(
+250:                                     checked = item.isCompleted,
+251:                                     onCheckedChange = onCheckedChange,
+252:                                     colors = CheckboxDefaults.colors(
+253:                                         checkedColor = MaterialTheme.colorScheme.primary
+254:                                     ),
+255:                                     modifier = Modifier.scale(0.85f)
+256:                                 )
+257:                             }
+258:                         }
+259:                     }
+260:                 )
+261:             }
+262:         }
+263:     )
+264: }
+265: 
+266: @Preview(showBackground = true)
+267: @Composable
+268: fun ShoppingListItemPreview() {
+269:     val sampleItem = DomainShoppingItem(
+270:         id = "1",
+271:         name = "Manzanas",
+272:         category = "Frutas",
+273:         quantity = 2.0,
+274:         unit = "kg",
+275:         isCompleted = false,
+276:         emoji = "🍎"
+277:     )
+278:     MaterialTheme {
+279:         ShoppingListItem(
+280:             item = sampleItem,
+281:             isSwiped = false,
+282:             onSwipeStateChange = {},
+283:             onCheckedChange = {},
+284:             onEdit = {},
+285:             onDelete = {}
+286:         )
+287:     }
+288: }
+289: 
+The above content shows the entire, complete file contents of the requested file.

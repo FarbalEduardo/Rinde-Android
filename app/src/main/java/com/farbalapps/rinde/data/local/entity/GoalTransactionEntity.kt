@@ -21,10 +21,10 @@ import androidx.room.PrimaryKey
     indices = [Index(value = ["goalId"])]
 )
 data class GoalTransactionEntity(
-    @PrimaryKey val id: String,
-    val goalId: String,
-    val amount: Double,
-    val note: String,
-    val timestamp: Long,
+    @PrimaryKey val id: String = "",
+    val goalId: String = "",
+    val amount: Double = 0.0,
+    val note: String = "",
+    val timestamp: Long = 0L,
     val isSynced: Boolean = false
 )

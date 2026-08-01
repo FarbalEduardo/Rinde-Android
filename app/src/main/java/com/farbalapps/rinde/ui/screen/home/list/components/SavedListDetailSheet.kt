@@ -105,50 +105,7 @@ fun SavedListDetailSheet(
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 items(savedList.items, key = { it.id }) { item ->
-                    Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 12.dp, vertical = 10.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                Text(
-                                    text = if (item.emoji.isNotEmpty()) item.emoji else "🛒",
-                                    style = MaterialTheme.typography.titleMedium
-                                )
-                                Column {
-                                    Text(
-                                        text = item.name,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                    Text(
-                                        text = "${item.quantity} ${item.unit} · ${item.category}",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-
-                            item.price?.let { price ->
-                                Text(
-                                    text = String.format(Locale.getDefault(), "$%.2f", price),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
+                    SavedListItemPreviewRow(item = item)
                 }
             }
 
@@ -156,108 +113,179 @@ fun SavedListDetailSheet(
             HorizontalDivider()
 
             // 4 Load Action Buttons
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 24.dp, end = 24.dp, top = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+            SavedListActionButtons(
+                savedList = savedList,
+                availableGroups = availableGroups,
+                showGroupPicker = showGroupPicker,
+                selectedGroupForAssign = selectedGroupForAssign,
+                onShowGroupPickerChange = { showGroupPicker = it },
+                onSelectedGroupForAssignChange = { selectedGroupForAssign = it },
+                onLoadList = onLoadList,
+                onDismiss = onDismiss
+            )
+        }
+    }
+}
+
+@Composable
+private fun SavedListItemPreviewRow(item: com.farbalapps.rinde.domain.model.ShoppingItem) {
+    Surface(
+        shape = RoundedCornerShape(10.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Text(
-                    text = "¿Qué deseas hacer con esta lista?",
-                    style = MaterialTheme.typography.labelLarge,
+                    text = if (item.emoji.isNotEmpty()) item.emoji else "🛒",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Column {
+                    Text(
+                        text = item.name,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = "${item.quantity} ${item.unit} · ${item.category}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            item.price?.let { price ->
+                Text(
+                    text = String.format(Locale.getDefault(), "$%.2f", price),
+                    style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+        }
+    }
+}
 
-                Button(
-                    onClick = {
-                        onLoadList(savedList, LoadSavedListMode.MERGE_CURRENT, "All")
-                        onDismiss()
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp)
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Agregar a lista actual (fusionar)")
-                }
+@Composable
+private fun SavedListActionButtons(
+    savedList: SavedShoppingList,
+    availableGroups: List<String>,
+    showGroupPicker: Boolean,
+    selectedGroupForAssign: String,
+    onShowGroupPickerChange: (Boolean) -> Unit,
+    onSelectedGroupForAssignChange: (String) -> Unit,
+    onLoadList: (savedList: SavedShoppingList, mode: LoadSavedListMode, group: String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 24.dp, end = 24.dp, top = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Text(
+            text = "¿Qué deseas hacer con esta lista?",
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
 
-                if (showGroupPicker) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        val filterGroups = availableGroups.filter { it != "All" }
-                        if (filterGroups.isNotEmpty()) {
-                            var expanded by remember { mutableStateOf(false) }
-                            Box(modifier = Modifier.weight(1f)) {
-                                OutlinedButton(
-                                    onClick = { expanded = true },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    shape = RoundedCornerShape(12.dp)
-                                ) {
-                                    Text("Grupo: $selectedGroupForAssign")
-                                    Icon(Icons.Default.ArrowDropDown, null)
-                                }
-                                DropdownMenu(
-                                    expanded = expanded,
-                                    onDismissRequest = { expanded = false }
-                                ) {
-                                    filterGroups.forEach { group ->
-                                        DropdownMenuItem(
-                                            text = { Text(group) },
-                                            onClick = {
-                                                selectedGroupForAssign = group
-                                                expanded = false
-                                            }
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                        Button(
-                            onClick = {
-                                onLoadList(savedList, LoadSavedListMode.ASSIGN_GROUP, selectedGroupForAssign)
-                                onDismiss()
-                            },
+        Button(
+            onClick = {
+                onLoadList(savedList, LoadSavedListMode.MERGE_CURRENT, "All")
+                onDismiss()
+            },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(14.dp)
+        ) {
+            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Agregar a lista actual (fusionar)")
+        }
+
+        if (showGroupPicker) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                val filterGroups = availableGroups.filter { it != "All" }
+                if (filterGroups.isNotEmpty()) {
+                    var expanded by remember { mutableStateOf(false) }
+                    Box(modifier = Modifier.weight(1f)) {
+                        OutlinedButton(
+                            onClick = { expanded = true },
+                            modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp)
                         ) {
-                            Text("Confirmar")
+                            Text("Grupo: $selectedGroupForAssign")
+                            Icon(Icons.Default.ArrowDropDown, null)
+                        }
+                        DropdownMenu(
+                            expanded = expanded,
+                            onDismissRequest = { expanded = false }
+                        ) {
+                            filterGroups.forEach { group ->
+                                DropdownMenuItem(
+                                    text = { Text(group) },
+                                    onClick = {
+                                        onSelectedGroupForAssignChange(group)
+                                        expanded = false
+                                    }
+                                )
+                            }
                         }
                     }
-                } else {
-                    OutlinedButton(
-                        onClick = { showGroupPicker = true },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp)
-                    ) {
-                        Icon(Icons.Default.Folder, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Agregar a una lista/grupo específico")
-                    }
                 }
-
-                OutlinedButton(
+                Button(
                     onClick = {
-                        onLoadList(savedList, LoadSavedListMode.REPLACE_NEW, savedList.name)
+                        onLoadList(savedList, LoadSavedListMode.ASSIGN_GROUP, selectedGroupForAssign)
                         onDismiss()
                     },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp)
+                    shape = RoundedCornerShape(12.dp)
                 ) {
-                    Icon(Icons.Default.CreateNewFolder, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Abrir en una lista nueva (\"${savedList.name}\")")
-                }
-
-                TextButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Solo consultar", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Confirmar")
                 }
             }
+        } else {
+            OutlinedButton(
+                onClick = { onShowGroupPickerChange(true) },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp)
+            ) {
+                Icon(Icons.Default.Folder, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Agregar a una lista/grupo específico")
+            }
+        }
+
+        OutlinedButton(
+            onClick = {
+                onLoadList(savedList, LoadSavedListMode.REPLACE_NEW, savedList.name)
+                onDismiss()
+            },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(14.dp)
+        ) {
+            Icon(Icons.Default.CreateNewFolder, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Abrir en una lista nueva (\"${savedList.name}\")")
+        }
+
+        TextButton(
+            onClick = onDismiss,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Solo consultar", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

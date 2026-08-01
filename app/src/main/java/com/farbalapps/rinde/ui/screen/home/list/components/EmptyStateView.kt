@@ -8,6 +8,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChecklistRtl
+import androidx.compose.material.icons.filled.Receipt
+import androidx.compose.material.icons.filled.Sell
 import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.*
@@ -75,115 +77,11 @@ fun EmptyStateView(
         verticalArrangement = Arrangement.Center
     ) {
         // Contenedor Ilustrativo Animado de Lista Vacía
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .size(220.dp)
-                .padding(bottom = 16.dp)
-        ) {
-            // Halo de fondo con resplandor azul RindePrimary
-            Box(
-                modifier = Modifier
-                    .size(170.dp)
-                    .scale(pulseScale)
-                    .clip(CircleShape)
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                RindePrimary.copy(alpha = 0.22f),
-                                RindePrimary.copy(alpha = 0.04f),
-                                Color.Transparent
-                            )
-                        )
-                    )
-            )
-
-            // Contenedor Principal con animación de balanceo pendular
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .rotate(swingAngle)
-                    .scale(pulseScale)
-                    .size(130.dp)
-                    .shadow(
-                        elevation = 16.dp,
-                        shape = CircleShape,
-                        spotColor = RindePrimary.copy(alpha = 0.45f)
-                    )
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surface)
-                    .border(
-                        width = 2.dp,
-                        color = RindePrimary.copy(alpha = 0.35f),
-                        shape = CircleShape
-                    )
-            ) {
-                Icon(
-                    imageVector = Icons.Default.ChecklistRtl,
-                    contentDescription = null,
-                    tint = RindePrimary,
-                    modifier = Modifier.size(64.dp)
-                )
-            }
-
-            // Insignia Flotante 1 (Top Right): Badge de Carrito (+ Mandado)
-            Surface(
-                shape = RoundedCornerShape(50),
-                color = MaterialTheme.colorScheme.primaryContainer,
-                shadowElevation = 8.dp,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .offset(x = (-10).dp, y = (16 + floatBadgeOffset).dp)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.ShoppingCart,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.size(14.dp)
-                    )
-                    Text(
-                        text = "+ Mandado",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                }
-            }
-
-            // Insignia Flotante 2 (Bottom Left): Chip de Cesta
-            Surface(
-                shape = RoundedCornerShape(50),
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                shadowElevation = 6.dp,
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .offset(x = 12.dp, y = (-18 - floatBadgeOffset).dp)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.ShoppingBag,
-                        contentDescription = null,
-                        tint = RindePrimary,
-                        modifier = Modifier.size(14.dp)
-                    )
-                    Text(
-                        text = "Despensa",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        }
+        EmptyStateIllustration(
+            pulseScale = pulseScale,
+            swingAngle = swingAngle,
+            floatBadgeOffset = floatBadgeOffset
+        )
 
         Spacer(modifier = Modifier.height(12.dp))
 
@@ -214,3 +112,99 @@ fun EmptyStateViewPreview() {
         EmptyStateView()
     }
 }
+
+@Composable
+private fun EmptyStateIllustration(
+    pulseScale: Float,
+    swingAngle: Float,
+    floatBadgeOffset: Float
+) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .size(220.dp)
+            .padding(bottom = 16.dp)
+    ) {
+        // Halo de fondo con resplandor azul RindePrimary
+        Box(
+            modifier = Modifier
+                .size(170.dp)
+                .scale(pulseScale)
+                .clip(CircleShape)
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            RindePrimary.copy(alpha = 0.22f),
+                            RindePrimary.copy(alpha = 0.04f),
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
+
+        // Contenedor Principal con animación de balanceo pendular
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .rotate(swingAngle)
+                .scale(pulseScale)
+                .size(130.dp)
+                .shadow(
+                    elevation = 16.dp,
+                    shape = CircleShape,
+                    spotColor = RindePrimary.copy(alpha = 0.45f)
+                )
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surface)
+                .border(
+                    width = 2.dp,
+                    color = RindePrimary.copy(alpha = 0.35f),
+                    shape = CircleShape
+                )
+        ) {
+            Icon(
+                imageVector = Icons.Default.ChecklistRtl,
+                contentDescription = null,
+                tint = RindePrimary,
+                modifier = Modifier.size(64.dp)
+            )
+        }
+
+        // Ícono Flotante Decorativo 1 (Top Start)
+        Icon(
+            imageVector = Icons.Default.ShoppingCart,
+            contentDescription = null,
+            tint = RindePrimary.copy(alpha = 0.28f),
+            modifier = Modifier
+                .size(44.dp)
+                .align(Alignment.TopStart)
+                .offset(x = 12.dp, y = (24 + floatBadgeOffset).dp)
+                .rotate(-16f)
+        )
+
+        // Ícono Flotante Decorativo 2 (Top End)
+        Icon(
+            imageVector = Icons.Default.ShoppingBag,
+            contentDescription = null,
+            tint = RindePrimary.copy(alpha = 0.32f),
+            modifier = Modifier
+                .size(48.dp)
+                .align(Alignment.TopEnd)
+                .offset(x = (-10).dp, y = (18 + floatBadgeOffset).dp)
+                .rotate(14f)
+        )
+
+        // Ícono Flotante Decorativo 3 (Bottom End)
+        Icon(
+            imageVector = Icons.Default.Receipt,
+            contentDescription = null,
+            tint = RindePrimary.copy(alpha = 0.25f),
+            modifier = Modifier
+                .size(40.dp)
+                .align(Alignment.BottomEnd)
+                .offset(x = (-15).dp, y = (-20 - floatBadgeOffset).dp)
+                .rotate(-10f)
+        )
+    }
+}
+

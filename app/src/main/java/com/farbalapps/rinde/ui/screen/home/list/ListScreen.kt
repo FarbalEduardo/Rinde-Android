@@ -215,118 +215,150 @@ fun ListScreen(
         )
 
         // Dialogs & BottomSheets
+        ListScreenDialogs(
+            uiState = uiState,
+            viewModel = viewModel,
+            context = context,
+            showAddCategoryDialog = showAddCategoryDialog,
+            onShowAddCategoryDialogChange = { showAddCategoryDialog = it },
+            categoryToDelete = categoryToDelete,
+            onCategoryToDeleteChange = { categoryToDelete = it },
+            showCategoryActionSheet = showCategoryActionSheet,
+            onShowCategoryActionSheetChange = { showCategoryActionSheet = it },
+            editCategoryName = editCategoryName,
+            onEditCategoryNameChange = { editCategoryName = it },
+            showReorderDialog = showReorderDialog,
+            onShowReorderDialogChange = { showReorderDialog = it }
+        )
+    }
+}
 
-        if (uiState.showSaveListDialog) {
-            val allItemsCount = uiState.activeItems.size + uiState.completedItems.size
-            val totalPriceSum = ((uiState.activeTotal ?: 0.0) + (uiState.completedTotal ?: 0.0)).let { if (it > 0) it else null }
+@Composable
+private fun ListScreenDialogs(
+    uiState: ListUiState,
+    viewModel: ListViewModel,
+    context: android.content.Context,
+    showAddCategoryDialog: Boolean,
+    onShowAddCategoryDialogChange: (Boolean) -> Unit,
+    categoryToDelete: String?,
+    onCategoryToDeleteChange: (String?) -> Unit,
+    showCategoryActionSheet: String?,
+    onShowCategoryActionSheetChange: (String?) -> Unit,
+    editCategoryName: String?,
+    onEditCategoryNameChange: (String?) -> Unit,
+    showReorderDialog: Boolean,
+    onShowReorderDialogChange: (Boolean) -> Unit
+) {
+    if (uiState.showSaveListDialog) {
+        val allItemsCount = uiState.activeItems.size + uiState.completedItems.size
+        val totalPriceSum = ((uiState.activeTotal ?: 0.0) + (uiState.completedTotal ?: 0.0)).let { if (it > 0) it else null }
 
-            SaveListDialog(
-                totalItems = allItemsCount,
-                totalPrice = totalPriceSum,
-                currency = uiState.budgetCurrency,
-                onDismiss = { viewModel.closeSaveListDialog() },
-                onConfirm = { name, clearAfterSave ->
-                    viewModel.saveCurrentList(name, clearAfterSave)
-                }
-            )
-        }
+        SaveListDialog(
+            totalItems = allItemsCount,
+            totalPrice = totalPriceSum,
+            currency = uiState.budgetCurrency,
+            onDismiss = { viewModel.closeSaveListDialog() },
+            onConfirm = { name, clearAfterSave ->
+                viewModel.saveCurrentList(name, clearAfterSave)
+            }
+        )
+    }
 
-        if (uiState.showSavedListsSheet) {
-            SavedListsBottomSheet(
-                savedLists = uiState.savedLists,
-                onDismiss = { viewModel.closeSavedListsSheet() },
-                onSelectList = { list ->
-                    viewModel.selectSavedListForDetail(list)
-                },
-                onDeleteList = { list ->
-                    viewModel.deleteSavedList(list)
-                }
-            )
-        }
+    if (uiState.showSavedListsSheet) {
+        SavedListsBottomSheet(
+            savedLists = uiState.savedLists,
+            onDismiss = { viewModel.closeSavedListsSheet() },
+            onSelectList = { list ->
+                viewModel.selectSavedListForDetail(list)
+            },
+            onDeleteList = { list ->
+                viewModel.deleteSavedList(list)
+            }
+        )
+    }
 
-        uiState.selectedSavedListForDetail?.let { detailList ->
-            SavedListDetailSheet(
-                savedList = detailList,
-                availableGroups = uiState.availableGroups,
-                onDismiss = { viewModel.selectSavedListForDetail(null) },
-                onRenameClick = { viewModel.startRenamingSavedList(detailList) },
-                onLoadList = { list, mode, group ->
-                    viewModel.loadSavedList(list, mode, group)
-                }
-            )
-        }
+    uiState.selectedSavedListForDetail?.let { detailList ->
+        SavedListDetailSheet(
+            savedList = detailList,
+            availableGroups = uiState.availableGroups,
+            onDismiss = { viewModel.selectSavedListForDetail(null) },
+            onRenameClick = { viewModel.startRenamingSavedList(detailList) },
+            onLoadList = { list, mode, group ->
+                viewModel.loadSavedList(list, mode, group)
+            }
+        )
+    }
 
-        uiState.renamingSavedList?.let { targetList ->
-            RenameListDialog(
-                initialName = targetList.name,
-                onDismiss = { viewModel.startRenamingSavedList(targetList) }, // cancels if null passed? No, pass null in state
-                onConfirm = { newName ->
-                    viewModel.renameSavedList(newName)
-                }
-            )
-        }
+    uiState.renamingSavedList?.let { targetList ->
+        RenameListDialog(
+            initialName = targetList.name,
+            onDismiss = { viewModel.startRenamingSavedList(targetList) }, // cancels if null passed? No, pass null in state
+            onConfirm = { newName ->
+                viewModel.renameSavedList(newName)
+            }
+        )
+    }
 
-        if (showAddCategoryDialog) {
-            AddCategoryDialog(
-                onDismiss = { showAddCategoryDialog = false },
-                onConfirm = { name ->
-                    viewModel.addCategory(name)
-                    showAddCategoryDialog = false
-                }
-            )
-        }
+    if (showAddCategoryDialog) {
+        AddCategoryDialog(
+            onDismiss = { onShowAddCategoryDialogChange(false) },
+            onConfirm = { name ->
+                viewModel.addCategory(name)
+                onShowAddCategoryDialogChange(false)
+            }
+        )
+    }
 
-        if (categoryToDelete != null) {
-            DeleteGroupDialog(
-                groupName = categoryToDelete!!,
-                onDismiss = { categoryToDelete = null },
-                onConfirm = {
-                    viewModel.deleteCategory(categoryToDelete!!)
-                    categoryToDelete = null
-                }
-            )
-        }
+    if (categoryToDelete != null) {
+        DeleteGroupDialog(
+            groupName = categoryToDelete,
+            onDismiss = { onCategoryToDeleteChange(null) },
+            onConfirm = {
+                viewModel.deleteCategory(categoryToDelete)
+                onCategoryToDeleteChange(null)
+            }
+        )
+    }
 
-        if (showCategoryActionSheet != null) {
-            CategoryActionBottomSheet(
-                categoryName = showCategoryActionSheet!!,
-                onDismiss = { showCategoryActionSheet = null },
-                onEditClick = {
-                    editCategoryName = showCategoryActionSheet
-                    showCategoryActionSheet = null
-                },
-                onReorderClick = {
-                    showReorderDialog = true
-                    showCategoryActionSheet = null
-                },
-                onDeleteClick = {
-                    categoryToDelete = showCategoryActionSheet
-                    showCategoryActionSheet = null
-                }
-            )
-        }
+    if (showCategoryActionSheet != null) {
+        CategoryActionBottomSheet(
+            categoryName = showCategoryActionSheet,
+            onDismiss = { onShowCategoryActionSheetChange(null) },
+            onEditClick = {
+                onEditCategoryNameChange(showCategoryActionSheet)
+                onShowCategoryActionSheetChange(null)
+            },
+            onReorderClick = {
+                onShowReorderDialogChange(true)
+                onShowCategoryActionSheetChange(null)
+            },
+            onDeleteClick = {
+                onCategoryToDeleteChange(showCategoryActionSheet)
+                onShowCategoryActionSheetChange(null)
+            }
+        )
+    }
 
-        if (editCategoryName != null) {
-            EditCategoryDialog(
-                initialName = editCategoryName!!,
-                onDismiss = { editCategoryName = null },
-                onConfirm = { newName ->
-                    viewModel.renameCategory(editCategoryName!!, newName)
-                    editCategoryName = null
-                }
-            )
-        }
+    if (editCategoryName != null) {
+        EditCategoryDialog(
+            initialName = editCategoryName,
+            onDismiss = { onEditCategoryNameChange(null) },
+            onConfirm = { newName ->
+                viewModel.renameCategory(editCategoryName, newName)
+                onEditCategoryNameChange(null)
+            }
+        )
+    }
 
-        if (showReorderDialog) {
-            ReorderCategoriesDialog(
-                categories = uiState.availableGroups,
-                onDismiss = { showReorderDialog = false },
-                onConfirm = { newOrder ->
-                    viewModel.reorderCategories(newOrder)
-                    showReorderDialog = false
-                }
-            )
-        }
+    if (showReorderDialog) {
+        ReorderCategoriesDialog(
+            categories = uiState.availableGroups,
+            onDismiss = { onShowReorderDialogChange(false) },
+            onConfirm = { newOrder ->
+                viewModel.reorderCategories(newOrder)
+                onShowReorderDialogChange(false)
+            }
+        )
     }
 }
 

@@ -32,176 +32,64 @@ class CreatePostWorker @AssistedInject constructor(
         private const val TAG = "CreatePostWorker"
     }
 
+    data class PostWorkerData(
+        val authorId: String,
+        val authorName: String,
+        val authorPhotoUrl: String?,
+        val title: String,
+        val descriptionLong: String,
+        val category: String,
+        val locationName: String,
+        val localFilePaths: Array<String>,
+        val offerType: String,
+        val websiteName: String?,
+        val productLink: String?,
+        val storeName: String?,
+        val userReputationScore: Float,
+        val normalPrice: Double?,
+        val discountPrice: Double?,
+        val currency: String,
+        val couponCode: String?,
+        val discountPercentage: Int?,
+        val isAvailable: Boolean,
+        val condition: String
+    )
+
     override suspend fun doWork(): Result {
         android.util.Log.i(TAG, "▶️ doWork() iniciado — intento #${runAttemptCount + 1}")
         NotificationHelper.createNotificationChannels(context)
 
-        // setForeground es opcional: puede fallar en Android 14 si la app ya pasó al fondo.
-        // Lo intentamos pero continuamos aunque no pueda iniciar como foreground service.
         try {
             setForeground(getForegroundInfo())
             android.util.Log.d(TAG, "✅ Foreground service activo")
         } catch (e: Exception) {
             android.util.Log.w(TAG, "⚠️ setForeground() falló (posiblemente sin permiso POST_NOTIFICATIONS o app en segundo plano): ${e.message}")
-            // Continuamos sin modo foreground — el Worker seguirá ejecutándose
         }
 
-        val authorId = inputData.getString("authorId") ?: run {
+        val data = extractPostData() ?: run {
             android.util.Log.e(TAG, "❌ authorId es null — abortando")
             return Result.failure()
         }
-        val authorName = inputData.getString("authorName") ?: "Usuario"
-        val authorPhotoUrl = inputData.getString("authorPhotoUrl")
-        val title = inputData.getString("title") ?: ""
-        val descriptionLong = inputData.getString("descriptionLong") ?: ""
-        val category = inputData.getString("category") ?: "Otros"
-        val locationName = inputData.getString("locationName") ?: ""
-        val localFilePaths = inputData.getStringArray("localFilePaths") ?: emptyArray()
 
-        android.util.Log.d(TAG, "📋 Datos recibidos: title='$title', fotos=${localFilePaths.size}, authorId=$authorId")
-
-        // New v3 fields
-        val offerType = inputData.getString("offerType") ?: "UNSPECIFIED"
-        val websiteName = inputData.getString("websiteName")
-        val productLink = inputData.getString("productLink")
-        val storeName = inputData.getString("storeName")
-        val userReputationScore = inputData.getFloat("userReputationScore", 0f)
-
-        // Pricing/details fields
-        val normalPrice = inputData.getDouble("normalPrice", Double.NaN).takeUnless { it.isNaN() }
-        val discountPrice = inputData.getDouble("discountPrice", Double.NaN).takeUnless { it.isNaN() }
-        val currency = inputData.getString("currency") ?: "MXN"
-        val couponCode = inputData.getString("couponCode")
-        val discountPercentage = inputData.getInt("discountPercentage", Int.MIN_VALUE).takeUnless { it == Int.MIN_VALUE }
-        val isAvailable = inputData.getBoolean("isAvailable", true)
-        val condition = inputData.getString("condition") ?: "Nuevo"
-
-        android.util.Log.d(TAG, "💰 Precio normal=$normalPrice, descuento=$discountPrice, moneda=$currency")
+        android.util.Log.d(TAG, "📋 Datos recibidos: title='${data.title}', fotos=${data.localFilePaths.size}, authorId=${data.authorId}")
+        android.util.Log.d(TAG, "💰 Precio normal=${data.normalPrice}, descuento=${data.discountPrice}, moneda=${data.currency}")
 
         return try {
-            android.util.Log.d(TAG, "🛠️ Iniciando subida para: $title con ${localFilePaths.size} imágenes")
-            val uploadedPhotoUrls = mutableListOf<String>()
+            android.util.Log.d(TAG, "🛠️ Iniciando subida para: ${data.title} con ${data.localFilePaths.size} imágenes")
+            val uploadedPhotoUrls = uploadImages(data.localFilePaths)
 
-            // 1. Upload Images to Cloudinary (REST API)
-            localFilePaths.forEach { path ->
-                val file = File(path)
-                if (file.exists()) {
-                    try {
-                        android.util.Log.d(TAG, "☁️ Subiendo imagen: $path")
-                        val url = CloudinaryHelper.uploadImage(path, "Post")
-                        uploadedPhotoUrls.add(url)
-                        android.util.Log.d(TAG, "✅ Imagen subida: $url")
-                    } catch (e: Exception) {
-                        android.util.Log.e(TAG, "❌ Error subiendo a Cloudinary: ${e.message}", e)
-                        throw e // Forzar reintento del Worker
-                    }
-                    // Cleanup local temp file
-                    file.delete()
-                } else {
-                    android.util.Log.w(TAG, "⚠️ Archivo no encontrado: $path — se omite")
-                }
-            }
-
-            if (uploadedPhotoUrls.isEmpty() && localFilePaths.isNotEmpty()) {
+            if (uploadedPhotoUrls.isEmpty() && data.localFilePaths.isNotEmpty()) {
                 android.util.Log.e(TAG, "❌ Ninguna imagen se subió correctamente")
                 return if (runAttemptCount < 3) Result.retry() else Result.failure()
             }
 
-            // 2. Create Firestore Document
             android.util.Log.d(TAG, "📝 Creando documento en Firestore...")
-            val postRef = firestore.collection("posts").document()
+            val postId = saveToFirestore(data, uploadedPhotoUrls)
+            android.util.Log.i(TAG, "✨ Post publicado exitosamente en Firestore: $postId")
 
-            val postMap = hashMapOf<String, Any?>(
-                "id" to postRef.id,
-                "authorId" to authorId,
-                "authorName" to authorName,
-                "authorPhotoUrl" to authorPhotoUrl,
-                "timestamp" to FieldValue.serverTimestamp(),
-                "title" to title,
-                "descriptionLong" to descriptionLong,
-                "descriptionShort" to if (descriptionLong.length > 50) descriptionLong.take(50) + "..." else descriptionLong,
-                "photos" to uploadedPhotoUrls,
-                "category" to category,
-                "location" to mapOf("name" to locationName),
-                "isActive" to true,
-                "likesCount" to 0,
-                "commentsCount" to 0,
-                "truthCount" to 0,
-                "falseCount" to 0,
-                "votesScore" to 0,
-                "verificationStatus" to "PENDING",
-                "reportCount" to 0,
-                "userReputationScore" to userReputationScore,
-                "offerType" to offerType,
-                "websiteName" to websiteName,
-                "productLink" to productLink,
-                "storeName" to storeName,
-                "normalPrice" to normalPrice,
-                "discountPrice" to discountPrice,
-                "currency" to currency,
-                "couponCode" to couponCode,
-                "discountPercentage" to discountPercentage,
-                "isAvailable" to isAvailable,
-                "condition" to condition,
-                "isRecommended" to false,
-                "score" to 0f
-            )
+            saveToLocalRoom(postId, data, uploadedPhotoUrls)
+            android.util.Log.d(TAG, "💾 Post guardado en Room local: $postId")
 
-            android.util.Log.d(TAG, "📤 Enviando batch a Firestore (postId=${postRef.id})...")
-            firestore.runBatch { batch ->
-                batch.set(postRef, postMap)
-                val userRef = firestore.collection("users").document(authorId)
-                batch.set(userRef, mapOf("postsCount" to FieldValue.increment(1)), com.google.firebase.firestore.SetOptions.merge())
-            }.await()
-            android.util.Log.i(TAG, "✨ Post publicado exitosamente en Firestore: ${postRef.id}")
-
-            // 2.5 Actualización Optimista en Room
-            val entity = CommunityPostEntity(
-                id = postRef.id,
-                authorId = authorId,
-                authorName = authorName,
-                authorPhotoUrl = authorPhotoUrl,
-                timestamp = System.currentTimeMillis(),
-                title = title,
-                descriptionLong = descriptionLong,
-                descriptionShort = if (descriptionLong.length > 50) descriptionLong.take(50) + "..." else descriptionLong,
-                photos = uploadedPhotoUrls,
-                category = category,
-                locationName = locationName,
-                latitude = null,
-                longitude = null,
-                isActive = true,
-                likesCount = 0,
-                commentsCount = 0,
-                truthCount = 0,
-                falseCount = 0,
-                votesScore = 0,
-                verificationStatus = "PENDING",
-                reportCount = 0,
-                userReputationScore = userReputationScore,
-                isAuthorVerified = false,
-                offerType = offerType,
-                websiteName = websiteName,
-                productLink = productLink,
-                storeName = storeName,
-                isRecommended = false,
-                expiresAt = null,
-                normalPrice = normalPrice,
-                discountPrice = discountPrice,
-                currency = currency,
-                couponCode = couponCode,
-                discountPercentage = discountPercentage,
-                isAvailable = isAvailable,
-                condition = condition,
-                myVoteValue = 0,
-                isSavedByMe = false,
-                authorTrustScore = 0f,
-                authorTrustLevel = "NEW"
-            )
-            postDao.upsertPosts(listOf(entity))
-            android.util.Log.d(TAG, "💾 Post guardado en Room local: ${postRef.id}")
-
-            // 3. Success Notification
             try { NotificationHelper.showSuccessNotification(context) } catch (_: Exception) {}
             Result.success()
         } catch (e: Exception) {
@@ -209,6 +97,146 @@ class CreatePostWorker @AssistedInject constructor(
             try { NotificationHelper.showErrorNotification(context) } catch (_: Exception) {}
             if (runAttemptCount < 3) Result.retry() else Result.failure()
         }
+    }
+
+    private fun extractPostData(): PostWorkerData? {
+        val authorId = inputData.getString("authorId") ?: return null
+        return PostWorkerData(
+            authorId = authorId,
+            authorName = inputData.getString("authorName") ?: "Usuario",
+            authorPhotoUrl = inputData.getString("authorPhotoUrl"),
+            title = inputData.getString("title") ?: "",
+            descriptionLong = inputData.getString("descriptionLong") ?: "",
+            category = inputData.getString("category") ?: "Otros",
+            locationName = inputData.getString("locationName") ?: "",
+            localFilePaths = inputData.getStringArray("localFilePaths") ?: emptyArray(),
+            offerType = inputData.getString("offerType") ?: "UNSPECIFIED",
+            websiteName = inputData.getString("websiteName"),
+            productLink = inputData.getString("productLink"),
+            storeName = inputData.getString("storeName"),
+            userReputationScore = inputData.getFloat("userReputationScore", 0f),
+            normalPrice = inputData.getDouble("normalPrice", Double.NaN).takeUnless { it.isNaN() },
+            discountPrice = inputData.getDouble("discountPrice", Double.NaN).takeUnless { it.isNaN() },
+            currency = inputData.getString("currency") ?: "MXN",
+            couponCode = inputData.getString("couponCode"),
+            discountPercentage = inputData.getInt("discountPercentage", Int.MIN_VALUE).takeUnless { it == Int.MIN_VALUE },
+            isAvailable = inputData.getBoolean("isAvailable", true),
+            condition = inputData.getString("condition") ?: "Nuevo"
+        )
+    }
+
+    private suspend fun uploadImages(localFilePaths: Array<String>): List<String> {
+        val uploadedPhotoUrls = mutableListOf<String>()
+        localFilePaths.forEach { path ->
+            val file = File(path)
+            if (file.exists()) {
+                try {
+                    android.util.Log.d(TAG, "☁️ Subiendo imagen: $path")
+                    val url = CloudinaryHelper.uploadImage(path, "Post")
+                    uploadedPhotoUrls.add(url)
+                    android.util.Log.d(TAG, "✅ Imagen subida: $url")
+                } catch (e: Exception) {
+                    android.util.Log.e(TAG, "❌ Error subiendo a Cloudinary: ${e.message}", e)
+                    throw e
+                }
+                file.delete()
+            } else {
+                android.util.Log.w(TAG, "⚠️ Archivo no encontrado: $path — se omite")
+            }
+        }
+        return uploadedPhotoUrls
+    }
+
+    private suspend fun saveToFirestore(data: PostWorkerData, uploadedPhotoUrls: List<String>): String {
+        val postRef = firestore.collection("posts").document()
+        val postMap = hashMapOf<String, Any?>(
+            "id" to postRef.id,
+            "authorId" to data.authorId,
+            "authorName" to data.authorName,
+            "authorPhotoUrl" to data.authorPhotoUrl,
+            "timestamp" to FieldValue.serverTimestamp(),
+            "title" to data.title,
+            "descriptionLong" to data.descriptionLong,
+            "descriptionShort" to if (data.descriptionLong.length > 50) data.descriptionLong.take(50) + "..." else data.descriptionLong,
+            "photos" to uploadedPhotoUrls,
+            "category" to data.category,
+            "location" to mapOf("name" to data.locationName),
+            "isActive" to true,
+            "likesCount" to 0,
+            "commentsCount" to 0,
+            "truthCount" to 0,
+            "falseCount" to 0,
+            "votesScore" to 0,
+            "verificationStatus" to "PENDING",
+            "reportCount" to 0,
+            "userReputationScore" to data.userReputationScore,
+            "offerType" to data.offerType,
+            "websiteName" to data.websiteName,
+            "productLink" to data.productLink,
+            "storeName" to data.storeName,
+            "normalPrice" to data.normalPrice,
+            "discountPrice" to data.discountPrice,
+            "currency" to data.currency,
+            "couponCode" to data.couponCode,
+            "discountPercentage" to data.discountPercentage,
+            "isAvailable" to data.isAvailable,
+            "condition" to data.condition,
+            "isRecommended" to false,
+            "score" to 0f
+        )
+
+        firestore.runBatch { batch ->
+            batch.set(postRef, postMap)
+            val userRef = firestore.collection("users").document(data.authorId)
+            batch.set(userRef, mapOf("postsCount" to FieldValue.increment(1)), com.google.firebase.firestore.SetOptions.merge())
+        }.await()
+        return postRef.id
+    }
+
+    private suspend fun saveToLocalRoom(postId: String, data: PostWorkerData, uploadedPhotoUrls: List<String>) {
+        val entity = CommunityPostEntity(
+            id = postId,
+            authorId = data.authorId,
+            authorName = data.authorName,
+            authorPhotoUrl = data.authorPhotoUrl,
+            timestamp = System.currentTimeMillis(),
+            title = data.title,
+            descriptionLong = data.descriptionLong,
+            descriptionShort = if (data.descriptionLong.length > 50) data.descriptionLong.take(50) + "..." else data.descriptionLong,
+            photos = uploadedPhotoUrls,
+            category = data.category,
+            locationName = data.locationName,
+            latitude = null,
+            longitude = null,
+            isActive = true,
+            likesCount = 0,
+            commentsCount = 0,
+            truthCount = 0,
+            falseCount = 0,
+            votesScore = 0,
+            verificationStatus = "PENDING",
+            reportCount = 0,
+            userReputationScore = data.userReputationScore,
+            isAuthorVerified = false,
+            offerType = data.offerType,
+            websiteName = data.websiteName,
+            productLink = data.productLink,
+            storeName = data.storeName,
+            isRecommended = false,
+            expiresAt = null,
+            normalPrice = data.normalPrice,
+            discountPrice = data.discountPrice,
+            currency = data.currency,
+            couponCode = data.couponCode,
+            discountPercentage = data.discountPercentage,
+            isAvailable = data.isAvailable,
+            condition = data.condition,
+            myVoteValue = 0,
+            isSavedByMe = false,
+            authorTrustScore = 0f,
+            authorTrustLevel = "NEW"
+        )
+        postDao.upsertPosts(listOf(entity))
     }
 
     override suspend fun getForegroundInfo(): ForegroundInfo {

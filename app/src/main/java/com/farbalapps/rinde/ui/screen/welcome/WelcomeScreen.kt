@@ -96,54 +96,70 @@ private fun WelcomeBackgroundParticles() {
     )
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // Icono Lista de compras
-        Icon(
-            imageVector = Icons.Default.ShoppingCart,
-            contentDescription = null,
-            tint = com.farbalapps.rinde.ui.theme.RindePrimary.copy(alpha = 0.14f),
-            modifier = Modifier
-                .size(68.dp)
-                .align(Alignment.TopStart)
-                .offset(x = 24.dp, y = (60 + drift1).dp)
-                .rotate(-12f)
+        FloatingParticleIcon(
+            icon = Icons.Default.ShoppingCart,
+            alpha = 0.14f,
+            size = 68,
+            alignment = Alignment.TopStart,
+            offsetX = 24,
+            offsetY = 60,
+            drift = drift1,
+            rotation = -12f
         )
-
-        // Icono Comunidad
-        Icon(
-            imageVector = Icons.Default.Groups,
-            contentDescription = null,
-            tint = com.farbalapps.rinde.ui.theme.RindePrimary.copy(alpha = 0.12f),
-            modifier = Modifier
-                .size(76.dp)
-                .align(Alignment.TopEnd)
-                .offset(x = (-28).dp, y = (90 + drift2).dp)
-                .rotate(15f)
+        FloatingParticleIcon(
+            icon = Icons.Default.Groups,
+            alpha = 0.12f,
+            size = 76,
+            alignment = Alignment.TopEnd,
+            offsetX = -28,
+            offsetY = 90,
+            drift = drift2,
+            rotation = 15f
         )
-
-        // Icono Metas / Ahorros
-        Icon(
-            imageVector = Icons.Default.Savings,
-            contentDescription = null,
-            tint = com.farbalapps.rinde.ui.theme.RindePrimary.copy(alpha = 0.14f),
-            modifier = Modifier
-                .size(72.dp)
-                .align(Alignment.CenterStart)
-                .offset(x = 16.dp, y = (140 + drift2).dp)
-                .rotate(8f)
+        FloatingParticleIcon(
+            icon = Icons.Default.Savings,
+            alpha = 0.14f,
+            size = 72,
+            alignment = Alignment.CenterStart,
+            offsetX = 16,
+            offsetY = 140,
+            drift = drift2,
+            rotation = 8f
         )
-
-        // Icono Chef AI
-        Icon(
-            imageVector = Icons.Default.Restaurant,
-            contentDescription = null,
-            tint = com.farbalapps.rinde.ui.theme.RindePrimary.copy(alpha = 0.12f),
-            modifier = Modifier
-                .size(64.dp)
-                .align(Alignment.CenterEnd)
-                .offset(x = (-20).dp, y = (160 + drift1).dp)
-                .rotate(-18f)
+        FloatingParticleIcon(
+            icon = Icons.Default.Restaurant,
+            alpha = 0.12f,
+            size = 64,
+            alignment = Alignment.CenterEnd,
+            offsetX = -20,
+            offsetY = 160,
+            drift = drift1,
+            rotation = -18f
         )
     }
+}
+
+@Composable
+private fun BoxScope.FloatingParticleIcon(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    alpha: Float,
+    size: Int,
+    alignment: Alignment,
+    offsetX: Int,
+    offsetY: Int,
+    drift: Float,
+    rotation: Float
+) {
+    Icon(
+        imageVector = icon,
+        contentDescription = null,
+        tint = com.farbalapps.rinde.ui.theme.RindePrimary.copy(alpha = alpha),
+        modifier = Modifier
+            .size(size.dp)
+            .align(alignment)
+            .offset(x = offsetX.dp, y = (offsetY + drift).dp)
+            .rotate(rotation)
+    )
 }
 
 /**
@@ -179,58 +195,7 @@ private fun WelcomeHeaderSection() {
         modifier = Modifier.fillMaxWidth()
     ) {
         // Contenedor del Logo 'R' con animación flotante elevada en 3D
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .size(190.dp)
-                .padding(bottom = 12.dp)
-        ) {
-            // Halo de brillo radial de fondo
-            Box(
-                modifier = Modifier
-                    .size(150.dp)
-                    .clip(CircleShape)
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                com.farbalapps.rinde.ui.theme.RindePrimary.copy(alpha = 0.25f),
-                                com.farbalapps.rinde.ui.theme.RindePrimary.copy(alpha = 0.05f),
-                                Color.Transparent
-                            )
-                        )
-                    )
-            )
-
-            // Círculo contenedor principal flotante 3D
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .offset(y = translateY.dp)
-                    .rotate(rotateAngle)
-                    .size(130.dp)
-                    .shadow(
-                        elevation = 20.dp,
-                        shape = CircleShape,
-                        spotColor = com.farbalapps.rinde.ui.theme.RindePrimary.copy(alpha = 0.45f)
-                    )
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surface)
-                    .border(
-                        width = 2.5.dp,
-                        color = com.farbalapps.rinde.ui.theme.RindePrimary.copy(alpha = 0.35f),
-                        shape = CircleShape
-                    )
-                    .padding(18.dp)
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.ic_logo),
-                    contentDescription = stringResource(id = R.string.app_name),
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(CircleShape)
-                )
-            }
-        }
+        AnimatedLogoContainer(translateY = translateY, rotateAngle = rotateAngle)
 
         Spacer(modifier = Modifier.height(12.dp))
 
@@ -254,6 +219,62 @@ private fun WelcomeHeaderSection() {
     }
 }
 
+@Composable
+private fun AnimatedLogoContainer(translateY: Float, rotateAngle: Float) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .size(190.dp)
+            .padding(bottom = 12.dp)
+    ) {
+        // Halo de brillo radial de fondo
+        Box(
+            modifier = Modifier
+                .size(150.dp)
+                .clip(CircleShape)
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            com.farbalapps.rinde.ui.theme.RindePrimary.copy(alpha = 0.25f),
+                            com.farbalapps.rinde.ui.theme.RindePrimary.copy(alpha = 0.05f),
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
+
+        // Círculo contenedor principal flotante 3D
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .offset(y = translateY.dp)
+                .rotate(rotateAngle)
+                .size(130.dp)
+                .shadow(
+                    elevation = 20.dp,
+                    shape = CircleShape,
+                    spotColor = com.farbalapps.rinde.ui.theme.RindePrimary.copy(alpha = 0.45f)
+                )
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surface)
+                .border(
+                    width = 2.5.dp,
+                    color = com.farbalapps.rinde.ui.theme.RindePrimary.copy(alpha = 0.35f),
+                    shape = CircleShape
+                )
+                .padding(18.dp)
+        ) {
+            Image(
+                painter = painterResource(id = R.drawable.ic_logo),
+                contentDescription = stringResource(id = R.string.app_name),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(CircleShape)
+            )
+        }
+    }
+}
+
 /**
  * Secciones de Botones de Acción apilados estilo "lalo 3".
  */
@@ -266,51 +287,58 @@ private fun WelcomeActionButtonsSection(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        // Botón Primario: Registrarse (Conserva color azul RindePrimary en Light y Dark themes)
-        Button(
-            onClick = onSignUpClick,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(54.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = com.farbalapps.rinde.ui.theme.RindePrimary,
-                contentColor = Color.White
-            ),
-            elevation = ButtonDefaults.buttonElevation(
-                defaultElevation = 6.dp,
-                pressedElevation = 2.dp
-            )
-        ) {
-            Text(
-                text = stringResource(id = R.string.btn_sign_up),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-        }
+        WelcomePrimaryButton(onSignUpClick)
+        WelcomeSecondaryButton(onSignInClick)
+    }
+}
 
-        // Botón Secundario: Iniciar sesión (Borde y texto azul RindePrimary en Light y Dark themes)
-        OutlinedButton(
-            onClick = onSignInClick,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(54.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.outlinedButtonColors(
-                contentColor = com.farbalapps.rinde.ui.theme.RindePrimary
-            ),
-            border = androidx.compose.foundation.BorderStroke(
-                width = 1.5.dp,
-                color = com.farbalapps.rinde.ui.theme.RindePrimary
-            )
-        ) {
-            Text(
-                text = stringResource(id = R.string.btn_sign_in),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = com.farbalapps.rinde.ui.theme.RindePrimary
-            )
-        }
+@Composable
+private fun WelcomePrimaryButton(onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(54.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = com.farbalapps.rinde.ui.theme.RindePrimary,
+            contentColor = Color.White
+        ),
+        elevation = ButtonDefaults.buttonElevation(
+            defaultElevation = 6.dp,
+            pressedElevation = 2.dp
+        )
+    ) {
+        Text(
+            text = stringResource(id = R.string.btn_sign_up),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+@Composable
+private fun WelcomeSecondaryButton(onClick: () -> Unit) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(54.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = ButtonDefaults.outlinedButtonColors(
+            contentColor = com.farbalapps.rinde.ui.theme.RindePrimary
+        ),
+        border = androidx.compose.foundation.BorderStroke(
+            width = 1.5.dp,
+            color = com.farbalapps.rinde.ui.theme.RindePrimary
+        )
+    ) {
+        Text(
+            text = stringResource(id = R.string.btn_sign_in),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = com.farbalapps.rinde.ui.theme.RindePrimary
+        )
     }
 }
 

@@ -85,59 +85,69 @@ class CommentRepositoryImpl @Inject constructor(
     }
 
     override suspend fun addComment(postId: String, comment: Comment, localImageUri: android.net.Uri?): Result<Unit> = runCatching {
-        var imageUrl = comment.imageUrl
+        val imageUrl = uploadImageIfNeeded(localImageUri, comment.imageUrl)
         
-        // 1. Subir a Cloudinary si hay imagen local
-        if (localImageUri != null) {
-            val optimizedFile = com.farbalapps.rinde.util.ImageOptimizer.optimizeImage(context, localImageUri)
-            optimizedFile?.let { file ->
-                imageUrl = CloudinaryHelper.uploadImage(file.absolutePath, "Comentarios")
-                file.delete()
-            }
-        }
-        
-        // 2. Guardar en RTDB usando ServerValue.TIMESTAMP para timestamp del servidor
         val commentRef = rtdb.getReference("comments").child(postId).push()
         val commentId = commentRef.key ?: throw Exception("Error generando ID de comentario")
-
-        // Usamos un Map explícito para poder usar ServerValue.TIMESTAMP (incompatible con data classes)
         val finalComment = comment.copy(id = commentId, imageUrl = imageUrl)
-        val commentMap = mapOf(
-            "id" to commentId,
-            "postId" to finalComment.postId,
-            "authorId" to finalComment.authorId,
-            "authorName" to finalComment.authorName,
-            "authorPhotoUrl" to (finalComment.authorPhotoUrl ?: ""),
-            "text" to finalComment.text,
-            "imageUrl" to (finalComment.imageUrl ?: ""),
-            "timestamp" to com.google.firebase.database.ServerValue.TIMESTAMP,
-            "likesCount" to finalComment.likesCount,
-            "repliesCount" to finalComment.repliesCount,
-            "isEdited" to finalComment.isEdited
-        )
-        commentRef.setValue(commentMap).await()
         
-        // 3. Incrementar contador en Firestore y notificar al autor del post
-        val postDoc = firestore.collection("posts").document(postId).get().await()
+        commentRef.setValue(buildCommentMap(finalComment)).await()
+        
+        incrementCommentCounts(postId, finalComment.authorId)
+        notifyPostAuthor(postId, finalComment)
+    }
+
+    private suspend fun uploadImageIfNeeded(localImageUri: android.net.Uri?, currentImageUrl: String?): String? {
+        if (localImageUri == null) return currentImageUrl
+        
+        val optimizedFile = com.farbalapps.rinde.util.ImageOptimizer.optimizeImage(context, localImageUri)
+        return if (optimizedFile != null) {
+            val uploadedUrl = CloudinaryHelper.uploadImage(optimizedFile.absolutePath, "Comentarios")
+            optimizedFile.delete()
+            uploadedUrl
+        } else {
+            currentImageUrl
+        }
+    }
+
+    private fun buildCommentMap(comment: Comment): Map<String, Any> {
+        return mapOf(
+            "id" to comment.id,
+            "postId" to comment.postId,
+            "authorId" to comment.authorId,
+            "authorName" to comment.authorName,
+            "authorPhotoUrl" to (comment.authorPhotoUrl ?: ""),
+            "text" to comment.text,
+            "imageUrl" to (comment.imageUrl ?: ""),
+            "timestamp" to com.google.firebase.database.ServerValue.TIMESTAMP,
+            "likesCount" to comment.likesCount,
+            "repliesCount" to comment.repliesCount,
+            "isEdited" to comment.isEdited
+        )
+    }
+
+    private suspend fun incrementCommentCounts(postId: String, authorId: String) {
         firestore.collection("posts").document(postId)
             .update("commentsCount", com.google.firebase.firestore.FieldValue.increment(1)).await()
-
-        if (finalComment.authorId.isNotEmpty()) {
-            firestore.collection("users").document(finalComment.authorId)
+        if (authorId.isNotEmpty()) {
+            firestore.collection("users").document(authorId)
                 .update("commentsCount", com.google.firebase.firestore.FieldValue.increment(1))
         }
+    }
 
+    private suspend fun notifyPostAuthor(postId: String, comment: Comment) {
+        val postDoc = firestore.collection("posts").document(postId).get().await()
         val postAuthorId = postDoc.getString("authorId") ?: ""
         val postTitle = postDoc.getString("title") ?: "Tu oferta"
-        if (postAuthorId.isNotEmpty() && postAuthorId != finalComment.authorId) {
+        if (postAuthorId.isNotEmpty() && postAuthorId != comment.authorId) {
             val notifId = java.util.UUID.randomUUID().toString()
             val notifData = hashMapOf(
                 "id" to notifId,
                 "type" to "NEW_COMMENT",
                 "postId" to postId,
                 "postTitle" to postTitle,
-                "actorName" to finalComment.authorName,
-                "actorPhotoUrl" to finalComment.authorPhotoUrl,
+                "actorName" to comment.authorName,
+                "actorPhotoUrl" to comment.authorPhotoUrl,
                 "timestamp" to System.currentTimeMillis(),
                 "isRead" to false
             )
@@ -146,49 +156,43 @@ class CommentRepositoryImpl @Inject constructor(
     }
 
     override suspend fun addReply(commentId: String, reply: Reply, localImageUri: android.net.Uri?): Result<Unit> = runCatching {
-        var imageUrl = reply.imageUrl
+        val imageUrl = uploadImageIfNeeded(localImageUri, reply.imageUrl)
         
-        // 1. Subir a Cloudinary si hay imagen local
-        if (localImageUri != null) {
-            val optimizedFile = com.farbalapps.rinde.util.ImageOptimizer.optimizeImage(context, localImageUri)
-            optimizedFile?.let { file ->
-                imageUrl = CloudinaryHelper.uploadImage(file.absolutePath, "Comentarios")
-                file.delete()
-            }
-        }
-        
-        // 2. Guardar en RTDB usando ServerValue.TIMESTAMP para timestamp del servidor
         val replyRef = rtdb.getReference("replies").child(commentId).push()
         val replyId = replyRef.key ?: throw Exception("Error generando ID de respuesta")
-
-        // Usamos un Map explícito para poder usar ServerValue.TIMESTAMP (incompatible con data classes)
         val finalReply = reply.copy(id = replyId, imageUrl = imageUrl)
-        val replyMap = mapOf(
-            "id" to replyId,
-            "commentId" to finalReply.commentId,
-            "postId" to finalReply.postId,
-            "authorId" to finalReply.authorId,
-            "authorName" to finalReply.authorName,
-            "authorPhotoUrl" to (finalReply.authorPhotoUrl ?: ""),
-            "text" to finalReply.text,
-            "imageUrl" to (finalReply.imageUrl ?: ""),
-            "mentionedUser" to (finalReply.mentionedUser ?: ""),
-            "timestamp" to com.google.firebase.database.ServerValue.TIMESTAMP,
-            "likesCount" to finalReply.likesCount,
-            "isEdited" to finalReply.isEdited
-        )
-        replyRef.setValue(replyMap).await()
         
-        // 3. Incrementar contador de respuestas en el comentario (RTDB) y en el post (Firestore)
-        val commentRef = rtdb.getReference("comments").child(reply.postId).child(commentId)
-        commentRef.child("repliesCount").setValue(com.google.firebase.database.ServerValue.increment(1)).await()
+        replyRef.setValue(buildReplyMap(finalReply)).await()
+        
+        incrementReplyCounts(reply.postId, commentId, finalReply.authorId)
+    }
 
-        // Incrementar commentsCount global del post en Firestore (+1 por cada reply)
-        firestore.collection("posts").document(reply.postId)
+    private fun buildReplyMap(reply: Reply): Map<String, Any> {
+        return mapOf(
+            "id" to reply.id,
+            "commentId" to reply.commentId,
+            "postId" to reply.postId,
+            "authorId" to reply.authorId,
+            "authorName" to reply.authorName,
+            "authorPhotoUrl" to (reply.authorPhotoUrl ?: ""),
+            "text" to reply.text,
+            "imageUrl" to (reply.imageUrl ?: ""),
+            "mentionedUser" to (reply.mentionedUser ?: ""),
+            "timestamp" to com.google.firebase.database.ServerValue.TIMESTAMP,
+            "likesCount" to reply.likesCount,
+            "isEdited" to reply.isEdited
+        )
+    }
+
+    private suspend fun incrementReplyCounts(postId: String, commentId: String, authorId: String) {
+        rtdb.getReference("comments").child(postId).child(commentId)
+            .child("repliesCount").setValue(com.google.firebase.database.ServerValue.increment(1)).await()
+
+        firestore.collection("posts").document(postId)
             .update("commentsCount", com.google.firebase.firestore.FieldValue.increment(1)).await()
 
-        if (finalReply.authorId.isNotEmpty()) {
-            firestore.collection("users").document(finalReply.authorId)
+        if (authorId.isNotEmpty()) {
+            firestore.collection("users").document(authorId)
                 .update("commentsCount", com.google.firebase.firestore.FieldValue.increment(1))
         }
     }
