@@ -42,4 +42,16 @@ class SettingsRepositoryImpl @Inject constructor(
             profileRepository.updatePrivacy(userId, isPrivate)
         }
     }
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    override fun isPrivacyMode(): Flow<Boolean> {
+        return sessionManager.userId.flatMapLatest { userId ->
+            settingsManager.getPrivacyMode(userId)
+        }
+    }
+    
+    override suspend fun togglePrivacyMode(isPrivate: Boolean) {
+        val userId = sessionManager.userId.first()
+        settingsManager.setPrivacyMode(userId, isPrivate)
+    }
 }

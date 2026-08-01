@@ -14,4 +14,8 @@ interface SettingsRepository {
     // Perfil Privado (Firestore + Local Sync)
     fun isProfilePrivate(): Flow<Boolean>
     suspend fun toggleProfilePrivacy(isPrivate: Boolean)
+
+    // Ocultar saldos en Metas
+    fun isPrivacyMode(): Flow<Boolean>
+    suspend fun togglePrivacyMode(isPrivate: Boolean)
 }

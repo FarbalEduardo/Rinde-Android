@@ -4,6 +4,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -31,6 +32,8 @@ fun FeaturedGoalCard(
     onLongClick: () -> Unit,
     onEditClick: () -> Unit = {},
     onDeleteClick: () -> Unit = {},
+    onArchiveClick: () -> Unit = {},
+    isPrivacyMode: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val progressColor = GoalThemeMapper.mapColor(goal.colorKey)
@@ -45,10 +48,7 @@ fun FeaturedGoalCard(
             .fillMaxWidth()
             .clip(RoundedCornerShape(24.dp))
             .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f), RoundedCornerShape(24.dp))
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick
-            ),
+            .clickable(onClick = onClick),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
@@ -58,6 +58,29 @@ fun FeaturedGoalCard(
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
+            if (goal.isCompleted) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Surface(
+                        color = Color(0xFFE8F5E9),
+                        shape = RoundedCornerShape(50),
+                        modifier = Modifier.clickable(onClick = onArchiveClick)
+                    ) {
+                        Text(
+                            text = "🎉 ¡Meta cumplida! (Toca para archivar)",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = Color(0xFF2E7D32),
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+
             FeaturedGoalHeader(
                 goal = goal,
                 progressColor = progressColor,
@@ -85,7 +108,8 @@ fun FeaturedGoalCard(
             Spacer(modifier = Modifier.height(8.dp))
 
             FeaturedGoalProgressInfoBottom(
-                goal = goal
+                goal = goal,
+                isPrivacyMode = isPrivacyMode
             )
         }
     }
@@ -139,36 +163,12 @@ private fun FeaturedGoalHeader(
         }
         
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            IconButton(onClick = onEditClick, modifier = Modifier.size(32.dp)) {
-                Icon(
-                    imageVector = androidx.compose.material.icons.Icons.Filled.Edit,
-                    contentDescription = "Editar",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
             IconButton(onClick = onDeleteClick, modifier = Modifier.size(32.dp)) {
                 Icon(
                     imageVector = androidx.compose.material.icons.Icons.Filled.Delete,
                     contentDescription = "Eliminar",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(18.dp)
-                )
-            }
-        }
-        
-        if (goal.isCompleted) {
-            Spacer(modifier = Modifier.width(8.dp))
-            Surface(
-                color = Color(0xFFE8F5E9),
-                shape = RoundedCornerShape(50),
-            ) {
-                Text(
-                    text = "¡Cumplida!",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color(0xFF2E7D32),
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                    fontWeight = FontWeight.Bold
                 )
             }
         }
@@ -202,7 +202,8 @@ private fun FeaturedGoalProgressInfoTop(
 
 @Composable
 private fun FeaturedGoalProgressInfoBottom(
-    goal: SavingsGoal
+    goal: SavingsGoal,
+    isPrivacyMode: Boolean = false
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -216,7 +217,7 @@ private fun FeaturedGoalProgressInfoBottom(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
-                text = String.format("$%,.2f", goal.currentAmount),
+                text = if (isPrivacyMode) "$ ***.**" else String.format("$%,.2f", goal.currentAmount),
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
@@ -229,7 +230,7 @@ private fun FeaturedGoalProgressInfoBottom(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
-                text = String.format("$%,.2f", goal.targetAmount),
+                text = if (isPrivacyMode) "$ ***.**" else String.format("$%,.2f", goal.targetAmount),
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface

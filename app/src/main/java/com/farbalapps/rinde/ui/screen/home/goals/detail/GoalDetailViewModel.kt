@@ -21,13 +21,16 @@ import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
 
+import com.farbalapps.rinde.domain.usecase.goals.UpdateGoalUseCase
+
 @HiltViewModel
 class GoalDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val getGoalByIdUseCase: GetGoalByIdUseCase,
     private val getGoalTransactionsUseCase: GetGoalTransactionsUseCase,
     private val calculateGoalSuggestionUseCase: CalculateGoalSuggestionUseCase,
-    private val depositToGoalUseCase: DepositToGoalUseCase
+    private val depositToGoalUseCase: DepositToGoalUseCase,
+    private val updateGoalUseCase: UpdateGoalUseCase
 ) : ViewModel() {
 
     val goalId: String = try {
@@ -126,10 +129,33 @@ class GoalDetailViewModel @Inject constructor(
         }
     }
 
-    // Ya no se requiere deleteGoal aquí ya que está en GoalsViewModel o podríamos agregar DeleteGoalUseCase si lo necesitamos
-    // Pero lo dejaremos por si acaso se llama desde la vista
-    fun deleteGoal(onDeleted: () -> Unit) {
-        // TODO: Mover la lógica de borrar a un UseCase si la pantalla de detalle tiene un botón de borrar
+    fun updateGoal(
+        title: String,
+        targetAmount: Double,
+        iconKey: String,
+        colorKey: String,
+        startDate: Long,
+        targetDate: Long
+    ) {
+        val currentGoal = (_uiState.value as? GoalDetailUiState.Content)?.goal ?: return
+        val isCompletedNow = currentGoal.currentAmount >= targetAmount
+        val updatedGoal = currentGoal.copy(
+            title = title,
+            targetAmount = targetAmount,
+            iconKey = iconKey,
+            colorKey = colorKey,
+            createdAt = startDate,
+            targetDate = targetDate,
+            isCompleted = isCompletedNow,
+            updatedAt = System.currentTimeMillis()
+        )
+        viewModelScope.launch {
+            updateGoalUseCase(updatedGoal).onSuccess {
+                _events.emit(GoalsEvent.Success("Meta actualizada con éxito"))
+            }.onFailure { e ->
+                _events.emit(GoalsEvent.ValidationError(e.message ?: "Error al actualizar la meta"))
+            }
+        }
     }
 
     private fun mapIconToCategory(iconKey: String): String {

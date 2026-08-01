@@ -69,14 +69,16 @@ object AppModule {
         savedPostsMemoryCache: com.farbalapps.rinde.data.util.SavedPostsMemoryCache,
         userVoteDao: com.farbalapps.rinde.data.local.dao.UserVoteDao,
         postDao: com.farbalapps.rinde.data.local.dao.PostDao,
-        syncMetadataDao: com.farbalapps.rinde.data.local.dao.SyncMetadataDao
+        syncMetadataDao: com.farbalapps.rinde.data.local.dao.SyncMetadataDao,
+        goalsDao: com.farbalapps.rinde.data.local.dao.GoalsDao
     ): AuthRepository {
         return FirebaseAuthRepository(
             firebaseAuth,
             savedPostsMemoryCache,
             userVoteDao,
             postDao,
-            syncMetadataDao
+            syncMetadataDao,
+            goalsDao
         )
     }
 
@@ -181,12 +183,19 @@ object AppModule {
                 )
             }
         }
+
+        val MIGRATION_24_25 = object : androidx.room.migration.Migration(24, 25) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE savings_goals ADD COLUMN isArchived INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE savings_goals ADD COLUMN orderIndex INTEGER NOT NULL DEFAULT 0")
+            }
+        }
         
         return Room.databaseBuilder(
             context,
             RindeDatabase::class.java,
             "rinde_database"
-        ).addMigrations(MIGRATION_6_7, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24)
+        ).addMigrations(MIGRATION_6_7, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25)
          .fallbackToDestructiveMigration()
          .build()
      }

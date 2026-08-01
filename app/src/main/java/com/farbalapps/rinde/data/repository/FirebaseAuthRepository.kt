@@ -12,6 +12,7 @@ import com.google.firebase.auth.AuthResult
 import com.google.android.gms.tasks.Task
 
 import com.farbalapps.rinde.data.local.dao.PostDao
+import com.farbalapps.rinde.data.local.dao.GoalsDao
 import com.farbalapps.rinde.data.local.dao.SyncMetadataDao
 import com.farbalapps.rinde.data.local.dao.UserVoteDao
 import com.farbalapps.rinde.data.util.SavedPostsMemoryCache
@@ -22,7 +23,8 @@ class FirebaseAuthRepository @Inject constructor(
     private val savedPostsMemoryCache: SavedPostsMemoryCache,
     private val userVoteDao: UserVoteDao,
     private val postDao: PostDao,
-    private val syncMetadataDao: SyncMetadataDao
+    private val syncMetadataDao: SyncMetadataDao,
+    private val goalsDao: GoalsDao
 ) : AuthRepository {
     
     override fun login(email: String, password: String): Flow<Resource<User>> = callbackFlow {
@@ -113,6 +115,8 @@ class FirebaseAuthRepository @Inject constructor(
         val uid = getCurrentUser()?.id ?: ""
         if (uid.isNotEmpty()) {
             userVoteDao.clearUserVotes(uid)
+            goalsDao.deleteGoalsByUserId(uid)
+            goalsDao.deleteTransactionsByUserId(uid)
         }
         postDao.clearAll() // Borra completamente el feed local de Room para evitar fugas y obligar re-sync
         syncMetadataDao.clearAll() // Borra metadatos para reiniciar sincronizaciones del nuevo usuario

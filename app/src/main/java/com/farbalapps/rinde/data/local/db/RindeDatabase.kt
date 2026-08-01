@@ -45,7 +45,7 @@ import com.farbalapps.rinde.data.local.dao.SavedListDao
         PendingVoteEntity::class,
         SavedListEntity::class
     ],
-    version = 24,
+    version = 25,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

@@ -13,7 +13,9 @@ sealed interface GoalsUiState {
         val secondaryGoals: List<SavingsGoal>,
         val summary: GoalsSummary,
         val canAddMore: Boolean,
-        val isOffline: Boolean = false
+        val isOffline: Boolean = false,
+        val isPrivacyMode: Boolean = false,
+        val isReorderMode: Boolean = false
     ) : GoalsUiState
 
     data class Error(val message: String) : GoalsUiState

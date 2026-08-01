@@ -16,6 +16,11 @@ interface GoalsRepository {
     fun getGoals(): Flow<List<SavingsGoal>>
 
     /**
+     * Retorna un Flow reactivo con la lista de metas archivadas/cumplidas del usuario actual.
+     */
+    fun getArchivedGoals(): Flow<List<SavingsGoal>>
+
+    /**
      * Retorna un Flow reactivo con la meta especificada por su ID.
      */
     fun getGoalById(goalId: String): Flow<SavingsGoal?>
@@ -34,6 +39,11 @@ interface GoalsRepository {
      * Elimina una meta de ahorro por su identificador.
      */
     suspend fun deleteGoal(goalId: String)
+
+    /**
+     * Archiva una meta de ahorro (historial).
+     */
+    suspend fun archiveGoal(goalId: String)
 
     /**
      * Registra un depósito monetario sobre una meta y actualiza su estado.
@@ -59,4 +69,9 @@ interface GoalsRepository {
      * Dispara manualmente la sincronización con el servidor remoto (Firestore).
      */
     suspend fun syncGoals()
+
+    /**
+     * Reordena la lista de metas y sincroniza con Firestore.
+     */
+    suspend fun reorderGoals(goals: List<SavingsGoal>)
 }

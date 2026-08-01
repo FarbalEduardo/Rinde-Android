@@ -20,6 +20,7 @@ class SettingsManager @Inject constructor(
     companion object {
         private val THEME_MODE = stringPreferencesKey("theme_mode")
         private val APP_LANGUAGE = stringPreferencesKey("app_language")
+        private val PRIVACY_MODE = androidx.datastore.preferences.core.booleanPreferencesKey("privacy_mode")
     }
 
     val themeMode: Flow<ThemeMode> = context.settingsDataStore.data.map { prefs ->
@@ -32,6 +33,15 @@ class SettingsManager @Inject constructor(
         AppLanguage.valueOf(name)
     }
 
+    val isPrivacyMode: Flow<Boolean> = context.settingsDataStore.data.map { prefs ->
+        prefs[PRIVACY_MODE] ?: false
+    }
+
+    fun getPrivacyMode(userId: String): Flow<Boolean> = context.settingsDataStore.data.map { prefs ->
+        val key = if (userId.isNotEmpty()) androidx.datastore.preferences.core.booleanPreferencesKey("privacy_mode_$userId") else PRIVACY_MODE
+        prefs[key] ?: false
+    }
+
     suspend fun setThemeMode(mode: ThemeMode) {
         context.settingsDataStore.edit { prefs ->
             prefs[THEME_MODE] = mode.name
@@ -41,6 +51,19 @@ class SettingsManager @Inject constructor(
     suspend fun setAppLanguage(language: AppLanguage) {
         context.settingsDataStore.edit { prefs ->
             prefs[APP_LANGUAGE] = language.name
+        }
+    }
+
+    suspend fun setPrivacyMode(enabled: Boolean) {
+        context.settingsDataStore.edit { prefs ->
+            prefs[PRIVACY_MODE] = enabled
+        }
+    }
+
+    suspend fun setPrivacyMode(userId: String, enabled: Boolean) {
+        val key = if (userId.isNotEmpty()) androidx.datastore.preferences.core.booleanPreferencesKey("privacy_mode_$userId") else PRIVACY_MODE
+        context.settingsDataStore.edit { prefs ->
+            prefs[key] = enabled
         }
     }
 }

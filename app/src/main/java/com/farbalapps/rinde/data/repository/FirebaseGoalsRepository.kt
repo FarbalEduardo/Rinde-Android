@@ -48,8 +48,16 @@ class FirebaseGoalsRepository @Inject constructor(
         }
     }
 
+    override fun getArchivedGoals(): Flow<List<SavingsGoal>> {
+        val userId = currentUserId ?: return emptyFlow()
+        return dao.getArchivedGoalsByUser(userId).map { entities ->
+            entities.map { it.toDomain() }
+        }
+    }
+
     override fun getGoalById(goalId: String): Flow<SavingsGoal?> {
-        return dao.observeGoalById(goalId).map { entity ->
+        val userId = currentUserId ?: return emptyFlow()
+        return dao.observeGoalById(goalId, userId).map { entity ->
             entity?.toDomain()
         }
     }
@@ -102,16 +110,28 @@ class FirebaseGoalsRepository @Inject constructor(
         enqueueSync()
     }
 
+    override suspend fun archiveGoal(goalId: String) = withContext(ioDispatcher) {
+        val goalEntity = dao.getGoalById(goalId) ?: throw NoSuchElementException("Meta no encontrada")
+        val updatedGoal = goalEntity.copy(
+            isArchived = true,
+            isSynced = false,
+            updatedAt = System.currentTimeMillis()
+        )
+        dao.updateGoal(updatedGoal)
+        enqueueSync()
+    }
+
     override suspend fun depositToGoal(goalId: String, amount: Double, note: String) = withContext(ioDispatcher) {
         val goalEntity = dao.getGoalById(goalId) ?: throw NoSuchElementException("Meta no encontrada")
         
-        // Calcular nuevo monto con tope de 100% de la meta (Regla E3.4 cap)
-        val newAmount = (goalEntity.currentAmount + amount).coerceAtMost(goalEntity.targetAmount)
-        val isCompletedNow = newAmount >= goalEntity.targetAmount
+        val rawAmount = goalEntity.currentAmount + amount
+        val newTarget = if (rawAmount > goalEntity.targetAmount) rawAmount else goalEntity.targetAmount
+        val isCompletedNow = rawAmount >= newTarget
         val now = System.currentTimeMillis()
 
         val updatedGoal = goalEntity.copy(
-            currentAmount = newAmount,
+            currentAmount = rawAmount,
+            targetAmount = newTarget,
             isCompleted = isCompletedNow,
             updatedAt = now,
             isSynced = false
@@ -165,6 +185,18 @@ class FirebaseGoalsRepository @Inject constructor(
         )
         dao.insertTransaction(tx)
 
+        enqueueSync()
+    }
+
+    override suspend fun reorderGoals(goals: List<SavingsGoal>) = withContext(ioDispatcher) {
+        val userId = currentUserId ?: throw Exception("User not logged in")
+        val entities = goals.mapIndexed { index, goal ->
+            goal.copy(userId = userId).toEntity(isSynced = false).copy(
+                orderIndex = index,
+                updatedAt = System.currentTimeMillis()
+            )
+        }
+        entities.forEach { dao.updateGoal(it) }
         enqueueSync()
     }
 

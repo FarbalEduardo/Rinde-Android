@@ -30,9 +30,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.farbalapps.rinde.R
 
+import androidx.compose.material.icons.filled.History
+
 @Composable
 fun EmptyGoalsContent(
     onCreateFirstGoalClick: () -> Unit,
+    onShowArchivedGoalsClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     // Animación infinita de pulso de respiración viva (breathing pulse effect)
@@ -84,6 +87,21 @@ fun EmptyGoalsContent(
             .padding(24.dp),
         contentAlignment = Alignment.Center
     ) {
+        IconButton(
+            onClick = onShowArchivedGoalsClick,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .size(44.dp)
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), shape = CircleShape)
+        ) {
+            Icon(
+                imageVector = Icons.Default.History,
+                contentDescription = "Historial de metas archivadas",
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
