@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.4.0-beta](https://github.com/FarbalEduardo/Rinde-Android/compare/v1.3.0-beta...v1.4.0-beta) (2026-08-01)
+
+
+### Features
+
+* **goals:** add goal detail redesign, goal editing, drag-and-drop reorder, excess deposit confirmation, archived goals history modal, and user-scoped data isolation ([59521b0](https://github.com/FarbalEduardo/Rinde-Android/commit/59521b057d97aafec48ad42a61ef9ed72c39f7ac))
+
+
+### Performance Improvements
+
+* **list:** optimize LazyColumn item keys for shopping list screen ([2edaf4b](https://github.com/FarbalEduardo/Rinde-Android/commit/2edaf4b4c5473b49ea5af7e62a8178409eca1b18))
+
 ## [1.3.0-beta](https://github.com/FarbalEduardo/Rinde-Android/compare/v1.2.0-beta...v1.3.0-beta) (2026-07-24)
 
 
