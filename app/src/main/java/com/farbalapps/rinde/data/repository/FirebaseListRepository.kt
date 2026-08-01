@@ -66,12 +66,9 @@ class FirebaseListRepository @Inject constructor(
         }
 
         withContext(ioDispatcher) {
-            // 1. Write to Room immediately (UI reflects change at once)
+            // Write to Room immediately (Local storage only for active/draft list)
             dao.insert(itemWithId.toEntity(userId))
-            Log.d(TAG, "Room INSERT ok — id=${itemWithId.id}")
-
-            // 2. Enqueue background sync to Firestore
-            enqueueUpsert(userId, itemWithId)
+            Log.d(TAG, "Room INSERT ok (Local Only) — id=${itemWithId.id}")
         }
     }
 
@@ -79,12 +76,9 @@ class FirebaseListRepository @Inject constructor(
         val userId = currentUserId ?: return
 
         withContext(ioDispatcher) {
-            // 1. Delete from Room immediately
+            // Delete from Room immediately
             dao.delete(item.toEntity(userId))
-            Log.d(TAG, "Room DELETE ok — id=${item.id}")
-
-            // 2. Enqueue background sync to Firestore
-            enqueueDelete(userId, item.id)
+            Log.d(TAG, "Room DELETE ok (Local Only) — id=${item.id}")
         }
     }
 
@@ -92,12 +86,9 @@ class FirebaseListRepository @Inject constructor(
         val userId = currentUserId ?: return
 
         withContext(ioDispatcher) {
-            // 1. Update Room immediately
+            // Update Room immediately
             dao.update(item.toEntity(userId))
-            Log.d(TAG, "Room UPDATE ok — id=${item.id}")
-
-            // 2. Enqueue background sync to Firestore
-            enqueueUpsert(userId, item)
+            Log.d(TAG, "Room UPDATE ok (Local Only) — id=${item.id}")
         }
     }
 
@@ -108,19 +99,7 @@ class FirebaseListRepository @Inject constructor(
         withContext(ioDispatcher) {
             val entities = items.map { it.toEntity(userId) }
             dao.deleteAll(entities)
-            Log.d(TAG, "Room DELETE_BATCH ok — count=${items.size}")
-
-            val itemIds = items.map { it.id }.toTypedArray()
-            val inputData = workDataOf(
-                SyncShoppingItemWorker.KEY_OPERATION to SyncShoppingItemWorker.OPERATION_DELETE_BATCH,
-                SyncShoppingItemWorker.KEY_USER_ID to userId,
-                SyncShoppingItemWorker.KEY_ITEM_IDS to itemIds
-            )
-            workManager.enqueue(
-                OneTimeWorkRequestBuilder<SyncShoppingItemWorker>()
-                    .setInputData(inputData)
-                    .build()
-            )
+            Log.d(TAG, "Room DELETE_BATCH ok (Local Only) — count=${items.size}")
         }
     }
 
@@ -128,113 +107,15 @@ class FirebaseListRepository @Inject constructor(
         val userId = currentUserId ?: return
 
         withContext(ioDispatcher) {
-            // 1. Delete from Room immediately
+            // Delete from Room immediately
             dao.deleteByGroup(group)
-            Log.d(TAG, "Room DELETE_BY_GROUP ok — group=$group")
-
-            // 2. Enqueue background sync to Firestore
-            enqueueDeleteGroup(userId, group)
+            Log.d(TAG, "Room DELETE_BY_GROUP ok (Local Only) — group=$group")
         }
     }
-
-    // -------------------------------------------------------------------------
-    // WorkManager helpers
-    // -------------------------------------------------------------------------
-
-    private fun enqueueUpsert(userId: String, item: ShoppingItem) {
-        val builder = mutableMapOf<String, Any>(
-            SyncShoppingItemWorker.KEY_OPERATION to SyncShoppingItemWorker.OPERATION_UPSERT,
-            SyncShoppingItemWorker.KEY_USER_ID to userId,
-            SyncShoppingItemWorker.KEY_ITEM_ID to item.id,
-            SyncShoppingItemWorker.KEY_NAME to item.name,
-            SyncShoppingItemWorker.KEY_CATEGORY to item.category,
-            SyncShoppingItemWorker.KEY_IS_COMPLETED to item.isCompleted,
-            SyncShoppingItemWorker.KEY_QUANTITY to item.quantity,
-            SyncShoppingItemWorker.KEY_UNIT to item.unit,
-            SyncShoppingItemWorker.KEY_EMOJI to item.emoji,
-            SyncShoppingItemWorker.KEY_LIST_GROUP to item.listGroup,
-            SyncShoppingItemWorker.KEY_CURRENCY to item.currency
-        )
-        item.price?.let { builder[SyncShoppingItemWorker.KEY_PRICE] = it }
-
-        val inputData = workDataOf(*builder.toList().toTypedArray())
-        workManager.enqueue(
-            OneTimeWorkRequestBuilder<SyncShoppingItemWorker>()
-                .setInputData(inputData)
-                .build()
-        )
-        Log.d(TAG, "Worker UPSERT enqueued — id=${item.id}")
-    }
-
-    private fun enqueueDelete(userId: String, itemId: String) {
-        val inputData = workDataOf(
-            SyncShoppingItemWorker.KEY_OPERATION to SyncShoppingItemWorker.OPERATION_DELETE,
-            SyncShoppingItemWorker.KEY_USER_ID to userId,
-            SyncShoppingItemWorker.KEY_ITEM_ID to itemId
-        )
-        workManager.enqueue(
-            OneTimeWorkRequestBuilder<SyncShoppingItemWorker>()
-                .setInputData(inputData)
-                .build()
-        )
-        Log.d(TAG, "Worker DELETE enqueued — id=$itemId")
-    }
-
-    private fun enqueueDeleteGroup(userId: String, group: String) {
-        val inputData = workDataOf(
-            SyncShoppingItemWorker.KEY_OPERATION to SyncShoppingItemWorker.OPERATION_DELETE_GROUP,
-            SyncShoppingItemWorker.KEY_USER_ID to userId,
-            SyncShoppingItemWorker.KEY_LIST_GROUP to group
-        )
-        workManager.enqueue(
-            OneTimeWorkRequestBuilder<SyncShoppingItemWorker>()
-                .setInputData(inputData)
-                .build()
-        )
-        Log.d(TAG, "Worker DELETE_GROUP enqueued — group=$group")
-    }
-
-    // -------------------------------------------------------------------------
-    // Sync down (initial load from Firestore → Room)
-    // -------------------------------------------------------------------------
 
     override suspend fun syncItems() {
-        val userId = currentUserId ?: return
-        try {
-            val snapshot = userCollection(userId).get().await()
-            val remoteItems = snapshot.documents.mapNotNull { doc ->
-                val id = doc.getString("id") ?: return@mapNotNull null
-                val name = doc.getString("name") ?: ""
-                val category = doc.getString("category") ?: ""
-                val isCompleted = doc.getBoolean("isCompleted") ?: false
-                val quantity = doc.getDouble("quantity") ?: 1.0
-                val unit = doc.getString("unit") ?: "Pieza"
-                val emoji = doc.getString("emoji") ?: ""
-                val listGroup = doc.getString("listGroup") ?: "All"
-                val price = doc.getDouble("price")
-                val currency = doc.getString("currency") ?: "MXN"
-
-                com.farbalapps.rinde.data.local.entity.ShoppingItemEntity(
-                    id = id,
-                    name = name,
-                    category = category,
-                    isCompleted = isCompleted,
-                    quantity = quantity,
-                    unit = unit,
-                    emoji = emoji,
-                    listGroup = listGroup,
-                    userId = userId,
-                    price = price,
-                    currency = currency
-                )
-            }
-            if (remoteItems.isNotEmpty()) {
-                dao.insertAll(remoteItems)
-            }
-            Log.d(TAG, "Firestore sync DOWN success: ${remoteItems.size} items")
-        } catch (e: Exception) {
-            Log.e(TAG, "Firestore sync DOWN error", e)
-        }
+        // Active/draft items remain local in Room; only saved lists are synced via FirebaseSavedListRepository
+        Log.d(TAG, "syncItems: Active list items remain local to Room.")
     }
 
     companion object {

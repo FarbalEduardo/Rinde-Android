@@ -25,6 +25,8 @@ data class SavingsGoal(
     val iconKey: String,
     val colorKey: String,
     val isCompleted: Boolean,
+    val isArchived: Boolean = false,
+    val orderIndex: Int = 0,
     val createdAt: Long,
     val updatedAt: Long,
     val monthlySnapshotAmount: Double

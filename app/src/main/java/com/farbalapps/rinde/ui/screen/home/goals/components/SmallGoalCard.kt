@@ -24,6 +24,7 @@ fun SmallGoalCard(
     goal: SavingsGoal,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
+    isPrivacyMode: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val progressColor = GoalThemeMapper.mapColor(goal.colorKey)
@@ -64,7 +65,8 @@ fun SmallGoalCard(
             SmallGoalInfo(
                 title = goal.title,
                 currentAmount = goal.currentAmount,
-                targetAmount = goal.targetAmount
+                targetAmount = goal.targetAmount,
+                isPrivacyMode = isPrivacyMode
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -116,7 +118,8 @@ private fun SmallGoalHeader(
 private fun SmallGoalInfo(
     title: String,
     currentAmount: Double,
-    targetAmount: Double
+    targetAmount: Double,
+    isPrivacyMode: Boolean = false
 ) {
     Text(
         text = title,
@@ -130,7 +133,7 @@ private fun SmallGoalInfo(
     Spacer(modifier = Modifier.height(2.dp))
 
     Text(
-        text = String.format("$%,.0f / $%,.0f", currentAmount, targetAmount),
+        text = if (isPrivacyMode) "$ ***.** / $ ***.**" else String.format("$%,.0f / $%,.0f", currentAmount, targetAmount),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         maxLines = 1,

@@ -14,6 +14,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.ui.tooling.preview.Preview
 import com.farbalapps.rinde.domain.usecase.goals.GoalsSummary
 import com.farbalapps.rinde.ui.theme.RindeTheme
@@ -22,6 +24,8 @@ import android.content.res.Configuration
 @Composable
 fun GoalsSummaryHeader(
     summary: GoalsSummary,
+    isPrivacyMode: Boolean = false,
+    onTogglePrivacyMode: (Boolean) -> Unit = {},
     showOptionsMenu: Boolean = false,
     onShowOptionsChange: (Boolean) -> Unit = {},
     onCreateGoalClick: () -> Unit = {},
@@ -31,19 +35,23 @@ fun GoalsSummaryHeader(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+            containerColor = MaterialTheme.colorScheme.primaryContainer
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
-            SummaryOptionsMenu(
-                showOptionsMenu = showOptionsMenu,
-                onShowOptionsChange = onShowOptionsChange,
-                onCreateGoalClick = onCreateGoalClick,
+            IconButton(
+                onClick = { onTogglePrivacyMode(!isPrivacyMode) },
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(8.dp)
-            )
+            ) {
+                Icon(
+                    imageVector = if (isPrivacyMode) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                    contentDescription = if (isPrivacyMode) "Mostrar saldos" else "Ocultar saldos",
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
 
             Column(
                 modifier = Modifier
@@ -55,17 +63,17 @@ fun GoalsSummaryHeader(
                     text = "RESUMEN TOTAL",
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
                     letterSpacing = 1.5.sp
                 )
 
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = String.format("$%,.2f", summary.totalSaved),
+                    text = if (isPrivacyMode) "$ ***.**" else String.format("$%,.2f", summary.totalSaved),
                     style = MaterialTheme.typography.displayMedium,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
 
                 Spacer(modifier = Modifier.height(20.dp))
@@ -79,7 +87,7 @@ fun GoalsSummaryHeader(
                         text = "Has alcanzado el ${summary.progressPercent}% de tus objetivos",
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurface,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
                         modifier = Modifier.weight(1f)
                     )
                     Surface(
@@ -91,7 +99,7 @@ fun GoalsSummaryHeader(
                             text = "${summary.progressPercent}%",
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onPrimary,
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                         )
                     }
@@ -106,7 +114,7 @@ fun GoalsSummaryHeader(
                         .height(6.dp)
                         .clip(RoundedCornerShape(50)),
                     color = MaterialTheme.colorScheme.primary,
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                    trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f),
                     gapSize = 0.dp,
                     drawStopIndicator = {}
                 )
@@ -118,15 +126,15 @@ fun GoalsSummaryHeader(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = String.format("$%,.2f ahorrado", summary.totalSaved),
+                        text = if (isPrivacyMode) "$ ***.** ahorrado" else String.format("$%,.2f ahorrado", summary.totalSaved),
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                     )
                     Text(
-                        text = String.format("Meta: $%,.2f", summary.totalTarget),
+                        text = if (isPrivacyMode) "Meta: $ ***.**" else String.format("Meta: $%,.2f", summary.totalTarget),
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 }
             }
@@ -134,35 +142,7 @@ fun GoalsSummaryHeader(
     }
 }
 
-@Composable
-private fun SummaryOptionsMenu(
-    showOptionsMenu: Boolean,
-    onShowOptionsChange: (Boolean) -> Unit,
-    onCreateGoalClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Box(modifier = modifier) {
-        IconButton(onClick = { onShowOptionsChange(true) }) {
-            Icon(
-                imageVector = Icons.Default.MoreVert,
-                contentDescription = "Opciones de Metas",
-                tint = MaterialTheme.colorScheme.primary
-            )
-        }
-        DropdownMenu(
-            expanded = showOptionsMenu,
-            onDismissRequest = { onShowOptionsChange(false) }
-        ) {
-            DropdownMenuItem(
-                text = { Text("Nueva Meta") },
-                onClick = {
-                    onShowOptionsChange(false)
-                    onCreateGoalClick()
-                }
-            )
-        }
-    }
-}
+// Deleted SummaryOptionsMenu
 
 @Preview(showBackground = true)
 @Composable

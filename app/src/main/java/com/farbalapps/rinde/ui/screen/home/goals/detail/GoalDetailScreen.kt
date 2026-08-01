@@ -2,6 +2,7 @@ package com.farbalapps.rinde.ui.screen.home.goals.detail
 
 import android.widget.Toast
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -39,6 +40,8 @@ import com.farbalapps.rinde.ui.screen.home.goals.components.GoalThemeMapper
 import kotlinx.coroutines.flow.collectLatest
 import java.util.Locale
 
+import com.farbalapps.rinde.ui.screen.home.goals.components.CreateGoalBottomSheet
+
 @Composable
 fun GoalDetailScreen(
     onBack: () -> Unit,
@@ -47,6 +50,9 @@ fun GoalDetailScreen(
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     var showDepositBottomSheet by remember { mutableStateOf(false) }
+    var showEditGoalBottomSheet by remember { mutableStateOf(false) }
+
+    var excessEvent by remember { mutableStateOf<GoalsEvent.DepositExceedsTarget?>(null) }
 
     LaunchedEffect(key1 = true) {
         viewModel.events.collectLatest { event ->
@@ -54,6 +60,9 @@ fun GoalDetailScreen(
                 is GoalsEvent.Success -> Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
                 is GoalsEvent.ValidationError -> Toast.makeText(context, event.message, Toast.LENGTH_LONG).show()
                 is GoalsEvent.GoalCompleted -> Toast.makeText(context, "🎉 ¡Felicidades! Completaste la meta: ${event.title}", Toast.LENGTH_LONG).show()
+                is GoalsEvent.DepositExceedsTarget -> {
+                    excessEvent = event
+                }
                 else -> {}
             }
         }
@@ -63,10 +72,20 @@ fun GoalDetailScreen(
         uiState = uiState,
         onBack = onBack,
         onAddDepositClick = { showDepositBottomSheet = true },
-        onEditGoalClick = {
-            Toast.makeText(context, "Edición de meta disponible próximamente", Toast.LENGTH_SHORT).show()
-        }
+        onEditGoalClick = { showEditGoalBottomSheet = true }
     )
+
+    if (showEditGoalBottomSheet && uiState is GoalDetailUiState.Content) {
+        val goal = (uiState as GoalDetailUiState.Content).goal
+        CreateGoalBottomSheet(
+            initialGoal = goal,
+            onDismissRequest = { showEditGoalBottomSheet = false },
+            onConfirm = { title, targetAmount, iconKey, colorKey, startDate, targetDate ->
+                viewModel.updateGoal(title, targetAmount, iconKey, colorKey, startDate, targetDate)
+                showEditGoalBottomSheet = false
+            }
+        )
+    }
 
     if (showDepositBottomSheet && uiState is GoalDetailUiState.Content) {
         val goal = (uiState as GoalDetailUiState.Content).goal
@@ -76,6 +95,38 @@ fun GoalDetailScreen(
             onConfirm = { amount, note ->
                 viewModel.deposit(amount, note)
                 showDepositBottomSheet = false
+            }
+        )
+    }
+
+    excessEvent?.let { event ->
+        AlertDialog(
+            onDismissRequest = { excessEvent = null },
+            title = { Text("El abono supera la meta") },
+            text = {
+                Text(
+                    String.format(
+                        Locale.getDefault(),
+                        "Este abono de $%,.2f supera el objetivo por $%,.2f. ¿Deseas agregarlo de todas formas? La meta se completará y el objetivo se actualizará al valor excedente.",
+                        event.amount,
+                        event.excess
+                    )
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.deposit(event.amount, event.note, force = true)
+                        excessEvent = null
+                    }
+                ) {
+                    Text("Sí, abonar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { excessEvent = null }) {
+                    Text("Cancelar")
+                }
             }
         )
     }
@@ -95,6 +146,66 @@ fun GoalDetailContent(
                 onBack = onBack,
                 onEdit = onEditGoalClick
             )
+        },
+        bottomBar = {
+            if (uiState is GoalDetailUiState.Content) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.background,
+                    tonalElevation = 6.dp,
+                    shadowElevation = 8.dp
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 14.dp)
+                    ) {
+                        Button(
+                            onClick = onAddDepositClick,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
+                            shape = RoundedCornerShape(50),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary
+                            ),
+                            elevation = ButtonDefaults.buttonElevation(
+                                defaultElevation = 6.dp,
+                                pressedElevation = 2.dp
+                            )
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(28.dp)
+                                        .background(Color.White.copy(alpha = 0.25f), shape = CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Add,
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.width(12.dp))
+
+                                Text(
+                                    text = "Agregar a la meta",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                    letterSpacing = 0.5.sp
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
@@ -119,10 +230,7 @@ fun GoalDetailContent(
                     }
                 }
                 is GoalDetailUiState.Content -> {
-                    GoalDetailBody(
-                        content = uiState,
-                        onAddDepositClick = onAddDepositClick
-                    )
+                    GoalDetailBody(content = uiState)
                 }
             }
         }
@@ -141,11 +249,17 @@ private fun GoalDetailTopAppBar(
                 text = "Detalle de Meta",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF1976D2)
+                color = MaterialTheme.colorScheme.onSurface
             )
         },
         navigationIcon = {
-            IconButton(onClick = onBack) {
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier
+                    .padding(start = 8.dp)
+                    .size(40.dp)
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), shape = CircleShape)
+            ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Regresar",
@@ -162,7 +276,7 @@ private fun GoalDetailTopAppBar(
                 )
             }
         },
-        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+        colors = TopAppBarDefaults.topAppBarColors(
             containerColor = MaterialTheme.colorScheme.background
         )
     )
@@ -170,8 +284,7 @@ private fun GoalDetailTopAppBar(
 
 @Composable
 private fun GoalDetailBody(
-    content: GoalDetailUiState.Content,
-    onAddDepositClick: () -> Unit
+    content: GoalDetailUiState.Content
 ) {
     val scrollState = rememberScrollState()
 
@@ -179,18 +292,12 @@ private fun GoalDetailBody(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(scrollState)
-            .padding(horizontal = 20.dp, vertical = 12.dp),
+            .padding(horizontal = 20.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         MainGoalCard(content = content)
 
         GridInfoCards(content = content)
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        ActionButtonsSection(
-            onAddDepositClick = onAddDepositClick
-        )
 
         Spacer(modifier = Modifier.height(16.dp))
     }
@@ -206,20 +313,14 @@ private fun MainGoalCard(content: GoalDetailUiState.Content) {
     val progressPercent = (fraction * 100).toInt()
 
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(28.dp))
-            .border(
-                1.dp,
-                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
-                RoundedCornerShape(28.dp)
-            ),
-        shape = RoundedCornerShape(28.dp),
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
     ) {
         Column(
-            modifier = Modifier.padding(24.dp),
+            modifier = Modifier.padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Header con ícono, nombre y categoría
@@ -229,64 +330,110 @@ private fun MainGoalCard(content: GoalDetailUiState.Content) {
             ) {
                 Box(
                     modifier = Modifier
-                        .size(56.dp)
-                        .background(themeColor.copy(alpha = 0.15f), shape = CircleShape),
+                        .size(52.dp)
+                        .background(themeColor.copy(alpha = 0.12f), shape = RoundedCornerShape(16.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = icon,
                         contentDescription = goal.title,
                         tint = themeColor,
-                        modifier = Modifier.size(28.dp)
+                        modifier = Modifier.size(26.dp)
                     )
                 }
 
-                Spacer(modifier = Modifier.width(16.dp))
+                Spacer(modifier = Modifier.width(14.dp))
 
-                Column {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
                         text = goal.title,
-                        style = MaterialTheme.typography.headlineSmall,
+                        style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    Text(
-                        text = content.categoryName,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Surface(
+                        color = themeColor.copy(alpha = 0.12f),
+                        shape = RoundedCornerShape(50)
+                    ) {
+                        Text(
+                            text = content.categoryName.uppercase(),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = themeColor,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp),
+                            letterSpacing = 0.8.sp
+                        )
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
-            // Medidor gráfico circular de porcentaje
+            // Gauge circular de porcentaje
             CircularProgressGauge(
                 fraction = fraction,
                 progressPercent = progressPercent,
                 progressColor = themeColor
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
 
-            Spacer(modifier = Modifier.height(16.dp))
+            // Fila inferior de Ahorrado y Meta Total
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "AHORRADO",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF9EA7BA),
+                        letterSpacing = 0.8.sp
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = String.format(Locale.getDefault(), "$%,.2f", goal.currentAmount),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
 
-            // Fila de resumen de montos
-            AmountRow(
-                label = "Cantidad Ahorrada",
-                amount = goal.currentAmount
-            )
+                VerticalDivider(
+                    modifier = Modifier.height(36.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+                )
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            AmountRow(
-                label = "Monto Meta",
-                amount = goal.targetAmount
-            )
+                Column(
+                    modifier = Modifier.weight(1f),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "META TOTAL",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF9EA7BA),
+                        letterSpacing = 0.8.sp
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = String.format(Locale.getDefault(), "$%,.2f", goal.targetAmount),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
         }
     }
 }
@@ -300,14 +447,14 @@ private fun CircularProgressGauge(
     val animatedProgress by animateFloatAsState(targetValue = fraction, label = "GaugeAnim")
 
     Box(
-        modifier = Modifier.size(140.dp),
+        modifier = Modifier.size(175.dp),
         contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
-            val strokeWidth = 18.dp.toPx()
-            val trackColor = Color(0xFFE5E7EB)
+            val strokeWidth = 15.dp.toPx()
+            val trackColor = Color(0xFFEBF1F9)
 
-            // Anillo base claro
+            // Anillo base
             drawCircle(
                 color = trackColor,
                 style = Stroke(width = strokeWidth)
@@ -324,122 +471,125 @@ private fun CircularProgressGauge(
             )
         }
 
-        Text(
-            text = "$progressPercent%",
-            style = MaterialTheme.typography.headlineLarge.copy(fontSize = 32.sp),
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-    }
-}
-
-@Composable
-private fun AmountRow(
-    label: String,
-    amount: Double
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            text = String.format(Locale.getDefault(), "$%,.2f", amount),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = "$progressPercent%",
+                style = MaterialTheme.typography.headlineLarge.copy(fontSize = 34.sp),
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = "PROGRESO",
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF9EA7BA),
+                letterSpacing = 1.2.sp
+            )
+        }
     }
 }
 
 @Composable
 private fun GridInfoCards(content: GoalDetailUiState.Content) {
-    Column(
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = Modifier.fillMaxWidth()
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
     ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxWidth()
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            InfoCard(
-                icon = Icons.Default.CalendarToday,
-                title = "CREACIÓN",
-                value = content.formattedCreationDate,
-                modifier = Modifier.weight(1f)
-            )
-            InfoCard(
-                icon = Icons.Default.CalendarMonth,
-                title = "LÍMITE",
-                value = content.formattedLimitDate,
-                modifier = Modifier.weight(1f)
-            )
-        }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                GridInfoItem(
+                    icon = Icons.Default.CalendarToday,
+                    iconTint = Color(0xFF1976D2),
+                    title = "CREACIÓN",
+                    value = content.formattedCreationDate,
+                    modifier = Modifier.weight(1f)
+                )
 
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            InfoCard(
-                icon = Icons.Default.AccountBalanceWallet,
-                title = "APORTACIÓN",
-                value = content.formattedMonthlyContribution,
-                modifier = Modifier.weight(1f)
-            )
-            InfoCard(
-                icon = Icons.Default.History,
-                title = "ÚLTIMO",
-                value = content.formattedLastContribution,
-                isItalic = content.formattedLastContribution.contains("No"),
-                modifier = Modifier.weight(1f)
-            )
+                VerticalDivider(
+                    modifier = Modifier.height(40.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f)
+                )
+
+                GridInfoItem(
+                    icon = Icons.Default.Schedule,
+                    iconTint = Color(0xFFF57C00),
+                    title = "LÍMITE",
+                    value = content.formattedLimitDate,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                GridInfoItem(
+                    icon = Icons.Default.Payments,
+                    iconTint = Color(0xFF388E3C),
+                    title = "APORTACIÓN",
+                    value = content.formattedMonthlyContribution,
+                    modifier = Modifier.weight(1f)
+                )
+
+                VerticalDivider(
+                    modifier = Modifier.height(40.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f)
+                )
+
+                GridInfoItem(
+                    icon = Icons.Default.Refresh,
+                    iconTint = Color(0xFF7B1FA2),
+                    title = "ÚLTIMO",
+                    value = content.formattedLastContribution,
+                    isItalic = content.formattedLastContribution.contains("No"),
+                    modifier = Modifier.weight(1f)
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun InfoCard(
+private fun GridInfoItem(
     icon: ImageVector,
+    iconTint: Color,
     title: String,
     value: String,
     isItalic: Boolean = false,
     modifier: Modifier = Modifier
 ) {
-    Surface(
-        modifier = modifier.height(86.dp),
-        shape = RoundedCornerShape(20.dp),
-        color = Color(0xFFF6F8FD)
+    Row(
+        modifier = modifier.padding(horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(14.dp),
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = title,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(16.dp)
-                )
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    letterSpacing = 0.5.sp
-                )
-            }
+        Icon(
+            imageVector = icon,
+            contentDescription = title,
+            tint = iconTint,
+            modifier = Modifier.size(20.dp)
+        )
 
+        Column {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF9EA7BA),
+                letterSpacing = 0.6.sp
+            )
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = value,
                 style = MaterialTheme.typography.titleMedium.copy(
@@ -449,39 +599,6 @@ private fun InfoCard(
                 color = if (isItalic) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
-            )
-        }
-    }
-}
-
-@Composable
-private fun ActionButtonsSection(
-    onAddDepositClick: () -> Unit
-) {
-    Column(
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Button(
-            onClick = onAddDepositClick,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp),
-            shape = CircleShape,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF0066FF)
-            )
-        ) {
-            Icon(
-                imageVector = Icons.Default.Add,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = "Agregar a la meta",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
             )
         }
     }

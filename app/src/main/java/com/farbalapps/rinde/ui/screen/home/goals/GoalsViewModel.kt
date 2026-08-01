@@ -13,11 +13,18 @@ import javax.inject.Inject
 @HiltViewModel
 class GoalsViewModel @Inject constructor(
     private val getGoalsUseCase: GetGoalsUseCase,
+    private val getArchivedGoalsUseCase: GetArchivedGoalsUseCase,
     private val getGoalsSummaryUseCase: GetGoalsSummaryUseCase,
     private val createGoalUseCase: CreateGoalUseCase,
     private val deleteGoalUseCase: DeleteGoalUseCase,
-    private val depositToGoalUseCase: DepositToGoalUseCase
+    private val depositToGoalUseCase: DepositToGoalUseCase,
+    private val archiveGoalUseCase: ArchiveGoalUseCase,
+    private val reorderGoalsUseCase: ReorderGoalsUseCase,
+    private val settingsRepository: com.farbalapps.rinde.domain.repository.SettingsRepository
 ) : ViewModel() {
+
+    val archivedGoals: StateFlow<List<SavingsGoal>> = getArchivedGoalsUseCase()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val _uiState = MutableStateFlow<GoalsUiState>(GoalsUiState.Loading)
     val uiState: StateFlow<GoalsUiState> = _uiState.asStateFlow()
@@ -33,8 +40,9 @@ class GoalsViewModel @Inject constructor(
         viewModelScope.launch {
             combine(
                 getGoalsUseCase(),
-                getGoalsSummaryUseCase()
-            ) { goals, summary ->
+                getGoalsSummaryUseCase(),
+                settingsRepository.isPrivacyMode()
+            ) { goals, summary, isPrivacyMode ->
                 if (goals.isEmpty()) {
                     GoalsUiState.Empty
                 } else {
@@ -43,11 +51,15 @@ class GoalsViewModel @Inject constructor(
                     val featured = goals.firstOrNull()
                     val secondary = if (goals.size > 1) goals.drop(1) else emptyList()
                     
+                    val isReorderMode = _uiState.value.let { if (it is GoalsUiState.Content) it.isReorderMode else false }
+
                     GoalsUiState.Content(
                         featuredGoal = featured,
                         secondaryGoals = secondary,
                         summary = summary,
-                        canAddMore = goals.size < CreateGoalUseCase.FREE_TIER_LIMIT
+                        canAddMore = goals.size < CreateGoalUseCase.FREE_TIER_LIMIT,
+                        isPrivacyMode = isPrivacyMode,
+                        isReorderMode = isReorderMode
                     )
                 }
             }.catch { e ->
@@ -110,6 +122,45 @@ class GoalsViewModel @Inject constructor(
                 _events.emit(GoalsEvent.Success("Meta eliminada"))
             }.onFailure { e ->
                 _events.emit(GoalsEvent.ValidationError(e.message ?: "Error al eliminar"))
+            }
+        }
+    }
+
+    fun archiveGoal(goalId: String) {
+        viewModelScope.launch {
+            archiveGoalUseCase(goalId).onSuccess {
+                _events.emit(GoalsEvent.Success("Meta archivada"))
+            }.onFailure { e ->
+                _events.emit(GoalsEvent.ValidationError(e.message ?: "Error al archivar"))
+            }
+        }
+    }
+
+    fun togglePrivacyMode(isPrivate: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.togglePrivacyMode(isPrivate)
+        }
+    }
+
+    fun toggleReorderMode() {
+        val currentState = _uiState.value
+        if (currentState is GoalsUiState.Content) {
+            val newMode = !currentState.isReorderMode
+            _uiState.value = currentState.copy(isReorderMode = newMode)
+            
+            // Si salimos del modo edición, guardamos el nuevo orden
+            if (!newMode) {
+                saveGoalOrder(listOfNotNull(currentState.featuredGoal) + currentState.secondaryGoals)
+            }
+        }
+    }
+
+    fun saveGoalOrder(goals: List<SavingsGoal>) {
+        viewModelScope.launch {
+            reorderGoalsUseCase(goals).onSuccess {
+                _events.emit(GoalsEvent.Success("Orden guardado"))
+            }.onFailure { e ->
+                _events.emit(GoalsEvent.ValidationError(e.message ?: "Error al guardar el orden"))
             }
         }
     }

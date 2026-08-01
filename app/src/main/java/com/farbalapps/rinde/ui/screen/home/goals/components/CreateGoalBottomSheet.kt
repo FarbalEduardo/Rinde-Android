@@ -18,26 +18,35 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 
+import com.farbalapps.rinde.domain.model.SavingsGoal
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateGoalBottomSheet(
+    initialGoal: SavingsGoal? = null,
     onDismissRequest: () -> Unit,
     onConfirm: (title: String, targetAmount: Double, iconKey: String, colorKey: String, startDate: Long, targetDate: Long) -> Unit
 ) {
-    var title by remember { mutableStateOf("") }
-    var amountText by remember { mutableStateOf("") }
+    var title by remember { mutableStateOf(initialGoal?.title ?: "") }
+    var amountText by remember {
+        mutableStateOf(
+            initialGoal?.let {
+                if (it.targetAmount > 0) String.format(java.util.Locale.US, "%.2f", it.targetAmount) else ""
+            } ?: ""
+        )
+    }
     
     val availableIcons = GoalThemeMapper.getAvailableIcons()
     val availableColors = GoalThemeMapper.getAvailableColors()
     
-    var selectedIconKey by remember { mutableStateOf(availableIcons.first().first) }
-    var selectedColorKey by remember { mutableStateOf(availableColors.first().first) }
+    var selectedIconKey by remember { mutableStateOf(initialGoal?.iconKey ?: availableIcons.first().first) }
+    var selectedColorKey by remember { mutableStateOf(initialGoal?.colorKey ?: availableColors.first().first) }
     
     var titleError by remember { mutableStateOf<String?>(null) }
     var amountError by remember { mutableStateOf<String?>(null) }
 
-    var startDate by remember { mutableStateOf(System.currentTimeMillis()) }
-    var targetDate by remember { mutableStateOf(System.currentTimeMillis() + 30L * 24 * 60 * 60 * 1000) } // +30 días por defecto
+    var startDate by remember { mutableStateOf(initialGoal?.createdAt ?: System.currentTimeMillis()) }
+    var targetDate by remember { mutableStateOf(initialGoal?.targetDate ?: (System.currentTimeMillis() + 30L * 24 * 60 * 60 * 1000)) } // +30 días por defecto
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -56,7 +65,7 @@ fun CreateGoalBottomSheet(
                 .navigationBarsPadding()
         ) {
             Text(
-                text = "Nueva Meta de Ahorro",
+                text = if (initialGoal != null) "Editar Meta de Ahorro" else "Nueva Meta de Ahorro",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -291,6 +300,7 @@ private fun GoalConfirmButton(
     selectedColorKey: String,
     startDate: Long,
     targetDate: Long,
+    buttonText: String = "Confirmar",
     onConfirm: (String, Double, String, String, Long, Long) -> Unit,
     onTitleError: (String) -> Unit,
     onAmountError: (String) -> Unit
@@ -299,12 +309,12 @@ private fun GoalConfirmButton(
         onClick = {
             var hasError = false
             if (title.isBlank()) {
-                onTitleError("El nombre es requerido") // Regla E2.4
+                onTitleError("El nombre es requerido")
                 hasError = true
             }
             val targetVal = amountText.toDoubleOrNull() ?: 0.0
             if (targetVal <= 0) {
-                onAmountError("El monto debe ser mayor a cero") // Regla E2.5, E2.6
+                onAmountError("El monto debe ser mayor a cero")
                 hasError = true
             }
             if (!hasError) {
@@ -314,6 +324,6 @@ private fun GoalConfirmButton(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(50)
     ) {
-        Text(text = "Confirmar", fontWeight = FontWeight.Bold)
+        Text(text = buttonText, fontWeight = FontWeight.Bold)
     }
 }

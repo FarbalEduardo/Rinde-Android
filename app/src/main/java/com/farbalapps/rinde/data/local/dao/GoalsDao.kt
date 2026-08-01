@@ -11,17 +11,20 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface GoalsDao {
 
-    @Query("SELECT * FROM savings_goals WHERE userId = :userId ORDER BY currentAmount DESC")
+    @Query("SELECT * FROM savings_goals WHERE userId = :userId AND isArchived = 0 ORDER BY orderIndex ASC")
     fun getGoalsByUser(userId: String): Flow<List<SavingsGoalEntity>>
 
-    @Query("SELECT * FROM savings_goals WHERE userId = :userId ORDER BY currentAmount DESC")
+    @Query("SELECT * FROM savings_goals WHERE userId = :userId AND isArchived = 1 ORDER BY updatedAt DESC")
+    fun getArchivedGoalsByUser(userId: String): Flow<List<SavingsGoalEntity>>
+
+    @Query("SELECT * FROM savings_goals WHERE userId = :userId AND isArchived = 0 ORDER BY orderIndex ASC")
     suspend fun getGoalsByUserSnapshot(userId: String): List<SavingsGoalEntity>
 
     @Query("SELECT * FROM savings_goals WHERE id = :id LIMIT 1")
     suspend fun getGoalById(id: String): SavingsGoalEntity?
 
-    @Query("SELECT * FROM savings_goals WHERE id = :id LIMIT 1")
-    fun observeGoalById(id: String): Flow<SavingsGoalEntity?>
+    @Query("SELECT * FROM savings_goals WHERE id = :id AND userId = :userId LIMIT 1")
+    fun observeGoalById(id: String, userId: String): Flow<SavingsGoalEntity?>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertGoal(goal: SavingsGoalEntity)
@@ -31,6 +34,12 @@ interface GoalsDao {
 
     @Query("DELETE FROM savings_goals WHERE id = :goalId")
     suspend fun deleteGoalById(goalId: String)
+
+    @Query("DELETE FROM savings_goals WHERE userId = :userId")
+    suspend fun deleteGoalsByUserId(userId: String)
+
+    @Query("DELETE FROM goal_transactions WHERE goalId IN (SELECT id FROM savings_goals WHERE userId = :userId)")
+    suspend fun deleteTransactionsByUserId(userId: String)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTransaction(transaction: GoalTransactionEntity)

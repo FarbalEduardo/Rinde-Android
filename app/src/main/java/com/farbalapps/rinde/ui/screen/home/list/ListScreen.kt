@@ -60,9 +60,10 @@ fun ListScreen(
             modifier = Modifier
                 .fillMaxHeight()
                 .widthIn(max = 840.dp)
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 16.dp)
+                .padding(top = innerPadding.calculateTopPadding()),
             contentPadding = PaddingValues(
-                top = innerPadding.calculateTopPadding(),
+                top = 0.dp,
                 bottom = innerPadding.calculateBottomPadding() + 80.dp
             ),
             verticalArrangement = Arrangement.spacedBy(8.dp)
