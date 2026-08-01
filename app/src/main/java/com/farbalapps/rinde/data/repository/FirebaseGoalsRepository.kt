@@ -19,6 +19,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import java.util.UUID
 import javax.inject.Inject
@@ -47,6 +48,12 @@ class FirebaseGoalsRepository @Inject constructor(
         }
     }
 
+    override fun getGoalById(goalId: String): Flow<SavingsGoal?> {
+        return dao.observeGoalById(goalId).map { entity ->
+            entity?.toDomain()
+        }
+    }
+
     override suspend fun getGoalsSnapshot(): List<SavingsGoal> = withContext(ioDispatcher) {
         val userId = currentUserId ?: return@withContext emptyList()
         dao.getGoalsByUserSnapshot(userId).map { it.toDomain() }
@@ -54,14 +61,44 @@ class FirebaseGoalsRepository @Inject constructor(
 
     override suspend fun createGoal(goal: SavingsGoal) = withContext(ioDispatcher) {
         val userId = currentUserId ?: throw Exception("User not logged in")
-        val entity = goal.copy(userId = userId).toEntity(isSynced = false)
+        var entity = goal.copy(userId = userId).toEntity(isSynced = false)
         dao.insertGoal(entity)
+        
+        // Subida directa para que sea instantáneo. Si falla, arrojará excepción al ViewModel
+        firestore.collection("users")
+            .document(userId)
+            .collection("savings_goals")
+            .document(entity.id)
+            .set(entity, com.google.firebase.firestore.SetOptions.merge())
+            .await()
+        
+        // Si tiene éxito, marcamos como sincronizado
+        entity = entity.copy(isSynced = true)
+        dao.updateGoal(entity)
+        
         enqueueSync()
     }
 
     override suspend fun deleteGoal(goalId: String) = withContext(ioDispatcher) {
         dao.deleteGoalById(goalId)
-        // Registrar eliminación en remoto vía Worker o directamente si hay red
+        
+        val userId = currentUserId
+        if (userId != null) {
+            try {
+                firestore.collection("users")
+                    .document(userId)
+                    .collection("savings_goals")
+                    .document(goalId)
+                    .delete()
+                    // No usamos await() aquí intencionalmente. Si estamos offline, 
+                    // el SDK de Firebase encolará la eliminación y la ejecutará
+                    // cuando volvamos a estar online.
+            } catch (e: Exception) {
+                Log.e(TAG, "Error trying to delete goal from Firestore", e)
+            }
+        }
+        
+        // Sigue siendo útil llamar a enqueueSync por si hay otras metas pendientes de subir
         enqueueSync()
     }
 
@@ -86,6 +123,42 @@ class FirebaseGoalsRepository @Inject constructor(
             id = UUID.randomUUID().toString(),
             goalId = goalId,
             amount = amount,
+            note = note,
+            timestamp = now,
+            isSynced = false
+        )
+        dao.insertTransaction(tx)
+
+        enqueueSync()
+    }
+
+    override suspend fun updateGoal(goal: SavingsGoal) = withContext(ioDispatcher) {
+        val userId = currentUserId ?: throw Exception("User not logged in")
+        val entity = goal.copy(userId = userId).toEntity(isSynced = false)
+        dao.updateGoal(entity)
+        enqueueSync()
+    }
+
+    override suspend fun withdrawFromGoal(goalId: String, amount: Double, note: String) = withContext(ioDispatcher) {
+        val goalEntity = dao.getGoalById(goalId) ?: throw NoSuchElementException("Meta no encontrada")
+        
+        val newAmount = (goalEntity.currentAmount - amount).coerceAtLeast(0.0)
+        val isCompletedNow = newAmount >= goalEntity.targetAmount
+        val now = System.currentTimeMillis()
+
+        val updatedGoal = goalEntity.copy(
+            currentAmount = newAmount,
+            isCompleted = isCompletedNow,
+            updatedAt = now,
+            isSynced = false
+        )
+        dao.updateGoal(updatedGoal)
+
+        // Insertar transacción histórica como monto negativo
+        val tx = GoalTransactionEntity(
+            id = UUID.randomUUID().toString(),
+            goalId = goalId,
+            amount = -amount,
             note = note,
             timestamp = now,
             isSynced = false

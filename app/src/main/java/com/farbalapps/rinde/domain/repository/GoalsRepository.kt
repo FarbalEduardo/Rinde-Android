@@ -16,6 +16,11 @@ interface GoalsRepository {
     fun getGoals(): Flow<List<SavingsGoal>>
 
     /**
+     * Retorna un Flow reactivo con la meta especificada por su ID.
+     */
+    fun getGoalById(goalId: String): Flow<SavingsGoal?>
+
+    /**
      * Retorna una instantánea (snapshot) de la lista de metas para validaciones sincrónicas.
      */
     suspend fun getGoalsSnapshot(): List<SavingsGoal>
@@ -34,6 +39,16 @@ interface GoalsRepository {
      * Registra un depósito monetario sobre una meta y actualiza su estado.
      */
     suspend fun depositToGoal(goalId: String, amount: Double, note: String)
+
+    /**
+     * Actualiza los datos de una meta (título, monto objetivo, icono, color, fecha límite).
+     */
+    suspend fun updateGoal(goal: SavingsGoal)
+
+    /**
+     * Retira una cantidad de la meta (abono negativo).
+     */
+    suspend fun withdrawFromGoal(goalId: String, amount: Double, note: String)
 
     /**
      * Obtiene el flujo de transacciones registradas para una meta específica.

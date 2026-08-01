@@ -276,9 +276,10 @@ fun PostCard(
                                 .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
-                            if (post.authorPhotoUrl != null) {
+                            val authorAvatarUrl = post.authorPhotoUrl?.takeIf { it.isNotBlank() }
+                            if (authorAvatarUrl != null) {
                                 AsyncImage(
-                                    model = post.authorPhotoUrl,
+                                    model = authorAvatarUrl,
                                     contentDescription = null,
                                     modifier = Modifier.fillMaxSize().clip(CircleShape),
                                     contentScale = ContentScale.Crop
@@ -618,10 +619,12 @@ fun PostCard(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        VerdictBadge(
-                            truthCount = post.truthCount,
-                            falseCount = post.falseCount
-                        )
+                        if (post.verificationStatus != com.farbalapps.rinde.domain.model.VerificationStatus.EXPIRED) {
+                            VerdictBadge(
+                                truthCount = post.truthCount,
+                                falseCount = post.falseCount
+                            )
+                        }
 
                         // Comentarios — clickeable para abrir PostDetail
                         Row(

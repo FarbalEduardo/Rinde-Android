@@ -4,14 +4,14 @@
     
     <!-- Welcome Screen (Default Spanish) -->
     <string name="welcome_title">¡Bienvenido de nuevo!</string>
-    <string name="welcome_subtitle">Ingresa tus datos personales para acceder a tu cuenta</string>
+    <string name="welcome_subtitle">Ingresa tus datos para acceder a tu cuenta</string>
     <string name="btn_sign_in">Iniciar sesión</string>
     <string name="btn_sign_up">Registrarse</string>
     
     <!-- Login Screen -->
     <string name="login_welcome">Bienvenido</string>
     <string name="login_subtitle">Inicia sesión para continuar</string>
-    <string name="label_email">Usuario o Correo electrónico</string>
+    <string name="label_email">Correo electrónico</string>
     <string name="label_password">Contraseña</string>
     <string name="btn_forgot_password">¿Olvidaste tu contraseña?</string>
     <string name="reset_password_instruction">Ingresa tu correo para recibir un enlace de restablecimiento.</string>
@@ -137,7 +137,7 @@
     <string name="create_post_label_location">Ubicación</string>
     <string name="create_post_hint_location">¿Dónde está la oferta?</string>
     <string name="create_post_placeholder_location">Ej: Líder Providencia</string>
-    <string name="create_post_location_helper">Puedes escribir el nombre o usar tu GPS.</string>
+    <string name="create_post_location_helper">Puedes escribir el nombre de la tienda o una dirección</string>
     <string name="btn_publish">Publicar Oferta</string>
     <string name="action_gps">Usar GPS</string>
     <string name="error_empty_title">El título no puede estar vacío</string>

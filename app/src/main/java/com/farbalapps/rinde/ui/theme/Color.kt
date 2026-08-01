@@ -26,6 +26,7 @@ val VoteHotColor = Color(0xFFFF6D00)      // Naranja/Fuego para votos calientes
 val VoteColdColor = Color(0xFF42A5F5)     // Azul frío para votos negativos
 val VoteNeutralColor = Color(0xFF9E9E9E)  // Gris para neutro
 val VerifiedBadgeColor = Color(0xFF1DA1F2) // Azul verificado
+val AmberStarColor = Color(0xFFFFA000)     // Ambar dorado para estrellas de valoración
 val OverlayWarningColor = Color(0x99000000) // Negro semitransparente para overlay
 
 // Semantic Voting Colors (Premium M3 Adjusted)

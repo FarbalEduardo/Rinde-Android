@@ -59,30 +59,21 @@ class FeedPaginationDelegate @Inject constructor(
         }
     }
 
-    @OptIn(ExperimentalPagingApi::class)
     fun getHotPagedFeed(
         forceRefresh: Boolean,
         enrichPost: suspend (CommunityPost) -> CommunityPost
     ): Flow<PagingData<CommunityPost>> {
-        android.util.Log.d(TAG, "getHotPagedFeed call (forceRefresh=$forceRefresh)")
+        android.util.Log.d(TAG, "getHotPagedFeed call (Room local feed)")
         return Pager(
             config = PagingConfig(
                 pageSize = 20,
                 enablePlaceholders = false,
                 prefetchDistance = 3
             ),
-            remoteMediator = HotPostRemoteMediator(
-                firestore = firestore,
-                postDao = postDao,
-                syncMetadataDao = syncMetadataDao,
-                forceRefresh = forceRefresh
-            ),
             pagingSourceFactory = { postDao.getHotPostsPagingSource() }
         ).flow.map { pagingData ->
             pagingData.map { entity ->
                 enrichPost(entity.toDomainModel())
-            }.filter { post ->
-                com.farbalapps.rinde.domain.model.VerdictCalculator.calculate(post.truthCount, post.falseCount) == com.farbalapps.rinde.domain.model.PostVerdict.MOSTLY_TRUE
             }
         }
     }

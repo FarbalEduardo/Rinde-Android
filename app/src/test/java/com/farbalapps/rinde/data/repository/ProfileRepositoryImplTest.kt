@@ -55,13 +55,25 @@ class ProfileRepositoryImplTest {
     @Test
     fun updateProfile_delegatesToCrudDelegate() = runBlocking {
         val name = "Nuevo Nombre"
-        val photoUrl = "https://photo.url"
+        val photoUrl = "https://res.cloudinary.com/demo/image/upload/v1234/profile.jpg"
         coEvery { crudDelegate.updateProfile(userId, name, photoUrl) } returns Result.success(Unit)
 
         val result = repository.updateProfile(userId, name, photoUrl)
 
         assertTrue(result.isSuccess)
         coVerify(exactly = 1) { crudDelegate.updateProfile(userId, name, photoUrl) }
+    }
+
+    @Test
+    fun updateProfile_withNullPhotoUrl_removesPhoto() = runBlocking {
+        val name = "Eduardo"
+        val photoUrl = null
+        coEvery { crudDelegate.updateProfile(userId, name, null) } returns Result.success(Unit)
+
+        val result = repository.updateProfile(userId, name, null)
+
+        assertTrue(result.isSuccess)
+        coVerify(exactly = 1) { crudDelegate.updateProfile(userId, name, null) }
     }
 
     @Test

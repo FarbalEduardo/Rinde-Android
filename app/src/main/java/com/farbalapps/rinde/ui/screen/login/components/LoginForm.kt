@@ -13,6 +13,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
@@ -72,7 +73,11 @@ fun LoginForm(
                 .height(56.dp)
                 .testTag("login_button"),
             enabled = !state.isLoading,
-            shape = MaterialTheme.shapes.large
+            shape = MaterialTheme.shapes.large,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = com.farbalapps.rinde.ui.theme.RindePrimary,
+                contentColor = Color.White
+            )
         ) {
             if (state.isLoading) {
                 CircularProgressIndicator(

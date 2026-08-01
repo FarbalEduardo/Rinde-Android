@@ -101,6 +101,29 @@ class FirebaseListRepository @Inject constructor(
         }
     }
 
+    override suspend fun deleteItems(items: List<ShoppingItem>) {
+        val userId = currentUserId ?: return
+        if (items.isEmpty()) return
+
+        withContext(ioDispatcher) {
+            val entities = items.map { it.toEntity(userId) }
+            dao.deleteAll(entities)
+            Log.d(TAG, "Room DELETE_BATCH ok — count=${items.size}")
+
+            val itemIds = items.map { it.id }.toTypedArray()
+            val inputData = workDataOf(
+                SyncShoppingItemWorker.KEY_OPERATION to SyncShoppingItemWorker.OPERATION_DELETE_BATCH,
+                SyncShoppingItemWorker.KEY_USER_ID to userId,
+                SyncShoppingItemWorker.KEY_ITEM_IDS to itemIds
+            )
+            workManager.enqueue(
+                OneTimeWorkRequestBuilder<SyncShoppingItemWorker>()
+                    .setInputData(inputData)
+                    .build()
+            )
+        }
+    }
+
     override suspend fun deleteItemsByGroup(group: String) {
         val userId = currentUserId ?: return
 
@@ -119,7 +142,7 @@ class FirebaseListRepository @Inject constructor(
     // -------------------------------------------------------------------------
 
     private fun enqueueUpsert(userId: String, item: ShoppingItem) {
-        val inputData = workDataOf(
+        val builder = mutableMapOf<String, Any>(
             SyncShoppingItemWorker.KEY_OPERATION to SyncShoppingItemWorker.OPERATION_UPSERT,
             SyncShoppingItemWorker.KEY_USER_ID to userId,
             SyncShoppingItemWorker.KEY_ITEM_ID to item.id,
@@ -129,8 +152,12 @@ class FirebaseListRepository @Inject constructor(
             SyncShoppingItemWorker.KEY_QUANTITY to item.quantity,
             SyncShoppingItemWorker.KEY_UNIT to item.unit,
             SyncShoppingItemWorker.KEY_EMOJI to item.emoji,
-            SyncShoppingItemWorker.KEY_LIST_GROUP to item.listGroup
+            SyncShoppingItemWorker.KEY_LIST_GROUP to item.listGroup,
+            SyncShoppingItemWorker.KEY_CURRENCY to item.currency
         )
+        item.price?.let { builder[SyncShoppingItemWorker.KEY_PRICE] = it }
+
+        val inputData = workDataOf(*builder.toList().toTypedArray())
         workManager.enqueue(
             OneTimeWorkRequestBuilder<SyncShoppingItemWorker>()
                 .setInputData(inputData)
@@ -184,6 +211,8 @@ class FirebaseListRepository @Inject constructor(
                 val unit = doc.getString("unit") ?: "Pieza"
                 val emoji = doc.getString("emoji") ?: ""
                 val listGroup = doc.getString("listGroup") ?: "All"
+                val price = doc.getDouble("price")
+                val currency = doc.getString("currency") ?: "MXN"
 
                 com.farbalapps.rinde.data.local.entity.ShoppingItemEntity(
                     id = id,
@@ -194,7 +223,9 @@ class FirebaseListRepository @Inject constructor(
                     unit = unit,
                     emoji = emoji,
                     listGroup = listGroup,
-                    userId = userId
+                    userId = userId,
+                    price = price,
+                    currency = currency
                 )
             }
             if (remoteItems.isNotEmpty()) {

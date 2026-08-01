@@ -40,28 +40,9 @@ class ToggleVoteUseCase @Inject constructor(
 
         // 1. Optimistic Local Update
         val existingPost = postDao.getPostById(postId)
-        var originalVote = 0
-        var originalTruthCount = 0
-        var originalFalseCount = 0
-        var originalScore = 0
+        val originalState = extractOriginalState(existingPost)
 
-        if (existingPost != null) {
-            originalVote = existingPost.myVoteValue
-            originalTruthCount = existingPost.truthCount
-            originalFalseCount = existingPost.falseCount
-            originalScore = existingPost.votesScore
-
-            val nextVote = if (originalVote == voteValue) 0 else voteValue
-            val tDelta = (if (nextVote == 1) 1 else 0) - (if (originalVote == 1) 1 else 0)
-            val fDelta = (if (nextVote == -1) 1 else 0) - (if (originalVote == -1) 1 else 0)
-
-            postDao.updateVoteState(
-                postId, nextVote,
-                (originalTruthCount + tDelta).coerceAtLeast(0),
-                (originalFalseCount + fDelta).coerceAtLeast(0),
-                originalScore + (nextVote - originalVote)
-            )
-        }
+        applyOptimisticUpdate(postId, voteValue, existingPost, originalState)
 
         if (!isNetworkAvailable()) {
             feedRepository.savePendingVote(userId, postId, voteValue, authorId)
@@ -72,29 +53,95 @@ class ToggleVoteUseCase @Inject constructor(
         return try {
             val result = feedRepository.toggleVoteTransaction(userId, postId, voteValue)
             if (result.isSuccess) {
-                updateAuthorTrustScoreUseCase(authorId)
-                val counts = feedRepository.fetchPostVoteCounts(postId)
-                counts.getOrNull()?.let { (truth, false_, score) ->
-                    val local = postDao.getPostById(postId)
-                    if (local != null) {
-                        postDao.updateVoteState(postId, local.myVoteValue, truth, false_, score)
-                    }
-                }
-                VoteResult.Success(counts.getOrNull())
+                handleSuccess(authorId, postId, voteValue, originalState.vote)
+                VoteResult.Success(feedRepository.fetchPostVoteCounts(postId).getOrNull())
             } else {
-                // Revert optimistic update
-                if (existingPost != null) {
-                    postDao.updateVoteState(postId, originalVote, originalTruthCount, originalFalseCount, originalScore)
-                }
-                val e = result.exceptionOrNull()
-                classifyFailure(e)
+                revertOptimisticUpdate(postId, existingPost, originalState)
+                classifyFailure(result.exceptionOrNull())
             }
         } catch (e: Exception) {
-            // Revert optimistic update
-            if (existingPost != null) {
-                postDao.updateVoteState(postId, originalVote, originalTruthCount, originalFalseCount, originalScore)
-            }
+            revertOptimisticUpdate(postId, existingPost, originalState)
             classifyFailure(e)
+        }
+    }
+
+    private data class OriginalState(val vote: Int, val truthCount: Int, val falseCount: Int, val score: Int)
+
+    private fun extractOriginalState(existingPost: com.farbalapps.rinde.data.local.entity.CommunityPostEntity?): OriginalState {
+        return OriginalState(
+            vote = existingPost?.myVoteValue ?: 0,
+            truthCount = existingPost?.truthCount ?: 0,
+            falseCount = existingPost?.falseCount ?: 0,
+            score = existingPost?.votesScore ?: 0
+        )
+    }
+
+    private suspend fun applyOptimisticUpdate(
+        postId: String, 
+        voteValue: Int, 
+        existingPost: com.farbalapps.rinde.data.local.entity.CommunityPostEntity?,
+        originalState: OriginalState
+    ) {
+        if (existingPost != null) {
+            val nextVote = if (originalState.vote == voteValue) 0 else voteValue
+            val tDelta = (if (nextVote == 1) 1 else 0) - (if (originalState.vote == 1) 1 else 0)
+            val fDelta = (if (nextVote == -1) 1 else 0) - (if (originalState.vote == -1) 1 else 0)
+
+            val optTruth = (originalState.truthCount + tDelta).coerceAtLeast(0)
+            val optFalse = (originalState.falseCount + fDelta).coerceAtLeast(0)
+
+            postDao.updateVoteState(
+                postId, nextVote,
+                optTruth,
+                optFalse,
+                originalState.score + (nextVote - originalState.vote)
+            )
+            feedRepository.updateVoteStatusLocal(
+                postId,
+                com.farbalapps.rinde.domain.repository.VoteOverlay(
+                    truthCount = optTruth,
+                    falseCount = optFalse,
+                    myVote = nextVote
+                )
+            )
+        }
+    }
+
+    private suspend fun revertOptimisticUpdate(
+        postId: String, 
+        existingPost: com.farbalapps.rinde.data.local.entity.CommunityPostEntity?,
+        originalState: OriginalState
+    ) {
+        if (existingPost != null) {
+            postDao.updateVoteState(postId, originalState.vote, originalState.truthCount, originalState.falseCount, originalState.score)
+            feedRepository.updateVoteStatusLocal(
+                postId,
+                com.farbalapps.rinde.domain.repository.VoteOverlay(
+                    truthCount = originalState.truthCount,
+                    falseCount = originalState.falseCount,
+                    myVote = originalState.vote
+                )
+            )
+        }
+    }
+
+    private suspend fun handleSuccess(authorId: String, postId: String, voteValue: Int, originalVote: Int) {
+        updateAuthorTrustScoreUseCase(authorId)
+        val counts = feedRepository.fetchPostVoteCounts(postId)
+        counts.getOrNull()?.let { (truth, false_, score) ->
+            val local = postDao.getPostById(postId)
+            val currentVote = local?.myVoteValue ?: (if (originalVote == voteValue) 0 else voteValue)
+            if (local != null) {
+                postDao.updateVoteState(postId, currentVote, truth, false_, score)
+            }
+            feedRepository.updateVoteStatusLocal(
+                postId,
+                com.farbalapps.rinde.domain.repository.VoteOverlay(
+                    truthCount = truth,
+                    falseCount = false_,
+                    myVote = currentVote
+                )
+            )
         }
     }
 

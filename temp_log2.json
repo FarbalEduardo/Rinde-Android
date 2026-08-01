@@ -1,0 +1,203 @@
+﻿
+{"step_index":529,"source":"MODEL","type":"CODE_ACTION","status":"DONE","created_at":"2026-07-28T01:03:58Z","content":"
+Created At: 2026-07-28T01:03:58Z\nCompleted At: 2026-07-28T01:04:02Z\nThe following changes were made by the 
+replace_file_content tool to: d:\\PROYECTOSANDROID\\Rinde\\app\\src\\main\\java\\com\\farbalapps\\rinde\\ui\\screen\\ho
+me\\list\\components\\ShoppingListItem.kt. If relevant, proactively run terminal commands to execute this code for the 
+USER. Don't ask for permission.\n[diff_block_start]\n@@ -45,7 +45,8 @@\n     onLongClick: () -> Unit = {},\r\n     
+onSelectionToggle: () -> Unit = {},\r\n     onEdit: () -> Unit,\r\n-    onDelete: () -> Unit\r\n+    onDelete: () -> 
+Unit,\r\n+    onSetPrice: (price: Double?, currency: String) -> Unit = { _, _ -> }\r\n ) {\r\n     val uiCategory = 
+item.category.toProductCategory()\r\n     val dismissState = rememberSwipeToDismissBoxState()\r\n@@ -52,3 +52,4 @@\n+  
+  var showQuickPriceDialog by remember { mutableStateOf(false) }\r\n \r\n     
+LaunchedEffect(dismissState.currentValue) {\r\n         when (dismissState.currentValue) {\r\n@@ -65,7 +65,7 @@\n     
+}\r\n \r\n     val elevation by animateDpAsState(\r\n-        targetValue = if (isSelected) 6.dp else if 
+(isHighlighted) 12.dp else 1.dp,\r\n+        targetValue = if (isSelected) 4.dp else if (isHighlighted) 8.dp else 
+1.dp,\r\n         animationSpec = if (isHighlighted) {\r\n             infiniteRepeatable(\r\n                 
+animation = tween(500),\r\n@@ -113,7 +113,7 @@\n                         )\r\n                     }\r\n               
+      \r\n-                    Spacer(modifier = Modifier.width(24.dp))\r\n+                    Spacer(modifier = 
+Modifier.width(16.dp))\r\n                     \r\n                     IconButton(\r\n                         
+onClick = { \r\n@@ -120,6 +120,6 @@\n                         },\r\n                         modifier = Modifier\r\n-  
+                          .size(36.dp)\r\n+                            .size(32.dp)\r\n                             
+.background(MaterialTheme.colorScheme.error, CircleShape)\r\n                     ) {\r\n                         
+Icon(\r\n@@ -126,6 +126,6 @@\n                             contentDescription = stringResource(id = 
+R.string.action_delete),\r\n                             tint = MaterialTheme.colorScheme.onError,\r\n-                
+            modifier = Modifier.size(20.dp)\r\n+                            modifier = Modifier.size(18.dp)\r\n        
+                 )\r\n                     }\r\n                 }\r\n@@ -138,7 +138,7 @@\n                 
+tonalElevation = elevation,\r\n                 modifier = Modifier\r\n                     .fillMaxWidth()\r\n-       
+             .defaultMinSize(minHeight = 56.dp)\r\n+                    .defaultMinSize(minHeight = 44.dp)\r\n         
+            .combinedClickable(\r\n                         onClick = {\r\n                             if 
+(isSelectionMode) {\r\n@@ -150,71 +150,106 @@\n                         }\r\n                     )\r\n             ) 
+{\r\n-                ListItem(\r\n-                    headlineContent = {\r\n-                        Text(\r\n-     
+                       text = item.name,\r\n-                            style = 
+MaterialTheme.typography.titleMedium.copy(\r\n-                                textDecoration = if (item.isCompleted) 
+TextDecoration.LineThrough else TextDecoration.None,\r\n-                                fontWeight = 
+FontWeight.SemiBold\r\n-                            ),\r\n-                            color = if (item.isCompleted) 
+MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f) \r\n-                                    else 
+MaterialTheme.colorScheme.onSurface,\r\n-                            maxLines = 1,\r\n-                            
+overflow = TextOverflow.Ellipsis\r\n-                        )\r\n-                    },\r\n-                    
+supportingContent = {\r\n-                        val categoryText = if (uiCategory == 
+com.farbalapps.rinde.ui.screen.home.list.ProductCategory.OTHERS) {\r\n-                            item.category\r\n-  
+                      } else {\r\n-                            stringResource(id = uiCategory.displayNameRes)\r\n-     
+                   }\r\n-                        \r\n-                        val priceText = item.price?.let {\r\n-   
+                         String.format(Locale.getDefault(), \" Â· $%.2f %s\", it * item.quantity, item.currency)\r\n-  
+                      } ?: \"\"\r\n-\r\n-                        Text(\r\n-                            text = 
+\"$categoryText$priceText\",\r\n-                            style = MaterialTheme.typography.labelMedium,\r\n-        
+                    color = if (item.isCompleted) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f) \r\n-  
+                                  else if (item.price != null) MaterialTheme.colorScheme.tertiary\r\n-                 
+                   else MaterialTheme.colorScheme.primary,\r\n-                            fontWeight = 
+FontWeight.Medium\r\n-                        )\r\n-                    },\r\n-                    leadingContent = 
+{\r\n-                        Row(verticalAlignment = Alignment.CenterVertically) {\r\n-                            
+androidx.compose.animation.AnimatedVisibility(\r\n-                                visible = isSelectionMode,\r\n-     
+                           enter = scaleIn() + fadeIn(),\r\n-                                exit = scaleOut() + 
+fadeOut()\r\n-                            ) {\r\n-                                Checkbox(\r\n-                       
+             checked = isSelected,\r\n-                                    onCheckedChange = { onSelectionToggle() 
+},\r\n-                                    colors = CheckboxDefaults.colors(\r\n-                                      
+  checkedColor = MaterialTheme.colorScheme.primary\r\n-                                    )\r\n-                      
+          )\r\n-                                Spacer(modifier = Modifier.width(4.dp))\r\n-                           
+ }\r\n-\r\n-                            Surface(\r\n-                                shape = 
+RoundedCornerShape(14.dp),\r\n-                                color = 
+MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),\r\n-                                modifier = 
+Modifier.size(56.dp)\r\n-                            ) {\r\n-                                Box(contentAlignment = 
+Alignment.Center) {\r\n-                                    if (item.emoji.isNotEmpty()) {\r\n-                        
+                Text(item.emoji, fontSize = 32.sp)\r\n-                                    } else {\r\n-               
+                         Icon(\r\n-                                            imageVector = uiCategory.icon,\r\n-     
+                                       contentDescription = null,\r\n-                                            tint 
+= MaterialTheme.colorScheme.primary,\r\n-                                            modifier = 
+Modifier.size(32.dp)\r\n+                Row(\r\n+                    modifier = Modifier\r\n+                        
+.fillMaxWidth()\r\n+                        .padding(horizontal = 12.dp, vertical = 6.dp),\r\n+                    
+verticalAlignment = Alignment.CenterVertically,\r\n+                    horizontalArrangement = 
+Arrangement.SpaceBetween\r\n+                ) {\r\n+                    // Leading Content (Checkbox + 
+Emoji/Icon)\r\n+                    Row(\r\n+                        verticalAlignment = 
+Alignment.CenterVertically,\r\n+                        modifier = Modifier.weight(1f)\r\n+                    ) 
+{\r\n+                        androidx.compose.animation.AnimatedVisibility(\r\n+                            visible = 
+isSelectionMode,\r\n+                            enter = scaleIn() + fadeIn(),\r\n+                            exit = 
+scaleOut() + fadeOut()\r\n+                        ) {\r\n+                            Checkbox(\r\n+                  
+              checked = isSelected,\r\n+                                onCheckedChange = { onSelectionToggle() 
+},\r\n+                                colors = CheckboxDefaults.colors(\r\n+                                    
+checkedColor = MaterialTheme.colorScheme.primary\r\n+                                ),\r\n+                           
+     modifier = Modifier.scale(0.85f)\r\n+                            )\r\n+                            
+Spacer(modifier = Modifier.width(2.dp))\r\n+                        }\r\n+\r\n+                        Surface(\r\n+   
+                         shape = RoundedCornerShape(10.dp),\r\n+                            color = 
+MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),\r\n+                            modifier = 
+Modifier.size(42.dp)\r\n+                        ) {\r\n+                            Box(contentAlignment = 
+Alignment.Center) {\r\n+                                if (item.emoji.isNotEmpty()) {\r\n+                            
+        Text(item.emoji, fontSize = 24.sp)\r\n+                                } else {\r\n+                           
+         Icon(\r\n+                                        imageVector = uiCategory.icon,\r\n+                         
+               contentDescription = null,\r\n+                                        tint = 
+MaterialTheme.colorScheme.primary,\r\n+                                        modifier = Modifier.size(24.dp)\r\n+    
+                                )\r\n+                                }\r\n+                            }\r\n+         
+               }\r\n+\r\n+                        Spacer(modifier = Modifier.width(10.dp))\r\n+\r\n+                   
+     // Text content (Name + Category/Price badge)\r\n+                        Column(modifier = Modifier.weight(1f)) 
+{\r\n+                            Text(\r\n+                                text = item.name,\r\n+                     
+           style = MaterialTheme.typography.titleSmall.copy(\r\n+                                    textDecoration = 
+if (item.isCompleted) TextDecoration.LineThrough else TextDecoration.None,\r\n+                                    
+fontWeight = FontWeight.SemiBold\r\n+                                ),\r\n+                                color = if 
+(item.isCompleted) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f) \r\n+                                 
+       else MaterialTheme.colorScheme.onSurface,\r\n+                                maxLines = 1,\r\n+                
+                overflow = TextOverflow.Ellipsis\r\n+                            )\r\n+\r\n+                           
+ val categoryText = if (uiCategory == com.farbalapps.rinde.ui.screen.home.list.ProductCategory.OTHERS) {\r\n+          
+                      item.category\r\n+                            } else {\r\n+                                
+stringResource(id = uiCategory.displayNameRes)\r\n+                            }\r\n+                            \r\n+ 
+                           Row(\r\n+                                verticalAlignment = 
+Alignment.CenterVertically,\r\n+                                horizontalArrangement = 
+Arrangement.spacedBy(4.dp)\r\n+                            ) {\r\n+                                Text(\r\n+          
+                          text = categoryText,\r\n+                                    style = 
+MaterialTheme.typography.labelSmall,\r\n+                                    color = if (item.isCompleted) 
+MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f) \r\n+                                            else 
+MaterialTheme.colorScheme.onSurfaceVariant,\r\n+                                    fontWeight = 
+FontWeight.Normal\r\n+                                )\r\n+\r\n+                                if (!isSelectionMode) 
+{\r\n+                                    Text(\"Â·\", style = MaterialTheme.typography.labelSmall, color = 
+MaterialTheme.colorScheme.onSurfaceVariant)\r\n+\r\n+                                    // Quick Price Badge 
+Button\r\n+                                    Surface(\r\n+                                        onClick = { 
+showQuickPriceDialog = true },\r\n+                                        shape = RoundedCornerShape(6.dp),\r\n+      
+                                  color = if (item.price != null) 
+MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)\r\n+                                                
+else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)\r\n+                                    ) {\r\n+      
+                                  Text(\r\n+                                            text = item.price?.let {\r\n+  
+                                              String.format(Locale.getDefault(), \"$%.2f %s\", it * item.quantity, 
+item.currency)\r\n+                                            } ?: \"+ ðŸ’²\",\r\n+                                   
+         style = MaterialTheme.typography.labelSmall,\r\n+                                            fontWeight = if 
+(item.price != null) FontWeight.Bold else FontWeight.Normal,\r\n+                                            color = 
+if (item.price != null) MaterialTheme.colorScheme.onTertiaryContainer\r\n+                                             
+       else MaterialTheme.colorScheme.primary,\r\n+                                            modifier = 
+Modifier.padding(horizontal = 4.dp, vertical = 1.dp)\r\n                                         )\r\n                 
+                    }\r\n                                 }\r\n@@ -221,37 +221,153 @@\n                         }\r\n- 
+                   },\r\n-                    trailingContent = {\r\n-                        Row(verticalAlignment = 
+Alignment.CenterVertically) {\r\n-                            val quantityText = if (item.quantity % 1.0 == 0.0) 
+item.quantity.toInt().toString() else item.quantity.toString()\r\n-                            Text(\r\n-              
+                  text = \"$quantityText ${item.unit}\",\r\n-                                style = 
+MaterialTheme.typography.titleMedium,\r\n-                                fontWeight = FontWeight.SemiBold,\r\n-       
+                         color = MaterialTheme.colorScheme.onSurfaceVariant\r\n-                            )\r\n-     
+                       if (!isSelectionMode) {\r\n-                                IconButton(onClick = onEdit) {\r\n- 
+                                   Icon(\r\n-                                        imageVector = 
+Icons.Default.Edit,\r\n-                                        contentDescription = stringResource(id = 
+R.string.action_edit),\r\n-                                        modifier = Modifier.size(18.dp),\r\n-               
+                         tint = MaterialTheme.colorScheme.primary\r\n-                                    )\r\n-       
+                         }\r\n-                                Checkbox(\r\n-                                    
+checked = item.isCompleted,\r\n-                                    onCheckedChange = onCheckedChange,\r\n-            
+                        colors = CheckboxDefaults.colors(\r\n-                                        checkedColor = 
+MaterialTheme.colorScheme.primary\r\n-                                    ),\r\n-                                    
+modifier = Modifier.scale(0.85f)\r\n-                                )\r\n-                            }\r\n-          
+              }\r\n-                    }\r\n+                    }\r\n+\r\n+                    // Trailing Content 
+(Quantity + Edit/Check actions)\r\n+                    Row(\r\n+                        verticalAlignment = 
+Alignment.CenterVertically,\r\n+                        horizontalArrangement = Arrangement.spacedBy(2.dp)\r\n+        
+            ) {\r\n+                        val quantityText = if (item.quantity % 1.0 == 0.0) 
+item.quantity.toInt().toString() else item.quantity.toString()\r\n+                        Text(\r\n+                  
+          text = \"$quantityText ${item.unit}\",\r\n+                            style = 
+MaterialTheme.typography.bodyMedium,\r\n+                            fontWeight = FontWeight.SemiBold,\r\n+            
+                color = MaterialTheme.colorScheme.onSurfaceVariant\r\n+                        )\r\n+\r\n+             
+           if (!isSelectionMode) {\r\n+                            IconButton(\r\n+                                
+onClick = onEdit,\r\n+                                modifier = Modifier.size(32.dp)\r\n+                            
+) {\r\n+                                Icon(\r\n+                                    imageVector = 
+Icons.Default.Edit,\r\n+                                    contentDescription = stringResource(id = 
+R.string.action_edit),\r\n+                                    modifier = Modifier.size(16.dp),\r\n+                   
+                 tint = MaterialTheme.colorScheme.primary\r\n+                                )\r\n+                   
+         }\r\n+\r\n+                            Checkbox(\r\n+                                checked = 
+item.isCompleted,\r\n+                                onCheckedChange = onCheckedChange,\r\n+                          
+      colors = CheckboxDefaults.colors(\r\n+                                    checkedColor = 
+MaterialTheme.colorScheme.primary\r\n+                                ),\r\n+                                modifier 
+= Modifier.scale(0.8f)\r\n+                            )\r\n+                        }\r\n+                    }\r\n+  
+              }\r\n+            }\r\n+        }\r\n+    )\r\n+\r\n+    if (showQuickPriceDialog) {\r\n+        
+QuickPriceDialog(\r\n+            itemName = item.name,\r\n+            initialPrice = item.price,\r\n+            
+initialCurrency = item.currency,\r\n+            onDismiss = { showQuickPriceDialog = false },\r\n+            
+onConfirm = { price, currency ->\r\n+                onSetPrice(price, currency)\r\n+                
+showQuickPriceDialog = false\r\n+            }\r\n+        )\r\n+    
+}\r\n+}\r\n+\r\n+@OptIn(ExperimentalMaterial3Api::class)\r\n+@Composable\r\n+fun QuickPriceDialog(\r\n+    itemName: 
+String,\r\n+    initialPrice: Double?,\r\n+    initialCurrency: String,\r\n+    onDismiss: () -> Unit,\r\n+    
+onConfirm: (price: Double?, currency: String) -> Unit\r\n+) {\r\n+    var priceText by remember {\r\n+        
+mutableStateOf(initialPrice?.let { if (it % 1.0 == 0.0) it.toInt().toString() else it.toString() } ?: \"\")\r\n+    
+}\r\n+    var currency by remember { mutableStateOf(if (initialCurrency.isNotBlank()) initialCurrency else \"MXN\") 
+}\r\n+    val currencies = listOf(\"MXN\", \"USD\", \"EUR\")\r\n+\r\n+    AlertDialog(\r\n+        onDismissRequest = 
+onDismiss,\r\n+        icon = {\r\n+            Icon(\r\n+                imageVector = 
+Icons.Default.AttachMoney,\r\n+                contentDescription = null,\r\n+                tint = 
+MaterialTheme.colorScheme.primary\r\n+            )\r\n+        },\r\n+        title = {\r\n+            Text(\r\n+    
+            text = \"Precio para \\\"$itemName\\\"\",\r\n+                style = 
+MaterialTheme.typography.titleMedium,\r\n+                fontWeight = FontWeight.Bold\r\n+            )\r\n+        
+},\r\n+        text = {\r\n+            Column(\r\n+                modifier = Modifier.fillMaxWidth(),\r\n+           
+     verticalArrangement = Arrangement.spacedBy(12.dp)\r\n+            ) {\r\n+                OutlinedTextField(\r\n+ 
+                   value = priceText,\r\n+                    onValueChange = { priceText = it.filter { char -> 
+char.isDigit() || char == '.' } },\r\n+                    label = { Text(\"Precio\") },\r\n+                    
+prefix = { Text(\"$ \") },\r\n+                    singleLine = true,\r\n+                    keyboardOptions = 
+androidx.compose.foundation.text.KeyboardOptions(\r\n+                        keyboardType = 
+androidx.compose.ui.text.input.KeyboardType.Decimal\r\n+                    ),\r\n+                    shape = 
+RoundedCornerShape(12.dp),\r\n+                    modifier = Modifier.fillMaxWidth()\r\n                 )\r\n-       
+     }\r\n-        }\r\n+\r\n+                SingleChoiceSegmentedButtonRow(\r\n+                    modifier = 
+Modifier.fillMaxWidth().height(44.dp)\r\n+                ) {\r\n+                    currencies.forEachIndexed { 
+index, curr ->\r\n+                        SegmentedButton(\r\n+                            shape = 
+SegmentedButtonDefaults.itemShape(index = index, count = currencies.size),\r\n+                            onClick = { 
+currency = curr },\r\n+                            selected = currency == curr\r\n+                        ) {\r\n+    
+                        Text(curr, fontSize = 12.sp)\r\n+                        }\r\n+                    }\r\n+      
+          }\r\n+            }\r\n+        },\r\n+        confirmButton = {\r\n+            Button(\r\n+                
+onClick = {\r\n+                    val parsed = priceText.toDoubleOrNull()\r\n+                    onConfirm(parsed, 
+currency)\r\n+                },\r\n+                shape = RoundedCornerShape(12.dp)\r\n+            ) {\r\n+        
+        Text(\"Guardar\")\r\n+            }\r\n+        },\r\n+        dismissButton = {\r\n+            Row {\r\n+    
+            if (initialPrice != null) {\r\n+                    TextButton(\r\n+                        onClick = { 
+onConfirm(null, currency) },\r\n+                        colors = ButtonDefaults.textButtonColors(contentColor = 
+MaterialTheme.colorScheme.error)\r\n+                    ) {\r\n+                        Text(\"Quitar\")\r\n+         
+           }\r\n+                }\r\n+                TextButton(onClick = onDismiss) {\r\n+                    
+Text(\"Cancelar\")\r\n+                }\r\n+            }\r\n+        },\r\n+        containerColor = 
+MaterialTheme.colorScheme.surface,\r\n+        shape = RoundedCornerShape(24.dp)\r\n     )\r\n }\r\n 
+\r\n[diff_block_end]\n\nPlease note that the above snippet only shows the MODIFIED lines from the last change. It 
+shows up to 3 lines of unchanged lines before and after the modified lines. The actual file contents may have many 
+more lines not shown."}
+
+

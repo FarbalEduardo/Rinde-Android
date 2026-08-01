@@ -23,7 +23,10 @@ fun DepositBottomSheet(
 
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
-        dragHandle = { BottomSheetDefaults.DragHandle() }
+        containerColor = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        tonalElevation = 0.dp,
+        dragHandle = { BottomSheetDefaults.DragHandle(color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)) }
     ) {
         Column(
             modifier = Modifier
@@ -39,54 +42,90 @@ fun DepositBottomSheet(
             
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Campo de Monto a Depositar
-            OutlinedTextField(
-                value = amountText,
-                onValueChange = {
+            DepositAmountField(
+                amountText = amountText,
+                amountError = amountError,
+                onAmountChange = {
                     if (it.isEmpty() || it.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
                         amountText = it
                         amountError = null
                     }
-                },
-                label = { Text("Monto a depositar") },
-                placeholder = { Text("0.00") },
-                prefix = { Text("$ ") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                isError = amountError != null,
-                supportingText = { amountError?.let { Text(it) } },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
+                }
             )
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Nota Opcional (E3.6)
-            OutlinedTextField(
-                value = noteText,
-                onValueChange = { noteText = it },
-                label = { Text("Nota o concepto (opcional)") },
-                placeholder = { Text("Ej. Ahorro de la semana 🚀") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
+            DepositNoteField(
+                noteText = noteText,
+                onNoteChange = { noteText = it }
             )
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Botón de Depósito
-            Button(
-                onClick = {
-                    val amount = amountText.toDoubleOrNull() ?: 0.0
-                    if (amount <= 0) {
-                        amountError = "El monto debe ser mayor a cero" // Regla E3.2
-                    } else {
-                        onConfirm(amount, noteText)
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(50)
-            ) {
-                Text(text = "Confirmar Depósito", fontWeight = FontWeight.Bold)
-            }
+            DepositConfirmButton(
+                amountText = amountText,
+                noteText = noteText,
+                onConfirm = onConfirm,
+                onAmountError = { amountError = it }
+            )
         }
+    }
+}
+
+@Composable
+private fun DepositAmountField(
+    amountText: String,
+    amountError: String?,
+    onAmountChange: (String) -> Unit
+) {
+    OutlinedTextField(
+        value = amountText,
+        onValueChange = onAmountChange,
+        label = { Text("Monto a depositar") },
+        placeholder = { Text("0.00") },
+        prefix = { Text("$ ") },
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+        isError = amountError != null,
+        supportingText = { amountError?.let { Text(it) } },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth()
+    )
+}
+
+@Composable
+private fun DepositNoteField(
+    noteText: String,
+    onNoteChange: (String) -> Unit
+) {
+    OutlinedTextField(
+        value = noteText,
+        onValueChange = onNoteChange,
+        label = { Text("Nota o concepto (opcional)") },
+        placeholder = { Text("Ej. Ahorro de la semana 🚀") },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth()
+    )
+}
+
+@Composable
+private fun DepositConfirmButton(
+    amountText: String,
+    noteText: String,
+    onConfirm: (Double, String) -> Unit,
+    onAmountError: (String) -> Unit
+) {
+    Button(
+        onClick = {
+            val amount = amountText.toDoubleOrNull() ?: 0.0
+            if (amount <= 0) {
+                onAmountError("El monto debe ser mayor a cero") // Regla E3.2
+            } else {
+                onConfirm(amount, noteText)
+            }
+        },
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(50)
+    ) {
+        Text(text = "Confirmar Depósito", fontWeight = FontWeight.Bold)
     }
 }

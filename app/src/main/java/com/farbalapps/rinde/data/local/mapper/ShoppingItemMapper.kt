@@ -16,7 +16,9 @@ fun ShoppingItemEntity.toDomain(): ShoppingItem = ShoppingItem(
     unit = unit,
     emoji = emoji,
     listGroup = listGroup,
-    userId = userId
+    userId = userId,
+    price = price,
+    currency = currency
 )
 
 fun ShoppingItem.toEntity(userId: String): ShoppingItemEntity = ShoppingItemEntity(
@@ -28,5 +30,7 @@ fun ShoppingItem.toEntity(userId: String): ShoppingItemEntity = ShoppingItemEnti
     unit = unit,
     emoji = emoji,
     listGroup = listGroup,
-    userId = userId
+    userId = userId,
+    price = price,
+    currency = currency
 )

@@ -38,6 +38,7 @@ class SyncShoppingItemWorker @AssistedInject constructor(
                 OPERATION_UPSERT -> handleUpsert(userId)
                 OPERATION_DELETE -> handleDelete(userId)
                 OPERATION_DELETE_GROUP -> handleDeleteGroup(userId)
+                OPERATION_DELETE_BATCH -> handleDeleteBatch(userId)
                 else -> {
                     Log.e(TAG, "Unknown operation: $operation")
                     Result.failure()
@@ -76,6 +77,16 @@ class SyncShoppingItemWorker @AssistedInject constructor(
         return Result.success()
     }
 
+    private suspend fun handleDeleteBatch(userId: String): Result {
+        val itemIds = inputData.getStringArray(KEY_ITEM_IDS) ?: return Result.failure()
+
+        for (id in itemIds) {
+            userCollection(userId).document(id).delete().await()
+        }
+        Log.d(TAG, "✅ DELETE_BATCH success — count=${itemIds.size}")
+        return Result.success()
+    }
+
     private suspend fun handleDeleteGroup(userId: String): Result {
         val group = inputData.getString(KEY_LIST_GROUP) ?: return Result.failure()
 
@@ -108,8 +119,11 @@ class SyncShoppingItemWorker @AssistedInject constructor(
         val unit = inputData.getString(KEY_UNIT) ?: "Pieza"
         val emoji = inputData.getString(KEY_EMOJI) ?: ""
         val listGroup = inputData.getString(KEY_LIST_GROUP) ?: "All"
+        val currency = inputData.getString(KEY_CURRENCY) ?: "MXN"
+        val hasPrice = inputData.keyValueMap.containsKey(KEY_PRICE)
+        val price = if (hasPrice) inputData.getDouble(KEY_PRICE, 0.0) else null
 
-        return mapOf(
+        val map = mutableMapOf<String, Any>(
             "id" to itemId,
             "name" to name,
             "category" to category,
@@ -118,8 +132,11 @@ class SyncShoppingItemWorker @AssistedInject constructor(
             "unit" to unit,
             "emoji" to emoji,
             "listGroup" to listGroup,
-            "userId" to userId
+            "userId" to userId,
+            "currency" to currency
         )
+        price?.let { map["price"] = it }
+        return map
     }
 
     // -------------------------------------------------------------------------
@@ -134,6 +151,7 @@ class SyncShoppingItemWorker @AssistedInject constructor(
         const val KEY_OPERATION = "operation"
         const val KEY_USER_ID = "userId"
         const val KEY_ITEM_ID = "itemId"
+        const val KEY_ITEM_IDS = "itemIds"
         const val KEY_NAME = "name"
         const val KEY_CATEGORY = "category"
         const val KEY_IS_COMPLETED = "isCompleted"
@@ -141,10 +159,13 @@ class SyncShoppingItemWorker @AssistedInject constructor(
         const val KEY_UNIT = "unit"
         const val KEY_EMOJI = "emoji"
         const val KEY_LIST_GROUP = "listGroup"
+        const val KEY_PRICE = "price"
+        const val KEY_CURRENCY = "currency"
 
         // Operation types
         const val OPERATION_UPSERT = "UPSERT"
         const val OPERATION_DELETE = "DELETE"
         const val OPERATION_DELETE_GROUP = "DELETE_GROUP"
+        const val OPERATION_DELETE_BATCH = "DELETE_BATCH"
     }
 }

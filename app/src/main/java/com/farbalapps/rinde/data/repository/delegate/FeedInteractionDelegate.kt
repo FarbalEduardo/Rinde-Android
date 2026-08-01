@@ -220,10 +220,12 @@ class FeedInteractionDelegate @Inject constructor(
         val postRef = firestore.collection("posts").document(postId)
 
         var finalCounts = Triple(0, 0, 0)
+        var finalNextVote = 0
         firestore.runTransaction { transaction ->
             val voteSnapshot = transaction.get(voteDocRef)
             val serverVote = voteSnapshot.getLong("value")?.toInt() ?: 0
             val nextVote = if (serverVote == voteValue) 0 else voteValue
+            finalNextVote = nextVote
 
             val postSnapshot = transaction.get(postRef)
             val currentTruth = postSnapshot.getLong("truthCount")?.toInt() ?: 0
@@ -257,14 +259,21 @@ class FeedInteractionDelegate @Inject constructor(
             finalCounts = Triple(newTruth, newFalse, newScore)
         }.await()
 
-        // Sincronizar localmente en Room
-        val postSnapshotAfter = userVoteDao.getVoteOnce(postId, userId)?.voteValue ?: 0
-        val finalVoteVal = if (postSnapshotAfter == voteValue) 0 else voteValue
-        if (finalVoteVal == 0) {
+        // Sincronizar localmente en Room y estado global
+        if (finalNextVote == 0) {
             userVoteDao.deleteVote(postId, userId)
         } else {
-            userVoteDao.upsertVote(UserVoteEntity(postId, userId, finalVoteVal))
+            userVoteDao.upsertVote(UserVoteEntity(postId, userId, finalNextVote))
         }
+
+        updateVoteStatusLocal(
+            postId,
+            VoteOverlay(
+                truthCount = finalCounts.first,
+                falseCount = finalCounts.second,
+                myVote = finalNextVote
+            )
+        )
 
         finalCounts
     }

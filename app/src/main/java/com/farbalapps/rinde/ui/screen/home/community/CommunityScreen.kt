@@ -16,18 +16,41 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Whatshot
+import androidx.compose.material.icons.filled.LocalOffer
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Stars
+import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
+import androidx.compose.material.icons.filled.ThumbUp
+import androidx.compose.material.icons.filled.StarOutline
+import androidx.compose.material.icons.filled.Savings
+import androidx.compose.material.icons.filled.Sell
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.outlined.Notifications
+import com.farbalapps.rinde.ui.screen.home.community.components.NotificationsBottomSheet
+import com.farbalapps.rinde.ui.screen.home.community.components.SearchContent
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+
 import androidx.compose.material3.*
+
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.border
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -67,12 +90,14 @@ import androidx.compose.ui.graphics.graphicsLayer
 fun CommunityScreen(
     onNavigateToCreatePost: () -> Unit = {},
     onNavigateToUserProfile: (String) -> Unit = {},
-    onNavigateToPostDetail: (String) -> Unit = {},
+    onNavigateToPostDetail: (postId: String, scrollToComments: Boolean, isExpiredNotice: Boolean) -> Unit = { _, _, _ -> },
     onEditPost: (String) -> Unit = {},
     viewModel: CommunityViewModel = hiltViewModel(),
+    searchViewModel: SearchViewModel = hiltViewModel(),
     commentsViewModel: CommentsViewModel = hiltViewModel(),
     innerPadding: PaddingValues = PaddingValues(0.dp)
 ) {
+
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val postStatusOverlay by viewModel.postStatusOverlay.collectAsStateWithLifecycle()
     val savedOverlay by viewModel.savedOverlay.collectAsStateWithLifecycle()
@@ -113,9 +138,9 @@ fun CommunityScreen(
         onLikeClick = { viewModel.toggleVote(it, 1) },
         onSaveClick = { viewModel.toggleSave(it) },
         onShowNewPosts = { viewModel.showPendingPosts() },
-        onPostClick = onNavigateToPostDetail,
+        onPostClick = { postId -> onNavigateToPostDetail(postId, false, false) },
         onCommentClick = { postId ->
-            onNavigateToPostDetail(postId)
+            onNavigateToPostDetail(postId, true, false)
         },
         onVoteHot = { postId -> viewModel.toggleVote(postId, 1) },
         onVoteCold = { postId -> viewModel.toggleVote(postId, -1) },
@@ -131,6 +156,7 @@ fun CommunityScreen(
             }
             context.startActivity(android.content.Intent.createChooser(shareIntent, "Compartir publicación"))
         },
+        onNavigateToPostDetail = onNavigateToPostDetail,
         innerPadding = innerPadding
     )
 
@@ -141,83 +167,269 @@ fun EmptyFeedState(
     tab: CommunityTab,
     modifier: Modifier = Modifier
 ) {
-    val icon = when (tab) {
-        CommunityTab.DISCOVER -> Icons.Default.Explore
-        CommunityTab.HOT -> Icons.Default.Whatshot
-        CommunityTab.SAVED -> Icons.Default.BookmarkBorder
+    val (title, subtitle) = when (tab) {
+        CommunityTab.DISCOVER -> Pair(
+            "Aún no hay publicaciones",
+            "Las nuevas ofertas publicadas por la comunidad aparecerán en esta sección."
+        )
+        CommunityTab.HOT -> Pair(
+            "Aún no hay publicaciones Hot",
+            "Las publicaciones con más votos y mejor valoración de la comunidad aparecerán aquí."
+        )
+        CommunityTab.SAVED -> Pair(
+            "No tienes publicaciones guardadas",
+            "Guarda las ofertas que te interesen para acceder a ellas fácilmente en cualquier momento."
+        )
     }
-    val title = when (tab) {
-        CommunityTab.DISCOVER -> "Aún no hay ofertas"
-        CommunityTab.HOT -> "Sin publicaciones destacadas"
-        CommunityTab.SAVED -> "Nada guardado aún"
-    }
-    val subtitle = when (tab) {
-        CommunityTab.DISCOVER -> "Sé el primero en publicar una oferta para la comunidad."
-        CommunityTab.HOT -> "Las ofertas con más votos de la comunidad aparecerán aquí."
-        CommunityTab.SAVED -> "Guarda las mejores ofertas para acceder a ellas más tarde."
-    }
+
+    val primaryColor = RindePrimary
+
+    val infiniteTransition = rememberInfiniteTransition(label = "communityEmptyTransition")
+
+    val pulseScale by infiniteTransition.animateFloat(
+        initialValue = 0.94f,
+        targetValue = 1.06f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2800, easing = EaseInOutQuad),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulseScale"
+    )
+
+    val glowAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.15f,
+        targetValue = 0.38f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2800, easing = EaseInOutSine),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "glowAlpha"
+    )
+
+    val floatingOffset by infiniteTransition.animateFloat(
+        initialValue = -10f,
+        targetValue = 10f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2400, easing = EaseInOutSine),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "floatingOffset"
+    )
+
+    val swingAngle by infiniteTransition.animateFloat(
+        initialValue = -6f,
+        targetValue = 6f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(3200, easing = EaseInOutSine),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "swingAngle"
+    )
 
     androidx.compose.animation.AnimatedVisibility(
         visible = true,
-        enter = androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(500)) + 
-                androidx.compose.animation.slideInVertically(initialOffsetY = { it / 2 }),
+        enter = androidx.compose.animation.fadeIn(animationSpec = tween(500)) + 
+                slideInVertically(initialOffsetY = { it / 2 }),
         modifier = modifier
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 80.dp, bottom = 40.dp),
+                .padding(top = 40.dp, bottom = 40.dp, start = 24.dp, end = 24.dp),
             contentAlignment = Alignment.Center
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                // Icon with subtle pulse animation
-                val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-                val scale by infiniteTransition.animateFloat(
-                    initialValue = 0.95f,
-                    targetValue = 1.05f,
-                    animationSpec = infiniteRepeatable(
-                        animation = tween(1500, easing = androidx.compose.animation.core.FastOutSlowInEasing),
-                        repeatMode = RepeatMode.Reverse
-                    ),
-                    label = "scale"
-                )
-                
-                Surface(
-                    modifier = Modifier.size(80.dp),
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
-                    tonalElevation = 2.dp
+                // Contenedor Ilustrativo de 220dp con ícono central grande + 3 íconos flotantes
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(220.dp)
+                        .padding(bottom = 8.dp)
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
+                    // Resplandor radial de fondo
+                    Box(
+                        modifier = Modifier
+                            .size(170.dp)
+                            .graphicsLayer {
+                                scaleX = pulseScale
+                                scaleY = pulseScale
+                            }
+                            .clip(CircleShape)
+                            .background(
+                                androidx.compose.ui.graphics.Brush.radialGradient(
+                                    colors = listOf(
+                                        primaryColor.copy(alpha = glowAlpha),
+                                        primaryColor.copy(alpha = 0.05f),
+                                        androidx.compose.ui.graphics.Color.Transparent
+                                    )
+                                )
+                            )
+                    )
+
+                    // 3 Íconos flotantes decorativos contextuales
+                    when (tab) {
+                        CommunityTab.DISCOVER -> {
+                            // Flotante 1 (Top Start)
+                            Icon(
+                                imageVector = Icons.Default.LocalOffer,
+                                contentDescription = null,
+                                tint = primaryColor.copy(alpha = 0.28f),
+                                modifier = Modifier
+                                    .size(46.dp)
+                                    .align(Alignment.TopStart)
+                                    .offset(x = 10.dp, y = (24 + floatingOffset).dp)
+                                    .rotate(-18f)
+                            )
+                            // Flotante 2 (Top End)
+                            Icon(
+                                imageVector = Icons.Default.AutoAwesome,
+                                contentDescription = null,
+                                tint = primaryColor.copy(alpha = 0.32f),
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .align(Alignment.TopEnd)
+                                    .offset(x = (-14).dp, y = (18 + floatingOffset).dp)
+                                    .rotate(14f)
+                            )
+                            // Flotante 3 (Bottom End)
+                            Icon(
+                                imageVector = Icons.Default.Stars,
+                                contentDescription = null,
+                                tint = primaryColor.copy(alpha = 0.24f),
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .align(Alignment.BottomEnd)
+                                    .offset(x = (-20).dp, y = (-20 - floatingOffset).dp)
+                                    .rotate(-10f)
+                            )
+                        }
+                        CommunityTab.HOT -> {
+                            // Flotante 1 (Top Start)
+                            Icon(
+                                imageVector = Icons.Default.LocalFireDepartment,
+                                contentDescription = null,
+                                tint = primaryColor.copy(alpha = 0.30f),
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .align(Alignment.TopStart)
+                                    .offset(x = 10.dp, y = (20 + floatingOffset).dp)
+                                    .rotate(-15f)
+                            )
+                            // Flotante 2 (Top End)
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.TrendingUp,
+                                contentDescription = null,
+                                tint = primaryColor.copy(alpha = 0.35f),
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .align(Alignment.TopEnd)
+                                    .offset(x = (-16).dp, y = (22 + floatingOffset).dp)
+                                    .rotate(15f)
+                            )
+                            // Flotante 3 (Bottom Start)
+                            Icon(
+                                imageVector = Icons.Default.ThumbUp,
+                                contentDescription = null,
+                                tint = primaryColor.copy(alpha = 0.25f),
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .align(Alignment.BottomStart)
+                                    .offset(x = 16.dp, y = (-18 - floatingOffset).dp)
+                                    .rotate(-12f)
+                            )
+                        }
+                        CommunityTab.SAVED -> {
+                            // Flotante 1 (Top Start)
+                            Icon(
+                                imageVector = Icons.Default.BookmarkBorder,
+                                contentDescription = null,
+                                tint = primaryColor.copy(alpha = 0.28f),
+                                modifier = Modifier
+                                    .size(46.dp)
+                                    .align(Alignment.TopStart)
+                                    .offset(x = 12.dp, y = (22 + floatingOffset).dp)
+                                    .rotate(-14f)
+                            )
+                            // Flotante 2 (Top End)
+                            Icon(
+                                imageVector = Icons.Default.StarOutline,
+                                contentDescription = null,
+                                tint = primaryColor.copy(alpha = 0.32f),
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .align(Alignment.TopEnd)
+                                    .offset(x = (-14).dp, y = (16 + floatingOffset).dp)
+                                    .rotate(16f)
+                            )
+                            // Flotante 3 (Bottom End)
+                            Icon(
+                                imageVector = Icons.Default.Savings,
+                                contentDescription = null,
+                                tint = primaryColor.copy(alpha = 0.25f),
+                                modifier = Modifier
+                                    .size(42.dp)
+                                    .align(Alignment.BottomEnd)
+                                    .offset(x = (-22).dp, y = (-18 - floatingOffset).dp)
+                                    .rotate(-10f)
+                            )
+                        }
+                    }
+
+                    // Contenedor Principal con el Ícono Central Grande (130dp)
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .graphicsLayer {
+                                rotationZ = swingAngle
+                                scaleX = pulseScale
+                                scaleY = pulseScale
+                            }
+                            .size(130.dp)
+                            .shadow(
+                                elevation = 16.dp,
+                                shape = CircleShape,
+                                spotColor = primaryColor.copy(alpha = 0.40f)
+                            )
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surface)
+                            .border(
+                                width = 2.dp,
+                                color = primaryColor.copy(alpha = 0.35f),
+                                shape = CircleShape
+                            )
+                    ) {
+                        val mainIcon = when (tab) {
+                            CommunityTab.DISCOVER -> Icons.Default.Explore
+                            CommunityTab.HOT -> Icons.Default.Whatshot
+                            CommunityTab.SAVED -> Icons.Default.Bookmark
+                        }
                         Icon(
-                            imageVector = icon,
+                            imageVector = mainIcon,
                             contentDescription = null,
-                            modifier = Modifier
-                                .size(40.dp)
-                                .graphicsLayer {
-                                    scaleX = scale
-                                    scaleY = scale
-                                },
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = primaryColor,
+                            modifier = Modifier.size(64.dp)
                         )
                     }
                 }
-                
+
+                // Textos informativos
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = TextAlign.Center
                 )
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f),
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(horizontal = 40.dp)
+                    modifier = Modifier.padding(horizontal = 24.dp)
                 )
             }
         }
@@ -351,10 +563,33 @@ fun CommunityContent(
     onReportExpired: (String, String, String) -> Unit = { _, _, _ -> },
     onMarkAvailable: (String) -> Unit = {},
     onSharePost: (CommunityPost) -> Unit = {},
+    onNavigateToPostDetail: (String, Boolean, Boolean) -> Unit = { _, _, _ -> },
+    searchViewModel: SearchViewModel = hiltViewModel(),
+    notificationsViewModel: NotificationsViewModel = hiltViewModel(),
     innerPadding: PaddingValues
 ) {
+
+    val notificationsUiState by notificationsViewModel.uiState.collectAsStateWithLifecycle()
+    var showNotificationsSheet by remember { mutableStateOf(false) }
+
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
-    val lazyListState = rememberLazyListState()
+    val discoverListState = rememberLazyListState()
+    val hotListState = rememberLazyListState()
+    val savedListState = rememberLazyListState()
+
+    val lazyListState = when (currentTab) {
+        CommunityTab.DISCOVER -> discoverListState
+        CommunityTab.HOT -> hotListState
+        CommunityTab.SAVED -> savedListState
+    }
+
+    LaunchedEffect(currentTab) {
+        when (currentTab) {
+            CommunityTab.DISCOVER -> { /* Conservar scroll de discover */ }
+            CommunityTab.HOT -> { hotListState.scrollToItem(0) }
+            CommunityTab.SAVED -> { savedListState.scrollToItem(0) }
+        }
+    }
 
     // Lógica de visibilidad del FAB
     var lastScrollOffset by remember { mutableIntStateOf(0) }
@@ -446,7 +681,9 @@ fun CommunityContent(
                     when (currentTab) {
                         CommunityTab.DISCOVER -> {
                             val loadState = discoverItems.loadState
-                            val isDiscoverLoading = loadState.refresh is androidx.paging.LoadState.Loading
+                            val isDiscoverLoading = loadState.refresh is androidx.paging.LoadState.Loading ||
+                                    loadState.mediator?.refresh is androidx.paging.LoadState.Loading ||
+                                    loadState.source.refresh is androidx.paging.LoadState.Loading
                             val isDiscoverError = loadState.refresh is androidx.paging.LoadState.Error || 
                                     loadState.mediator?.refresh is androidx.paging.LoadState.Error
                             val endOfPaginationReached = (loadState.refresh as? androidx.paging.LoadState.NotLoading)?.endOfPaginationReached == true
@@ -462,9 +699,9 @@ fun CommunityContent(
                                 }
                             } else if (discoverItems.itemCount == 0 && (isDiscoverLoading || !endOfPaginationReached)) {
                                 items(5) {
-                                    PostCardSkeleton(modifier = Modifier.padding(horizontal = paddingMedium / 2, vertical = dimensionResource(id = R.dimen.padding_small) / 2))
+                                    PostCardSkeleton(modifier = Modifier.padding(horizontal = paddingMedium / 2, vertical = 2.dp))
                                 }
-                            } else if (discoverItems.itemCount == 0 && endOfPaginationReached) {
+                            } else if (discoverItems.itemCount == 0) {
                                 item {
                                     EmptyFeedState(tab = CommunityTab.DISCOVER)
                                 }
@@ -504,7 +741,7 @@ fun CommunityContent(
                                             onSharePost = { onSharePost(post) },
                                             modifier = Modifier.padding(
                                                 horizontal = paddingMedium / 2,
-                                                vertical = dimensionResource(id = R.dimen.padding_small) / 2
+                                                vertical = 2.dp
                                             )
                                         )
                                     }
@@ -517,7 +754,7 @@ fun CommunityContent(
                                             PostCardSkeleton(
                                                 modifier = Modifier.padding(
                                                     horizontal = paddingMedium / 2,
-                                                    vertical = dimensionResource(id = R.dimen.padding_small) / 2
+                                                    vertical = 2.dp
                                                 )
                                             )
                                         }
@@ -562,11 +799,11 @@ fun CommunityContent(
                                         onRetry = { hotItems.retry() }
                                     )
                                 }
-                            } else if (hotItems.itemCount == 0 && (isHotLoading || !endOfPaginationReached)) {
+                            } else if (hotItems.itemCount == 0 && isHotLoading) {
                                 items(5) {
-                                    PostCardSkeleton(modifier = Modifier.padding(horizontal = paddingMedium / 2, vertical = dimensionResource(id = R.dimen.padding_small) / 2))
+                                    PostCardSkeleton(modifier = Modifier.padding(horizontal = paddingMedium / 2, vertical = 2.dp))
                                 }
-                            } else if (hotItems.itemCount == 0 && endOfPaginationReached) {
+                            } else if (hotItems.itemCount == 0) {
                                 item {
                                     EmptyFeedState(tab = CommunityTab.HOT)
                                 }
@@ -578,6 +815,9 @@ fun CommunityContent(
                                     val post = hotItems[index]
                                     if (post != null) {
                                         val overriddenStatus = postStatusOverlay[post.id] ?: post.verificationStatus
+                                        if (overriddenStatus == com.farbalapps.rinde.domain.model.VerificationStatus.EXPIRED) {
+                                            return@items
+                                        }
                                         val overriddenSaved = savedOverlay[post.id] ?: post.isSavedByMe
                                         val voteOver = voteOverlay[post.id]
                                         val finalTruth = if (voteOver != null && post.myVoteValue != voteOver.myVote) (voteOver.truthCount ?: post.truthCount) else post.truthCount
@@ -606,7 +846,7 @@ fun CommunityContent(
                                             onSharePost = { onSharePost(post) },
                                             modifier = Modifier.padding(
                                                 horizontal = paddingMedium / 2,
-                                                vertical = dimensionResource(id = R.dimen.padding_small) / 2
+                                                vertical = 2.dp
                                             )
                                         )
                                     }
@@ -619,7 +859,7 @@ fun CommunityContent(
                                             PostCardSkeleton(
                                                 modifier = Modifier.padding(
                                                     horizontal = paddingMedium / 2,
-                                                    vertical = dimensionResource(id = R.dimen.padding_small) / 2
+                                                    vertical = 2.dp
                                                 )
                                             )
                                         }
@@ -651,7 +891,7 @@ fun CommunityContent(
                         CommunityTab.SAVED -> {
                             if (isSavedLoading) {
                                 items(5) {
-                                    PostCardSkeleton(modifier = Modifier.padding(horizontal = paddingMedium, vertical = dimensionResource(id = R.dimen.padding_small)))
+                                    PostCardSkeleton(modifier = Modifier.padding(horizontal = paddingMedium, vertical = 2.dp))
                                 }
                             } else if (savedPosts.isEmpty()) {
                                 item {
@@ -688,7 +928,7 @@ fun CommunityContent(
                                         onSharePost = { onSharePost(post) },
                                         modifier = Modifier.padding(
                                             horizontal = paddingMedium / 2,
-                                            vertical = dimensionResource(id = R.dimen.padding_small) / 2
+                                            vertical = 2.dp
                                         )
                                     )
                                 }
@@ -701,7 +941,7 @@ fun CommunityContent(
                 }
             }
 
-            // 2. Header (SearchBar + Tabs) — zIndex(1) para estar encima de la lista
+            // 2. Header (SearchBar + Notifications Bell + Tabs) — zIndex(1) para estar encima de la lista
             Surface(
                 modifier = Modifier
                     .zIndex(1f)
@@ -714,84 +954,169 @@ fun CommunityContent(
                 tonalElevation = 0.dp
             ) {
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 24.dp, vertical = 4.dp)
-                    ) {
-                            SearchBar(
-                                query = "",
-                                onQueryChange = {},
-                                onSearch = {},
-                                active = false,
-                                onActiveChange = { },
-                                placeholder = { 
-                                    Text(
-                                        text = stringResource(id = R.string.community_title),
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                                    ) 
-                                },
-                                leadingIcon = { 
-                                    Icon(
-                                        Icons.Default.Search, 
-                                        contentDescription = null, 
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(20.dp) 
-                                    ) 
-                                },
-                                trailingIcon = { 
-                                    IconButton(onClick = { /* TODO */ }) {
-                                        Icon(
-                                            Icons.Default.MoreVert, 
-                                            contentDescription = null, 
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    }
-                                },
-                                colors = SearchBarDefaults.colors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                                    inputFieldColors = TextFieldDefaults.colors(
-                                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface
-                                    )
-                                ),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(48.dp)
-                            ) { }
-                    }
-                    
-                    CommunityTabRow(
-                        selectedTab = currentTab,
-                        onTabSelected = onTabSelected,
-                        modifier = Modifier.fillMaxWidth()
+                    var searchActive by remember { mutableStateOf(false) }
+                    val searchUiState by searchViewModel.uiState.collectAsStateWithLifecycle()
+                    val searchBarHorizontalPadding by animateDpAsState(
+                        targetValue = if (searchActive) 0.dp else 16.dp,
+                        label = "searchBarHorizontalPadding"
+                    )
+                    val searchBarHeight by animateDpAsState(
+                        targetValue = if (searchActive) 56.dp else 48.dp,
+                        label = "searchBarHeight"
                     )
 
-                    // Banner animado de nuevas ofertas
-                    AnimatedVisibility(
-                        visible = newPostsCount >= 1,
-                        enter = slideInVertically(initialOffsetY = { -it }),
-                        exit = slideOutVertically(targetOffsetY = { -it })
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(
+                                horizontal = searchBarHorizontalPadding,
+                                vertical = if (searchActive) 0.dp else 2.dp
+                            ),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Box(
+                        SearchBar(
+                            query = searchUiState.query,
+                            onQueryChange = { searchViewModel.onQueryChange(it) },
+                            onSearch = { searchViewModel.onSearchTriggered(it) },
+                            active = searchActive,
+                            onActiveChange = { active ->
+                                searchActive = active
+                                if (!active) {
+                                    searchViewModel.onQueryChange("")
+                                }
+                            },
+                            placeholder = { 
+                                Text(
+                                    text = "Buscar ofertas o tiendas...",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                ) 
+                            },
+                            leadingIcon = { 
+                                Icon(
+                                    Icons.Default.Search, 
+                                    contentDescription = null, 
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(18.dp) 
+                                ) 
+                            },
+                            trailingIcon = { 
+                                if (searchActive) {
+                                    IconButton(onClick = {
+                                        searchActive = false
+                                        searchViewModel.onQueryChange("")
+                                    }) {
+                                        Icon(
+                                            Icons.Default.Close, 
+                                            contentDescription = "Cerrar búsqueda", 
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                }
+                                // TODO: Implementar menú de 3 puntos (MoreVert) con las siguientes funciones futuras:
+                                //   1. "Ordenar por: Más recientes / Más votados / Más comentados"
+                                //      → Cambiar el criterio de ordenación del feed con opciones de sort.
+                                //   2. "Filtrar por categoría"
+                                //      → Filtrar el feed mostrando sólo publicaciones de una categoría específica.
+                                //   3. "Ocultar ofertas ya vistas"
+                                //      → Marcar posts como vistos y no volver a mostrarlos en el feed principal.
+                                //   4. "Configuración del feed"
+                                //      → Pantalla de preferencias: tipo de publicaciones, zonas de caza preferidas.
+                            },
+                            colors = SearchBarDefaults.colors(
+                                containerColor = if (searchActive) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.surfaceVariant,
+                                inputFieldColors = TextFieldDefaults.colors(
+                                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                    focusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
+                                    unfocusedContainerColor = androidx.compose.ui.graphics.Color.Transparent
+                                )
+                            ),
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .background(MaterialTheme.colorScheme.primaryContainer)
-                                .clickable { onShowNewPosts() }
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                            contentAlignment = Alignment.Center
+                                .weight(1f)
+                                .heightIn(min = searchBarHeight, max = if (searchActive) androidx.compose.ui.unit.Dp.Unspecified else 48.dp)
                         ) {
-                            Text(
-                                text = "Hay $newPostsCount nuevas ofertas",
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            SearchContent(
+                                uiState = searchUiState,
+                                onQueryChange = { searchViewModel.onQueryChange(it) },
+                                onCategorySelect = { searchViewModel.onCategorySelect(it) },
+                                onSearchTriggered = { searchViewModel.onSearchTriggered(it) },
+                                onRemoveRecentSearch = { searchViewModel.removeRecentSearch(it) },
+                                onClearRecentSearches = { searchViewModel.clearRecentSearches() },
+                                onPostClick = { postId ->
+                                    searchActive = false
+                                    onPostClick(postId)
+                                },
+                                onSaveClick = { postId -> onSaveClick(postId) },
+                                onCommentClick = { postId ->
+                                    searchActive = false
+                                    onCommentClick(postId)
+                                },
+                                currentUserId = currentUserId
                             )
+                        }
+
+                        androidx.compose.animation.AnimatedVisibility(
+                            visible = !searchActive,
+                            enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.scaleIn(),
+                            exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.scaleOut()
+                        ) {
+                            BadgedBox(
+                                badge = {
+                                    if (notificationsUiState.unreadCount > 0) {
+                                        Badge {
+                                            Text(if (notificationsUiState.unreadCount > 99) "99+" else notificationsUiState.unreadCount.toString())
+                                        }
+                                    }
+                                },
+                                modifier = Modifier.padding(start = 4.dp)
+                            ) {
+                                IconButton(onClick = { showNotificationsSheet = true }) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Notifications,
+                                        contentDescription = "Notificaciones",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    
+                    if (!searchActive) {
+                        CommunityTabRow(
+                            selectedTab = currentTab,
+                            onTabSelected = onTabSelected,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        // Banner animado de nuevas ofertas
+                        AnimatedVisibility(
+                            visible = newPostsCount >= 1,
+                            enter = slideInVertically(initialOffsetY = { -it }),
+                            exit = slideOutVertically(targetOffsetY = { -it })
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(MaterialTheme.colorScheme.primaryContainer)
+                                    .clickable { onShowNewPosts() }
+                                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "Hay $newPostsCount nuevas ofertas",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
                         }
                     }
                 }
+
             }
 
             // 3. Status Bar Guard — zIndex(2) siempre encima de todo
@@ -804,8 +1129,19 @@ fun CommunityContent(
                     .background(MaterialTheme.colorScheme.background)
             )
         }
+
+        if (showNotificationsSheet) {
+            NotificationsBottomSheet(
+                viewModel = notificationsViewModel,
+                onNotificationClick = { postId, scrollToComments, isExpiredNotice ->
+                    onNavigateToPostDetail(postId, scrollToComments, isExpiredNotice)
+                },
+                onDismiss = { showNotificationsSheet = false }
+            )
+        }
     }
 }
+
 
 
 @Preview(showBackground = true)

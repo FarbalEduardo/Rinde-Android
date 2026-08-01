@@ -1,0 +1,3 @@
+- [x] Add imports to `ShoppingListItem.kt`
+- [x] Add `ShoppingListItemPreview` to `ShoppingListItem.kt`
+- [x] Verify with `render_compose_preview`

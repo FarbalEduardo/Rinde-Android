@@ -90,20 +90,21 @@ fun SharedCommentThread(
     val isEditing = editingCommentId == comment.id
 
     Surface(
-        modifier = modifier.fillMaxWidth().padding(vertical = 4.dp),
+        modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 1.dp
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Column(modifier = Modifier.padding(8.dp)) {
             Row(verticalAlignment = Alignment.Top) {
             Box(
                 modifier = Modifier.size(36.dp).background(MaterialTheme.colorScheme.surfaceVariant, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                if (comment.authorPhotoUrl != null) {
+                val authorAvatarUrl = comment.authorPhotoUrl?.takeIf { it.isNotBlank() }
+                if (authorAvatarUrl != null) {
                     AsyncImage(
-                        model = comment.authorPhotoUrl,
+                        model = authorAvatarUrl,
                         contentDescription = null,
                         modifier = Modifier.fillMaxSize().clip(CircleShape),
                         contentScale = ContentScale.Crop

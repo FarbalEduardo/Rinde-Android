@@ -19,8 +19,15 @@ sealed interface HomeRoute {
     data class UserProfile(val userId: String) : HomeRoute
 
     @Serializable
-    data class PostDetail(val postId: String) : HomeRoute
+    data class PostDetail(
+        val postId: String,
+        val scrollToComments: Boolean = false,
+        val isExpiredNotice: Boolean = false
+    ) : HomeRoute
 
     @Serializable
     data class EditPost(val postId: String) : HomeRoute
+
+    @Serializable
+    data class GoalDetail(val goalId: String) : HomeRoute
 }

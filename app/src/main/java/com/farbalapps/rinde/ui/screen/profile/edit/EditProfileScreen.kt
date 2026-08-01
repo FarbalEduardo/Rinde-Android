@@ -111,53 +111,17 @@ fun EditProfileForm(
     var showPhotoOptions by remember { mutableStateOf(false) }
 
     if (showPhotoOptions) {
-        ModalBottomSheet(
-            onDismissRequest = { showPhotoOptions = false }
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(24.dp)
-                    .padding(bottom = 36.dp)
-            ) {
-                Text(
-                    text = "Foto de perfil",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-                
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            showPhotoOptions = false
-                            photoLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                        }
-                        .padding(vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.Default.PhotoLibrary, contentDescription = null)
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Text("Elegir de la galería", style = MaterialTheme.typography.bodyLarge)
-                }
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            showPhotoOptions = false
-                            onPhotoChange(null)
-                        }
-                        .padding(vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Text("Eliminar foto actual", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.error)
-                }
+        PhotoOptionsBottomSheet(
+            onDismiss = { showPhotoOptions = false },
+            onChooseFromGallery = {
+                showPhotoOptions = false
+                photoLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+            },
+            onDeletePhoto = {
+                showPhotoOptions = false
+                onPhotoChange(null)
             }
-        }
+        )
     }
 
     Spacer(modifier = Modifier.height(16.dp))
@@ -225,6 +189,56 @@ fun EditProfileForm(
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.padding(top = 8.dp, start = 4.dp)
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PhotoOptionsBottomSheet(
+    onDismiss: () -> Unit,
+    onChooseFromGallery: () -> Unit,
+    onDeletePhoto: () -> Unit
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp)
+                .padding(bottom = 36.dp)
+        ) {
+            Text(
+                text = "Foto de perfil",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+            
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onChooseFromGallery() }
+                    .padding(vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.PhotoLibrary, contentDescription = null)
+                Spacer(modifier = Modifier.width(16.dp))
+                Text("Elegir de la galería", style = MaterialTheme.typography.bodyLarge)
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onDeletePhoto() }
+                    .padding(vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                Spacer(modifier = Modifier.width(16.dp))
+                Text("Eliminar foto actual", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.error)
+            }
+        }
     }
 }
 

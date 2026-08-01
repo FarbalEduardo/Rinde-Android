@@ -17,10 +17,23 @@ interface PostDao {
     @Query("SELECT * FROM community_posts WHERE isActive = 1 AND category IN (:categories) ORDER BY votesScore DESC, timestamp DESC")
     fun getPostsByCategories(categories: List<String>): Flow<List<CommunityPostEntity>>
 
-    @Query("SELECT * FROM community_posts WHERE isActive = 1 AND votesScore >= 2 ORDER BY votesScore DESC, timestamp DESC")
+    @Query("""
+        SELECT * FROM community_posts 
+        WHERE isActive = 1 
+          AND votesScore >= 2 
+          AND (truthCount + falseCount) >= 2 
+          AND (CAST(truthCount AS REAL) / (truthCount + falseCount)) >= 0.75 
+        ORDER BY votesScore DESC, timestamp DESC
+    """)
     fun getHotPostsPagingSource(): androidx.paging.PagingSource<Int, CommunityPostEntity>
 
-    @Query("SELECT COUNT(*) FROM community_posts WHERE isActive = 1 AND votesScore >= 2")
+    @Query("""
+        SELECT COUNT(*) FROM community_posts 
+        WHERE isActive = 1 
+          AND votesScore >= 2 
+          AND (truthCount + falseCount) >= 2 
+          AND (CAST(truthCount AS REAL) / (truthCount + falseCount)) >= 0.75
+    """)
     suspend fun getHotPostsCount(): Int
 
     @Query("SELECT * FROM community_posts WHERE id IN (:postIds)")
@@ -48,7 +61,7 @@ interface PostDao {
     @Query("SELECT MAX(timestamp) FROM community_posts")
     suspend fun getLatestTimestamp(): Long?
 
-    @Query("DELETE FROM community_posts WHERE timestamp < :threshold")
+    @Query("DELETE FROM community_posts WHERE timestamp < :threshold AND isSavedByMe = 0 AND votesScore < 2")
     suspend fun deleteOldPosts(threshold: Long)
 
     @Query("DELETE FROM community_posts WHERE id = :postId")
@@ -91,5 +104,29 @@ interface PostDao {
 
     @Query("UPDATE community_posts SET myVoteValue = :voteValue WHERE id = :postId")
     suspend fun updateVoteValueOnly(postId: String, voteValue: Int)
+
+    @Query("""
+        SELECT p.* FROM community_posts p
+        INNER JOIN community_posts_fts fts ON p.rowid = fts.docid
+        WHERE community_posts_fts MATCH :query
+        AND p.isActive = 1
+        ORDER BY p.timestamp DESC
+        LIMIT :limit
+    """)
+    suspend fun searchPostsFts(query: String, limit: Int = 50): List<CommunityPostEntity>
+
+    @Query("""
+        SELECT * FROM community_posts 
+        WHERE isActive = 1
+        AND (title LIKE '%' || :query || '%' 
+             OR descriptionShort LIKE '%' || :query || '%'
+             OR storeName LIKE '%' || :query || '%'
+             OR category LIKE '%' || :query || '%'
+             OR couponCode LIKE '%' || :query || '%')
+        ORDER BY timestamp DESC
+        LIMIT :limit
+    """)
+    suspend fun searchPostsLike(query: String, limit: Int = 50): List<CommunityPostEntity>
 }
+
 

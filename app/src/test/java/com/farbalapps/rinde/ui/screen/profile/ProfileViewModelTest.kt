@@ -171,4 +171,103 @@ class ProfileViewModelTest {
             assertEquals(dummyProfile, state.profile)
         }
     }
+
+    @Test
+    fun `when posts have less than 2 votes, computedRating should be null`() = runTest {
+        val validatingPost = testPosts[0].copy(truthCount = 1, falseCount = 0)
+        coEvery { getProfilePostsUseCase(testUserId) } returns flowOf(listOf(validatingPost))
+
+        viewModel.loadProfile(testUserId)
+        viewModel.uiState.test {
+            testScheduler.runCurrent()
+            val state = expectMostRecentItem()
+            assertEquals(null, state.computedRating)
+            assertEquals(0, state.ratedPostsCount)
+        }
+    }
+
+    @Test
+    fun `when posts are 100 percent real, computedRating should be 5`() = runTest {
+        val hundredPercentRealPost = testPosts[0].copy(truthCount = 10, falseCount = 0)
+        coEvery { getProfilePostsUseCase(testUserId) } returns flowOf(listOf(hundredPercentRealPost))
+
+        viewModel.loadProfile(testUserId)
+        viewModel.uiState.test {
+            testScheduler.runCurrent()
+            val state = expectMostRecentItem()
+            assertEquals(5.0f, state.computedRating!!, 0.01f)
+            assertEquals(1, state.ratedPostsCount)
+        }
+    }
+
+    @Test
+    fun `when posts are 100 percent false, computedRating should be 1`() = runTest {
+        val hundredPercentFalsePost = testPosts[0].copy(truthCount = 0, falseCount = 10)
+        coEvery { getProfilePostsUseCase(testUserId) } returns flowOf(listOf(hundredPercentFalsePost))
+
+        viewModel.loadProfile(testUserId)
+        viewModel.uiState.test {
+            testScheduler.runCurrent()
+            val state = expectMostRecentItem()
+            assertEquals(1.0f, state.computedRating!!, 0.01f)
+            assertEquals(1, state.ratedPostsCount)
+        }
+    }
+
+    @Test
+    fun `when posts are 50 percent real, computedRating should be 3`() = runTest {
+        val fiftyPercentPost = testPosts[0].copy(truthCount = 5, falseCount = 5)
+        coEvery { getProfilePostsUseCase(testUserId) } returns flowOf(listOf(fiftyPercentPost))
+
+        viewModel.loadProfile(testUserId)
+        viewModel.uiState.test {
+            testScheduler.runCurrent()
+            val state = expectMostRecentItem()
+            assertEquals(3.0f, state.computedRating!!, 0.01f)
+            assertEquals(1, state.ratedPostsCount)
+        }
+    }
+
+    @Test
+    fun `when viewing another user profile, isCurrentUser should be false`() = runTest {
+        val otherUserId = "other_user_123"
+        val otherProfile = testProfile.copy(id = otherUserId)
+        coEvery { getProfileUseCase(otherUserId) } returns flowOf(otherProfile)
+        coEvery { getProfilePostsUseCase(otherUserId) } returns flowOf(emptyList())
+
+        viewModel.loadProfile(otherUserId)
+        viewModel.uiState.test {
+            testScheduler.runCurrent()
+            val state = expectMostRecentItem()
+            assertFalse(state.isCurrentUser)
+            assertEquals(otherProfile, state.profile)
+        }
+    }
+
+    @Test
+    fun `when profile has custom photoUrl, uiState holds photoUrl correctly`() = runTest {
+        val customPhotoUrl = "https://res.cloudinary.com/demo/image/upload/v1/user.jpg"
+        val profileWithPhoto = testProfile.copy(photoUrl = customPhotoUrl)
+        coEvery { getProfileUseCase(testUserId) } returns flowOf(profileWithPhoto)
+
+        viewModel.loadProfile(testUserId)
+        viewModel.uiState.test {
+            testScheduler.runCurrent()
+            val state = expectMostRecentItem()
+            assertEquals(customPhotoUrl, state.profile?.photoUrl)
+        }
+    }
+
+    @Test
+    fun `when profile photoUrl is null or empty, uiState holds null photoUrl`() = runTest {
+        val profileWithoutPhoto = testProfile.copy(photoUrl = null)
+        coEvery { getProfileUseCase(testUserId) } returns flowOf(profileWithoutPhoto)
+
+        viewModel.loadProfile(testUserId)
+        viewModel.uiState.test {
+            testScheduler.runCurrent()
+            val state = expectMostRecentItem()
+            assertEquals(null, state.profile?.photoUrl)
+        }
+    }
 }

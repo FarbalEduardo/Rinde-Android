@@ -116,84 +116,110 @@ fun SettingsContent(
             .fillMaxSize()
             .padding(padding)
     ) {
-        item { SettingsSectionHeader(stringResource(R.string.settings_section_usage)) }
-        item {
-            SettingsListItem(
-                icon = Icons.Default.BookmarkBorder,
-                label = stringResource(R.string.profile_tab_saved),
-                onClick = onNavigateToSaved
-            )
-        }
-
-        item { SettingsSectionHeader(stringResource(R.string.settings_section_privacy)) }
-        item {
-            SettingsListItem(
-                icon = if (isPrivate) Icons.Default.Lock else Icons.Default.LockOpen,
-                label = stringResource(R.string.settings_item_privacy_label),
-                supportingText = if (isPrivate) {
-                    stringResource(R.string.settings_item_privacy_private_desc)
-                } else {
-                    stringResource(R.string.settings_item_privacy_public_desc)
-                },
-                trailingContent = {
-                    Switch(checked = isPrivate, onCheckedChange = onTogglePrivacy)
-                }
-            )
-        }
-        item {
-            SettingsListItem(
-                icon = Icons.Default.Block,
-                label = stringResource(R.string.settings_item_blocked),
-                onClick = onNavigateToBlocked
-            )
-        }
-        item {
-            SettingsListItem(
-                icon = Icons.Default.VerifiedUser,
-                label = stringResource(R.string.settings_item_verify_account),
-                onClick = { /* TODO */ }
-            )
-        }
-
-        item { SettingsSectionHeader(stringResource(R.string.settings_section_app)) }
-        item {
-            SettingsListItem(
-                icon = Icons.Default.Palette,
-                label = stringResource(R.string.settings_item_theme),
-                value = currentTheme.name.lowercase().replaceFirstChar { it.uppercase() },
-                onClick = onShowTheme
-            )
-        }
-        item {
-            SettingsListItem(
-                icon = Icons.Default.Language,
-                label = stringResource(R.string.settings_item_language),
-                value = currentLanguage.name,
-                onClick = onShowLanguage
-            )
-        }
-
-        item { SettingsSectionHeader(stringResource(R.string.settings_section_more)) }
-        item {
-            SettingsListItem(
-                icon = Icons.Default.Info,
-                label = stringResource(R.string.settings_item_about),
-                onClick = { /* TODO */ }
-            )
-        }
-
-        item { Spacer(modifier = Modifier.height(24.dp)) }
-        item {
-            SettingsListItem(
-                icon = Icons.AutoMirrored.Filled.Logout,
-                label = stringResource(R.string.settings_btn_logout),
-                labelColor = MaterialTheme.colorScheme.error,
-                showChevron = false,
-                onClick = onShowLogout
-            )
-        }
-        item { Spacer(modifier = Modifier.height(40.dp)) }
+        usageSection(onNavigateToSaved)
+        privacySection(isPrivate, onTogglePrivacy, onNavigateToBlocked)
+        appSection(currentTheme, currentLanguage, onShowTheme, onShowLanguage)
+        moreSection(onShowLogout)
     }
+}
+
+private fun androidx.compose.foundation.lazy.LazyListScope.usageSection(
+    onNavigateToSaved: () -> Unit
+) {
+    item { SettingsSectionHeader(stringResource(R.string.settings_section_usage)) }
+    item {
+        SettingsListItem(
+            icon = Icons.Default.BookmarkBorder,
+            label = stringResource(R.string.profile_tab_saved),
+            onClick = onNavigateToSaved
+        )
+    }
+}
+
+private fun androidx.compose.foundation.lazy.LazyListScope.privacySection(
+    isPrivate: Boolean,
+    onTogglePrivacy: (Boolean) -> Unit,
+    onNavigateToBlocked: () -> Unit
+) {
+    item { SettingsSectionHeader(stringResource(R.string.settings_section_privacy)) }
+    item {
+        SettingsListItem(
+            icon = if (isPrivate) Icons.Default.Lock else Icons.Default.LockOpen,
+            label = stringResource(R.string.settings_item_privacy_label),
+            supportingText = if (isPrivate) {
+                stringResource(R.string.settings_item_privacy_private_desc)
+            } else {
+                stringResource(R.string.settings_item_privacy_public_desc)
+            },
+            trailingContent = {
+                Switch(checked = isPrivate, onCheckedChange = onTogglePrivacy)
+            }
+        )
+    }
+    item {
+        SettingsListItem(
+            icon = Icons.Default.Block,
+            label = stringResource(R.string.settings_item_blocked),
+            onClick = onNavigateToBlocked
+        )
+    }
+    item {
+        SettingsListItem(
+            icon = Icons.Default.VerifiedUser,
+            label = stringResource(R.string.settings_item_verify_account),
+            onClick = { /* TODO */ }
+        )
+    }
+}
+
+private fun androidx.compose.foundation.lazy.LazyListScope.appSection(
+    currentTheme: ThemeMode,
+    currentLanguage: AppLanguage,
+    onShowTheme: () -> Unit,
+    onShowLanguage: () -> Unit
+) {
+    item { SettingsSectionHeader(stringResource(R.string.settings_section_app)) }
+    item {
+        SettingsListItem(
+            icon = Icons.Default.Palette,
+            label = stringResource(R.string.settings_item_theme),
+            value = currentTheme.name.lowercase().replaceFirstChar { it.uppercase() },
+            onClick = onShowTheme
+        )
+    }
+    item {
+        SettingsListItem(
+            icon = Icons.Default.Language,
+            label = stringResource(R.string.settings_item_language),
+            value = currentLanguage.name,
+            onClick = onShowLanguage
+        )
+    }
+}
+
+private fun androidx.compose.foundation.lazy.LazyListScope.moreSection(
+    onShowLogout: () -> Unit
+) {
+    item { SettingsSectionHeader(stringResource(R.string.settings_section_more)) }
+    item {
+        SettingsListItem(
+            icon = Icons.Default.Info,
+            label = stringResource(R.string.settings_item_about),
+            onClick = { /* TODO */ }
+        )
+    }
+
+    item { Spacer(modifier = Modifier.height(24.dp)) }
+    item {
+        SettingsListItem(
+            icon = Icons.AutoMirrored.Filled.Logout,
+            label = stringResource(R.string.settings_btn_logout),
+            labelColor = MaterialTheme.colorScheme.error,
+            showChevron = false,
+            onClick = onShowLogout
+        )
+    }
+    item { Spacer(modifier = Modifier.height(40.dp)) }
 }
 
 @Composable
@@ -285,3 +311,23 @@ fun LogoutDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
         }
     )
 }
+
+@Preview(showBackground = true)
+@Composable
+fun SettingsContentPreview() {
+    RindeTheme {
+        SettingsContent(
+            padding = PaddingValues(0.dp),
+            isPrivate = false,
+            currentTheme = ThemeMode.SYSTEM,
+            currentLanguage = AppLanguage.ES,
+            onTogglePrivacy = {},
+            onNavigateToSaved = {},
+            onNavigateToBlocked = {},
+            onShowTheme = {},
+            onShowLanguage = {},
+            onShowLogout = {}
+        )
+    }
+}
+

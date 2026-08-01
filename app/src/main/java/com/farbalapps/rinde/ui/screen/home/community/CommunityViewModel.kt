@@ -86,12 +86,12 @@ class CommunityViewModel @Inject constructor(
             }
         }
 
-        // Limpiar caché de Room (eliminar posts de más de 7 días para ahorrar espacio y optimizar recursos)
+        // Limpiar caché de Room (eliminar posts de más de 15 días protegiendo guardados y hot)
         viewModelScope.launch {
             try {
-                val threshold = System.currentTimeMillis() - (7 * 24 * 60 * 60 * 1000L)
+                val threshold = System.currentTimeMillis() - (15 * 24 * 60 * 60 * 1000L)
                 postDao.deleteOldPosts(threshold)
-                android.util.Log.d("CommunityViewModel", "🧹 Room cache cleaned: deleted posts older than 7 days")
+                android.util.Log.d("CommunityViewModel", "🧹 Room cache cleaned: deleted posts older than 15 days (excluding saved/hot)")
             } catch (e: Exception) {
                 android.util.Log.e("CommunityViewModel", "Failed to clean Room cache: ${e.message}")
             }
@@ -110,7 +110,7 @@ class CommunityViewModel @Inject constructor(
                 if (tab == CommunityTab.DISCOVER || tab == CommunityTab.HOT) {
                     _uiState.update { it.copy(isLoading = false) }
                 } else {
-                    refresh(clearPosts = true, isManualRefresh = false)
+                    refresh(clearPosts = false, isManualRefresh = false)
                 }
             }
         }
@@ -240,8 +240,12 @@ class CommunityViewModel @Inject constructor(
                 _forceRefreshTrigger.value = _forceRefreshTrigger.value + 1
                 _uiState.update { it.copy(isRefreshing = false, isLoading = false) }
             } else {
+                val shouldShowLoading = clearPosts || _uiState.value.posts.isEmpty()
+                if (shouldShowLoading) {
+                    _uiState.update { it.copy(isLoading = true, isSavedLoading = true) }
+                }
                 if (clearPosts) {
-                    _uiState.update { it.copy(posts = emptyList(), isLoading = true, isSavedLoading = true) }
+                    _uiState.update { it.copy(posts = emptyList()) }
                 }
                 _uiState.update { it.copy(lastPostId = null) }
                 startFeedCollection()

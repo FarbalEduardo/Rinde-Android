@@ -213,63 +213,9 @@ class CreatePostViewModel @Inject constructor(
     fun submitPost() {
         val state = _uiState.value
         
-        // 1. Privacy Restriction
-        if (state.isPrivateProfile) {
-            _uiState.update { it.copy(error = "Tu perfil es privado. Cambia a público para publicar ofertas.") }
-            return
-        }
-
-        // 2. Full UI-side validation
-        if (state.photoUris.isEmpty()) {
-            _uiState.update { it.copy(error = "Debes agregar al menos 1 imagen (máximo 4)") }
-            return
-        }
-        if (state.title.isBlank()) {
-            _uiState.update { it.copy(error = "El título es obligatorio") }
-            return
-        }
-        if (state.title.length < 10) {
-            _uiState.update { it.copy(error = "El título debe tener al menos 10 caracteres") }
-            return
-        }
-        if (state.description.isBlank()) {
-            _uiState.update { it.copy(error = "La descripción es obligatoria") }
-            return
-        }
-        if (state.category.isBlank()) {
-            _uiState.update { it.copy(error = "Debes seleccionar una categoría") }
-            return
-        }
-        if (state.offerType == com.farbalapps.rinde.domain.model.OfferType.UNSPECIFIED) {
-            _uiState.update { it.copy(error = "Debes indicar si la oferta es online o física") }
-            return
-        }
-        if (state.offerType == com.farbalapps.rinde.domain.model.OfferType.ONLINE) {
-            if (state.websiteName.isBlank()) {
-                _uiState.update { it.copy(error = "La página web es obligatoria para ofertas online") }
-                return
-            }
-            if (state.productLink.isBlank()) {
-                _uiState.update { it.copy(error = "El link del producto es obligatorio") }
-                return
-            }
-            if (state.productLinkError != null) {
-                _uiState.update { it.copy(error = "Corrige los errores antes de publicar") }
-                return
-            }
-        }
-        if (state.offerType == com.farbalapps.rinde.domain.model.OfferType.PHYSICAL) {
-            if (state.storeName.isBlank()) {
-                _uiState.update { it.copy(error = "El nombre de la tienda es obligatorio") }
-                return
-            }
-            if (state.locationName.isBlank()) {
-                _uiState.update { it.copy(error = "La ubicación es obligatoria para ofertas físicas") }
-                return
-            }
-        }
-        if (state.priceError != null) {
-            _uiState.update { it.copy(error = "El precio con descuento no puede ser mayor al precio normal") }
+        val validationError = validateInput(state)
+        if (validationError != null) {
+            _uiState.update { it.copy(error = validationError) }
             return
         }
         
@@ -278,17 +224,10 @@ class CreatePostViewModel @Inject constructor(
             
             val normalPriceDouble = state.normalPriceInput.toDoubleOrNull()
             val discountPriceDouble = state.discountPriceInput.toDoubleOrNull()
+            val priceError = validatePrices(state.normalPriceInput, normalPriceDouble, state.discountPriceInput, discountPriceDouble)
 
-            if (state.normalPriceInput.isNotBlank() && normalPriceDouble == null) {
-                _uiState.update { it.copy(error = "El precio normal no es válido", isLoading = false) }
-                return@launch
-            }
-            if (state.discountPriceInput.isNotBlank() && discountPriceDouble == null) {
-                _uiState.update { it.copy(error = "El precio con descuento no es válido", isLoading = false) }
-                return@launch
-            }
-            if (normalPriceDouble != null && discountPriceDouble != null && discountPriceDouble > normalPriceDouble) {
-                _uiState.update { it.copy(error = "El precio con descuento no puede superar el precio normal", isLoading = false) }
+            if (priceError != null) {
+                _uiState.update { it.copy(error = priceError, isLoading = false) }
                 return@launch
             }
 
@@ -333,6 +272,38 @@ class CreatePostViewModel @Inject constructor(
                 )}
             }
         }
+    }
+
+    private fun validateInput(state: CreatePostUiState): String? {
+        if (state.isPrivateProfile) return "Tu perfil es privado. Cambia a público para publicar ofertas."
+        if (state.photoUris.isEmpty()) return "Debes agregar al menos 1 imagen (máximo 4)"
+        if (state.title.isBlank()) return "El título es obligatorio"
+        if (state.title.length < 10) return "El título debe tener al menos 10 caracteres"
+        if (state.description.isBlank()) return "La descripción es obligatoria"
+        if (state.category.isBlank()) return "Debes seleccionar una categoría"
+        if (state.offerType == com.farbalapps.rinde.domain.model.OfferType.UNSPECIFIED) return "Debes indicar si la oferta es online o física"
+        
+        if (state.offerType == com.farbalapps.rinde.domain.model.OfferType.ONLINE) {
+            if (state.websiteName.isBlank()) return "La página web es obligatoria para ofertas online"
+            if (state.productLink.isBlank()) return "El link del producto es obligatorio"
+            if (state.productLinkError != null) return "Corrige los errores antes de publicar"
+        }
+        if (state.offerType == com.farbalapps.rinde.domain.model.OfferType.PHYSICAL) {
+            if (state.storeName.isBlank()) return "El nombre de la tienda es obligatorio"
+            if (state.locationName.isBlank()) return "La ubicación es obligatoria para ofertas físicas"
+        }
+        if (state.priceError != null) return "El precio con descuento no puede ser mayor al precio normal"
+        
+        return null
+    }
+
+    private fun validatePrices(normalInput: String, normalDouble: Double?, discountInput: String, discountDouble: Double?): String? {
+        if (normalInput.isNotBlank() && normalDouble == null) return "El precio normal no es válido"
+        if (discountInput.isNotBlank() && discountDouble == null) return "El precio con descuento no es válido"
+        if (normalDouble != null && discountDouble != null && discountDouble > normalDouble) {
+            return "El precio con descuento no puede superar el precio normal"
+        }
+        return null
     }
 
 }

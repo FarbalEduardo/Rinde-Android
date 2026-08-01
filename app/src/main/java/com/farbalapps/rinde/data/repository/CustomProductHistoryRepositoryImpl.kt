@@ -19,6 +19,7 @@ class CustomProductHistoryRepositoryImpl @Inject constructor(
 
     override suspend fun saveToHistory(name: String, category: String) {
         dao.insert(CustomProductHistoryEntity(name = name, category = category))
+        dao.pruneHistory()
     }
 
     override suspend fun deleteFromHistory(name: String) {

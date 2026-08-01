@@ -79,70 +79,79 @@ fun RindeAppNavHost(
     val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
 
     NavHost(navController = navController, startDestination = startDestination) {
-        composable("welcome") {
-            WelcomeScreen(
-                onSignInClick = { navController.navigate("login") },
-                onSignUpClick = { navController.navigate("signup") }
-            )
-        }
+        rindeAppGraph(navController, authRepository, feedRepository, coroutineScope)
+    }
+}
 
-        composable("signup") {
-            SignUpScreen(
-                onBackClick = { navController.popBackStack() },
-                onPrivacyPolicyClick = { navController.navigate("privacy_policy") },
-                onSignInClick = {
-                    navController.navigate("login") {
-                        popUpTo("welcome")
-                    }
-                },
-                onSignUpSuccess = {
-                    navController.navigate("home") {
-                        popUpTo("welcome") { inclusive = true }
-                    }
+private fun androidx.navigation.NavGraphBuilder.rindeAppGraph(
+    navController: androidx.navigation.NavHostController,
+    authRepository: AuthRepository,
+    feedRepository: com.farbalapps.rinde.domain.repository.FeedRepository,
+    coroutineScope: kotlinx.coroutines.CoroutineScope
+) {
+    composable("welcome") {
+        WelcomeScreen(
+            onSignInClick = { navController.navigate("login") },
+            onSignUpClick = { navController.navigate("signup") }
+        )
+    }
+
+    composable("signup") {
+        SignUpScreen(
+            onBackClick = { navController.popBackStack() },
+            onPrivacyPolicyClick = { navController.navigate("privacy_policy") },
+            onSignInClick = {
+                navController.navigate("login") {
+                    popUpTo("welcome")
                 }
-            )
-        }
-
-        composable("login") {
-            val loginViewModel: LoginViewModel = hiltViewModel()
-            LoginScreen(
-                viewModel = loginViewModel,
-                onLoginSuccess = {
-                    navController.navigate("home") {
-                        popUpTo("welcome") { inclusive = true }
-                    }
-                },
-                onSignUpClick = {
-                    navController.navigate("signup")
-                },
-                onBackClick = {
-                    navController.popBackStack()
+            },
+            onSignUpSuccess = {
+                navController.navigate("home") {
+                    popUpTo("welcome") { inclusive = true }
                 }
-            )
-        }
+            }
+        )
+    }
 
-        composable("home") {
-            HomeScreen(
-                onLogout = {
-                    coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                        feedRepository.clearSessionState()
-                        authRepository.clearUserLocalState()
-                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                            authRepository.logout()
-                            navController.navigate("welcome") {
-                                popUpTo("home") { inclusive = true }
-                            }
+    composable("login") {
+        val loginViewModel: LoginViewModel = hiltViewModel()
+        LoginScreen(
+            viewModel = loginViewModel,
+            onLoginSuccess = {
+                navController.navigate("home") {
+                    popUpTo("welcome") { inclusive = true }
+                }
+            },
+            onSignUpClick = {
+                navController.navigate("signup")
+            },
+            onBackClick = {
+                navController.popBackStack()
+            }
+        )
+    }
+
+    composable("home") {
+        HomeScreen(
+            onLogout = {
+                coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                    feedRepository.clearSessionState()
+                    authRepository.clearUserLocalState()
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        authRepository.logout()
+                        navController.navigate("welcome") {
+                            popUpTo("home") { inclusive = true }
                         }
                     }
                 }
-            )
-        }
+            }
+        )
+    }
 
-        composable("privacy_policy") {
-            PrivacyPolicyScreen(
-                onBackClick = { navController.popBackStack() }
-            )
-        }
+    composable("privacy_policy") {
+        PrivacyPolicyScreen(
+            onBackClick = { navController.popBackStack() }
+        )
     }
 }
 

@@ -34,5 +34,10 @@ interface ListRepository {
      */
     suspend fun deleteItemsByGroup(group: String)
 
+    /**
+     * Deletes multiple shopping items from local DB and Firebase.
+     */
+    suspend fun deleteItems(items: List<ShoppingItem>)
+
     suspend fun syncItems()
 }

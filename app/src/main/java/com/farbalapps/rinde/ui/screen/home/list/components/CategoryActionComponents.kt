@@ -179,56 +179,26 @@ fun ReorderCategoriesDialog(
                 modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)
             ) {
                 itemsIndexed(reorderableList) { index, category ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = category,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Row {
-                            IconButton(
-                                onClick = { 
-                                    if (index > 0) {
-                                        val temp = reorderableList[index - 1]
-                                        reorderableList[index - 1] = reorderableList[index]
-                                        reorderableList[index] = temp
-                                    }
-                                },
-                                enabled = index > 0
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.KeyboardArrowUp,
-                                    contentDescription = "Mover arriba",
-                                    tint = if (index > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                                )
+                    ReorderCategoryItem(
+                        category = category,
+                        index = index,
+                        isFirst = index == 0,
+                        isLast = index == reorderableList.size - 1,
+                        onMoveUp = {
+                            if (index > 0) {
+                                val temp = reorderableList[index - 1]
+                                reorderableList[index - 1] = reorderableList[index]
+                                reorderableList[index] = temp
                             }
-                            IconButton(
-                                onClick = { 
-                                    if (index < reorderableList.size - 1) {
-                                        val temp = reorderableList[index + 1]
-                                        reorderableList[index + 1] = reorderableList[index]
-                                        reorderableList[index] = temp
-                                    }
-                                },
-                                enabled = index < reorderableList.size - 1
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.KeyboardArrowDown,
-                                    contentDescription = "Mover abajo",
-                                    tint = if (index < reorderableList.size - 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                                )
+                        },
+                        onMoveDown = {
+                            if (index < reorderableList.size - 1) {
+                                val temp = reorderableList[index + 1]
+                                reorderableList[index + 1] = reorderableList[index]
+                                reorderableList[index] = temp
                             }
                         }
-                    }
-                    if (index < reorderableList.size - 1) {
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                    }
+                    )
                 }
             }
         },
@@ -267,4 +237,55 @@ fun ReorderCategoriesDialog(
         titleContentColor = MaterialTheme.colorScheme.onSurface,
         textContentColor = MaterialTheme.colorScheme.onSurfaceVariant
     )
+}
+
+@Composable
+private fun ReorderCategoryItem(
+    category: String,
+    index: Int,
+    isFirst: Boolean,
+    isLast: Boolean,
+    onMoveUp: () -> Unit,
+    onMoveDown: () -> Unit
+) {
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = category,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Row {
+                IconButton(
+                    onClick = onMoveUp,
+                    enabled = !isFirst
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.KeyboardArrowUp,
+                        contentDescription = "Mover arriba",
+                        tint = if (!isFirst) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                    )
+                }
+                IconButton(
+                    onClick = onMoveDown,
+                    enabled = !isLast
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.KeyboardArrowDown,
+                        contentDescription = "Mover abajo",
+                        tint = if (!isLast) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                    )
+                }
+            }
+        }
+        if (!isLast) {
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+        }
+    }
 }

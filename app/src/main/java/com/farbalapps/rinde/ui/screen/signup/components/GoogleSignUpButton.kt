@@ -37,27 +37,7 @@ fun GoogleSignUpButton(
 
     OutlinedButton(
         onClick = {
-            val googleIdOption = GetGoogleIdOption.Builder()
-                .setFilterByAuthorizedAccounts(false)
-                .setServerClientId(context.getString(R.string.default_web_client_id))
-                .build()
-
-            val request = GetCredentialRequest.Builder()
-                .addCredentialOption(googleIdOption)
-                .build()
-
-            scope.launch {
-                try {
-                    val result = credentialManager.getCredential(
-                        context = context,
-                        request = request
-                    )
-                    val idToken = GoogleIdTokenCredential.createFrom(result.credential.data).idToken
-                    onTokenReceived(idToken)
-                } catch (e: Exception) {
-                    onError("Google Sign Up failed: ${e.message}")
-                }
-            }
+            launchGoogleSignIn(context, credentialManager, scope, onTokenReceived, onError)
         },
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(dimensionResource(id = R.dimen.input_corner_radius)),
@@ -85,6 +65,36 @@ fun GoogleSignUpButton(
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium
         )
+    }
+}
+
+private fun launchGoogleSignIn(
+    context: android.content.Context,
+    credentialManager: CredentialManager,
+    scope: kotlinx.coroutines.CoroutineScope,
+    onTokenReceived: (String) -> Unit,
+    onError: (String) -> Unit
+) {
+    val googleIdOption = GetGoogleIdOption.Builder()
+        .setFilterByAuthorizedAccounts(false)
+        .setServerClientId(context.getString(R.string.default_web_client_id))
+        .build()
+
+    val request = GetCredentialRequest.Builder()
+        .addCredentialOption(googleIdOption)
+        .build()
+
+    scope.launch {
+        try {
+            val result = credentialManager.getCredential(
+                context = context,
+                request = request
+            )
+            val idToken = GoogleIdTokenCredential.createFrom(result.credential.data).idToken
+            onTokenReceived(idToken)
+        } catch (e: Exception) {
+            onError("Google Sign Up failed: ${e.message}")
+        }
     }
 }
 

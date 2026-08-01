@@ -53,7 +53,9 @@ data class EditPostUiState(
     val isLoading: Boolean = false,
     val isLoadingPost: Boolean = true,
     val error: String? = null,
-    val isFinished: Boolean = false
+    val isFinished: Boolean = false,
+    val priceError: String? = null,
+    val productLinkError: String? = null
 )
 
 @HiltViewModel
@@ -149,15 +151,48 @@ class EditPostViewModel @Inject constructor(
     // ─────────────────────────────────────────────────────────────────────────
 
     fun onTitleChange(v: String) = _uiState.update { it.copy(title = v, error = null) }
-    fun onDescriptionChange(v: String) = _uiState.update { it.copy(description = v) }
+    fun onDescriptionChange(v: String) = _uiState.update { it.copy(description = v, error = null) }
     fun onCategoryChange(v: String) = _uiState.update { it.copy(category = v) }
     fun onLocationNameChange(v: String) = _uiState.update { it.copy(locationName = v) }
     fun onOfferTypeChange(v: OfferType) = _uiState.update { it.copy(offerType = v) }
     fun onWebsiteNameChange(v: String) = _uiState.update { it.copy(websiteName = v) }
-    fun onProductLinkChange(v: String) = _uiState.update { it.copy(productLink = v) }
+    
+    fun onProductLinkChange(newLink: String) {
+        val error = if (newLink.isNotBlank() && !isValidUrl(newLink)) {
+            "Ingresa una URL válida (ej: https://...)"
+        } else null
+        _uiState.update { it.copy(productLink = newLink, productLinkError = error) }
+    }
+
+    private fun isValidUrl(url: String): Boolean {
+        return try {
+            val uri = android.net.Uri.parse(url)
+            uri.scheme in listOf("http", "https") && uri.host != null
+        } catch (e: Exception) {
+            false
+        }
+    }
+
     fun onStoreNameChange(v: String) = _uiState.update { it.copy(storeName = v) }
-    fun onNormalPriceChange(v: String) = _uiState.update { it.copy(normalPriceInput = v) }
-    fun onDiscountPriceChange(v: String) = _uiState.update { it.copy(discountPriceInput = v) }
+
+    fun onNormalPriceChange(price: String) {
+        val normal = price.toDoubleOrNull()
+        val discount = _uiState.value.discountPriceInput.toDoubleOrNull()
+        val error = if (normal != null && discount != null && discount > normal) {
+            "El precio con descuento no puede ser mayor al precio normal"
+        } else null
+        _uiState.update { it.copy(normalPriceInput = price, priceError = error) }
+    }
+
+    fun onDiscountPriceChange(price: String) {
+        val discount = price.toDoubleOrNull()
+        val normal = _uiState.value.normalPriceInput.toDoubleOrNull()
+        val error = if (normal != null && discount != null && discount > normal) {
+            "El precio con descuento no puede ser mayor al precio normal"
+        } else null
+        _uiState.update { it.copy(discountPriceInput = price, priceError = error) }
+    }
+
     fun onCurrencyChange(v: String) = _uiState.update { it.copy(currency = v) }
     fun onHasCouponChange(v: Boolean) = _uiState.update { it.copy(hasCoupon = v) }
     fun onCouponCodeChange(v: String) = _uiState.update { it.copy(couponCode = v) }
@@ -189,23 +224,21 @@ class EditPostViewModel @Inject constructor(
         val state = _uiState.value
         val postId = state.postId.ifBlank { return }
 
-        // Validación básica
-        if (state.title.isBlank()) {
-            _uiState.update { it.copy(error = "El título es obligatorio") }
-            return
-        }
-        if (state.description.isBlank()) {
-            _uiState.update { it.copy(error = "La descripción es obligatoria") }
-            return
-        }
-        val hasPhotos = state.remotePhotoUrls.isNotEmpty() || state.newPhotoUris.isNotEmpty()
-        if (!hasPhotos) {
-            _uiState.update { it.copy(error = "Debes tener al menos 1 imagen") }
+        val validationError = validateInput(state)
+        if (validationError != null) {
+            _uiState.update { it.copy(error = validationError) }
             return
         }
 
         val normalPrice = state.normalPriceInput.toDoubleOrNull()
         val discountPrice = state.discountPriceInput.toDoubleOrNull()
+        val priceError = validatePrices(state.normalPriceInput, normalPrice, state.discountPriceInput, discountPrice)
+
+        if (priceError != null) {
+            _uiState.update { it.copy(error = priceError) }
+            return
+        }
+
         var discountPercentage: Int? = null
         if (normalPrice != null && discountPrice != null && normalPrice > 0) {
             discountPercentage = (((normalPrice - discountPrice) / normalPrice) * 100).toInt()
@@ -247,5 +280,36 @@ class EditPostViewModel @Inject constructor(
                 )}
             }
         }
+    }
+
+    private fun validateInput(state: EditPostUiState): String? {
+        if (state.title.isBlank()) return "El título es obligatorio"
+        if (state.title.length < 10) return "El título debe tener al menos 10 caracteres"
+        if (state.description.isBlank()) return "La descripción es obligatoria"
+        
+        val hasPhotos = state.remotePhotoUrls.isNotEmpty() || state.newPhotoUris.isNotEmpty()
+        if (!hasPhotos) return "Debes tener al menos 1 imagen"
+
+        if (state.offerType == OfferType.ONLINE) {
+            if (state.websiteName.isBlank()) return "La página web es obligatoria para ofertas online"
+            if (state.productLink.isBlank()) return "El link del producto es obligatorio"
+            if (state.productLinkError != null) return "Corrige los errores antes de guardar"
+        }
+        if (state.offerType == OfferType.PHYSICAL) {
+            if (state.storeName.isBlank()) return "El nombre de la tienda es obligatorio"
+            if (state.locationName.isBlank()) return "La ubicación es obligatoria para ofertas físicas"
+        }
+        if (state.priceError != null) return "El precio con descuento no puede ser mayor al precio normal"
+        
+        return null
+    }
+
+    private fun validatePrices(normalInput: String, normalDouble: Double?, discountInput: String, discountDouble: Double?): String? {
+        if (normalInput.isNotBlank() && normalDouble == null) return "El precio normal no es válido"
+        if (discountInput.isNotBlank() && discountDouble == null) return "El precio con descuento no es válido"
+        if (normalDouble != null && discountDouble != null && discountDouble > normalDouble) {
+            return "El precio con descuento no puede superar el precio normal"
+        }
+        return null
     }
 }

@@ -22,5 +22,7 @@ data class ShoppingItemEntity(
     val unit: String,
     val emoji: String,
     val listGroup: String = "All",
-    val userId: String
+    val userId: String,
+    val price: Double? = null,
+    val currency: String = "MXN"
 )

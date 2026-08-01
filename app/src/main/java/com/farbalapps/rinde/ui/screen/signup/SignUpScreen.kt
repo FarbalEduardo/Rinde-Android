@@ -112,35 +112,18 @@ fun SignUpScreen(
 
                     Spacer(modifier = Modifier.height(dimensionResource(id = R.dimen.spacer_large)))
 
-                    Button(
-                        onClick = { 
+                    SignUpSubmitButton(
+                        isLoading = state.isLoading,
+                        isEnabled = !state.isLoading,
+                        onClick = {
                             if (agreeToTerms) {
                                 viewModel.signUp(fullName, email, password)
                             } else {
                                 val message = context.getString(R.string.error_agree_to_terms)
                                 android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
                             }
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(dimensionResource(id = R.dimen.button_height_standard)),
-                        enabled = !state.isLoading,
-                        shape = MaterialTheme.shapes.large
-                    ) {
-                        if (state.isLoading) {
-                            CircularProgressIndicator(
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                modifier = Modifier.size(dimensionResource(id = R.dimen.icon_size_medium)),
-                                strokeWidth = dimensionResource(id = R.dimen.stroke_medium)
-                            )
-                        } else {
-                            Text(
-                                stringResource(id = R.string.btn_sign_up),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
                         }
-                    }
+                    )
 
                     AnimatedVisibility(visible = state.error != null) {
                         Text(
@@ -174,6 +157,40 @@ fun SignUpScreen(
                     LoginRedirectSection(onSignInClick = onSignInClick)
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun SignUpSubmitButton(
+    isLoading: Boolean,
+    isEnabled: Boolean,
+    onClick: () -> Unit
+) {
+    Button(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(dimensionResource(id = R.dimen.button_height_standard)),
+        enabled = isEnabled,
+        shape = MaterialTheme.shapes.large,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = com.farbalapps.rinde.ui.theme.RindePrimary,
+            contentColor = Color.White
+        )
+    ) {
+        if (isLoading) {
+            CircularProgressIndicator(
+                color = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier.size(dimensionResource(id = R.dimen.icon_size_medium)),
+                strokeWidth = dimensionResource(id = R.dimen.stroke_medium)
+            )
+        } else {
+            Text(
+                stringResource(id = R.string.btn_sign_up),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }

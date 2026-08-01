@@ -16,7 +16,8 @@ fun SavingsGoalEntity.toDomain() = SavingsGoal(
     isCompleted = isCompleted,
     createdAt = createdAt,
     updatedAt = updatedAt,
-    monthlySnapshotAmount = monthlySnapshotAmount
+    monthlySnapshotAmount = monthlySnapshotAmount,
+    targetDate = targetDate
 )
 
 fun SavingsGoal.toEntity(isSynced: Boolean = false) = SavingsGoalEntity(
@@ -31,6 +32,7 @@ fun SavingsGoal.toEntity(isSynced: Boolean = false) = SavingsGoalEntity(
     createdAt = createdAt,
     updatedAt = updatedAt,
     monthlySnapshotAmount = monthlySnapshotAmount,
+    targetDate = targetDate,
     isSynced = isSynced
 )
 

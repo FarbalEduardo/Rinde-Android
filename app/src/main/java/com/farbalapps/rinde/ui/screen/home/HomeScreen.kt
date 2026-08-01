@@ -49,7 +49,14 @@ fun HomeScreen(
     
     // ViewModels
     val listViewModel: ListViewModel = hiltViewModel()
+    val notificationsViewModel: com.farbalapps.rinde.ui.screen.home.community.NotificationsViewModel = hiltViewModel()
+    val goalsViewModel: com.farbalapps.rinde.ui.screen.home.goals.GoalsViewModel = hiltViewModel()
     val uiState by listViewModel.uiState.collectAsStateWithLifecycle()
+    val notificationsState by notificationsViewModel.uiState.collectAsStateWithLifecycle()
+    val goalsUiState by goalsViewModel.uiState.collectAsStateWithLifecycle()
+
+    val isGoalsFabVisible = (goalsUiState is com.farbalapps.rinde.ui.screen.home.goals.GoalsUiState.Content) &&
+            (goalsUiState as com.farbalapps.rinde.ui.screen.home.goals.GoalsUiState.Content).canAddMore
 
     // Trigger catalog load
     LaunchedEffect(Unit) {
@@ -92,8 +99,9 @@ fun HomeScreen(
         }
     }
 
-    // Reset FAB visibility when switching tabs
-    LaunchedEffect(destination) {
+    // Reset FAB visibility when switching tabs or when list item count changes (e.g. products deleted)
+    val totalListItemsCount = uiState.activeItems.size + uiState.completedItems.size
+    LaunchedEffect(destination, totalListItemsCount) {
         isFabVisible = true
     }
 
@@ -125,13 +133,17 @@ fun HomeScreen(
         },
         bottomBar = {
             if (isTopLevelRoute) {
-                BottomNavigationBar(navController = navController)
+                BottomNavigationBar(
+                    navController = navController,
+                    unreadNotificationsCount = notificationsState.unreadCount
+                )
             }
         },
         floatingActionButton = {
             HomeScreenFab(
                 isVisible = isFabVisible,
                 destination = destination,
+                isGoalsFabVisible = isGoalsFabVisible,
                 onAddProduct = { showAddProductSheet = true },
                 onAddGoal = { addGoalTrigger++ },
                 onAddCommunityPost = { navController.navigate(HomeRoute.CreatePost) }
@@ -149,24 +161,40 @@ fun HomeScreen(
     }
 
     if (showAddProductSheet || uiState.editingItem != null) {
-        val editingItem = uiState.editingItem
-        AddProductBottomSheet(
-            onDismiss = { 
-                showAddProductSheet = false
-                listViewModel.stopEditing()
-                listViewModel.triggerPendingHighlights() 
-            },
-            catalogItems = uiState.catalogItems,
-            productCategories = uiState.catalogCategories,
-            targetGroup = uiState.selectedFilterGroup,
-            initialItem = editingItem,
-            onShowMessage = { android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_SHORT).show() },
-            onProductAdded = { n, c, g, q, u, e, ic -> listViewModel.addItem(n, c, g, q, u, e, ic) },
-            onProductUpdated = { id, n, c, q, u, e -> listViewModel.updateItem(id, n, c, q, u, e); listViewModel.stopEditing() },
-            onAddCategory = { listViewModel.addCategory(it) },
-            customHistory = uiState.customProductsHistory
+        HomeAddProductSheet(
+            uiState = uiState,
+            listViewModel = listViewModel,
+            context = context,
+            onDismiss = { showAddProductSheet = false }
         )
     }
+}
+
+@Composable
+private fun HomeAddProductSheet(
+    uiState: com.farbalapps.rinde.ui.screen.home.list.ListUiState,
+    listViewModel: ListViewModel,
+    context: android.content.Context,
+    onDismiss: () -> Unit
+) {
+    val editingItem = uiState.editingItem
+    AddProductBottomSheet(
+        onDismiss = { 
+            onDismiss()
+            listViewModel.stopEditing()
+            listViewModel.triggerPendingHighlights() 
+        },
+        catalogItems = uiState.catalogItems,
+        productCategories = uiState.catalogCategories,
+        targetGroup = uiState.selectedFilterGroup,
+        initialItem = editingItem,
+        onShowMessage = { android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_SHORT).show() },
+        onProductAdded = { n, c, g, q, u, e, ic, p, curr -> listViewModel.addItem(n, c, g, q, u, e, ic, p, curr) },
+        onProductUpdated = { id, n, c, q, u, e, p, curr -> listViewModel.updateItem(id, n, c, q, u, e, p, curr); listViewModel.stopEditing() },
+        onAddCategory = { listViewModel.addCategory(it) },
+        customHistory = uiState.customProductsHistory,
+        onDeleteCustomHistory = { listViewModel.deleteCustomHistory(it) }
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -255,6 +283,7 @@ fun ExitConfirmationDialog(
 fun HomeScreenFab(
     isVisible: Boolean,
     destination: NavDestination?,
+    isGoalsFabVisible: Boolean = true,
     onAddProduct: () -> Unit,
     onAddGoal: () -> Unit,
     onAddCommunityPost: () -> Unit
@@ -284,13 +313,7 @@ fun HomeScreenFab(
                 }
             }
             destination?.hasRoute<HomeRoute.Goals>() == true -> {
-                FloatingActionButton(
-                    onClick = onAddGoal,
-                    containerColor = com.farbalapps.rinde.ui.theme.RindePrimary,
-                    contentColor = androidx.compose.ui.graphics.Color.White
-                ) {
-                    Icon(Icons.Default.Add, stringResource(R.string.home_fab_add_goal))
-                }
+                // El FAB se oculta en la pantalla de metas ya que se utiliza DashedAddGoalCard
             }
         }
     }

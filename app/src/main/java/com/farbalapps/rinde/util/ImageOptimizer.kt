@@ -28,37 +28,8 @@ object ImageOptimizer {
 
             if (originalBitmap == null) return null
 
-            // Calcular escala manteniedo relación de aspecto
-            val width = originalBitmap.width
-            val height = originalBitmap.height
-            val scale = Math.min(maxWidth.toFloat() / width, maxHeight.toFloat() / height).coerceAtMost(1.0f)
-
-            val matrix = Matrix()
-            matrix.postScale(scale, scale)
-
-            // Aplicar rotación si es necesario
-            if (orientation != 0f) {
-                matrix.postRotate(orientation)
-            }
-
-            val resizedBitmap = Bitmap.createBitmap(
-                originalBitmap, 0, 0, width, height, matrix, true
-            )
-
-            // Crear archivo temporal
-            val outputFile = File(context.cacheDir, "optimized_profile_${System.currentTimeMillis()}.webp")
-            val out = FileOutputStream(outputFile)
-
-            // Comprimir a WebP (formato recomendado por Google)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                resizedBitmap.compress(Bitmap.CompressFormat.WEBP_LOSSY, 80, out)
-            } else {
-                @Suppress("DEPRECATION")
-                resizedBitmap.compress(Bitmap.CompressFormat.WEBP, 80, out)
-            }
-
-            out.flush()
-            out.close()
+            val resizedBitmap = processBitmap(originalBitmap, maxWidth, maxHeight, orientation)
+            val outputFile = saveBitmapToFile(context, resizedBitmap)
 
             // Liberar memoria
             if (resizedBitmap != originalBitmap) {
@@ -71,6 +42,44 @@ object ImageOptimizer {
             e.printStackTrace()
             null
         }
+    }
+
+    private fun processBitmap(
+        originalBitmap: Bitmap,
+        maxWidth: Int,
+        maxHeight: Int,
+        orientation: Float
+    ): Bitmap {
+        val width = originalBitmap.width
+        val height = originalBitmap.height
+        val scale = Math.min(maxWidth.toFloat() / width, maxHeight.toFloat() / height).coerceAtMost(1.0f)
+
+        val matrix = Matrix()
+        matrix.postScale(scale, scale)
+
+        if (orientation != 0f) {
+            matrix.postRotate(orientation)
+        }
+
+        return Bitmap.createBitmap(
+            originalBitmap, 0, 0, width, height, matrix, true
+        )
+    }
+
+    private fun saveBitmapToFile(context: Context, bitmap: Bitmap): File {
+        val outputFile = File(context.cacheDir, "optimized_profile_${System.currentTimeMillis()}.webp")
+        val out = FileOutputStream(outputFile)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            bitmap.compress(Bitmap.CompressFormat.WEBP_LOSSY, 80, out)
+        } else {
+            @Suppress("DEPRECATION")
+            bitmap.compress(Bitmap.CompressFormat.WEBP, 80, out)
+        }
+
+        out.flush()
+        out.close()
+        return outputFile
     }
 
     private fun getOrientation(context: Context, uri: Uri): Float {

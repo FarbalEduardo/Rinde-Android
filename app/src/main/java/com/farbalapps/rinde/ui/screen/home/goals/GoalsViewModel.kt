@@ -58,7 +58,7 @@ class GoalsViewModel @Inject constructor(
         }
     }
 
-    fun createGoal(title: String, targetAmount: Double, iconKey: String, colorKey: String) {
+    fun createGoal(title: String, targetAmount: Double, iconKey: String, colorKey: String, startDate: Long, targetDate: Long) {
         viewModelScope.launch {
             val newGoal = SavingsGoal(
                 id = UUID.randomUUID().toString(),
@@ -66,10 +66,11 @@ class GoalsViewModel @Inject constructor(
                 title = title,
                 targetAmount = targetAmount,
                 currentAmount = 0.0,
+                targetDate = targetDate,
                 iconKey = iconKey,
                 colorKey = colorKey,
                 isCompleted = false,
-                createdAt = System.currentTimeMillis(),
+                createdAt = startDate,
                 updatedAt = System.currentTimeMillis(),
                 monthlySnapshotAmount = 0.0
             )
