@@ -50,6 +50,11 @@ fun ListScreen(
         }
     }
 
+    // Intercept back button to cancel selection mode
+    androidx.activity.compose.BackHandler(enabled = uiState.isSelectionMode) {
+        viewModel.toggleSelectionMode(false)
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()

@@ -151,14 +151,21 @@ fun ProfileScreenContent(
         topBar = {
             if (uiState.isCurrentUser) {
                 TopAppBar(
-                    title = { },
+                    title = {
+                        Text(
+                            text = stringResource(R.string.home_tab_profile),
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
                     actions = {
                         IconButton(onClick = actions.onNavigateToSettings) {
                             Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings_title))
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.background
+                        containerColor = MaterialTheme.colorScheme.background,
+                        titleContentColor = MaterialTheme.colorScheme.onBackground
                     )
                 )
             } else {

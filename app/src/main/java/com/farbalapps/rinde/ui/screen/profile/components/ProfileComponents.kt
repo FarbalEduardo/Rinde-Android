@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.StarHalf
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -144,7 +145,7 @@ private fun ProfileHeaderRatingZone(computedRating: Float?, ratedPostsCount: Int
                     val isHalf = !isFull && (index < computedRating)
                     val starIcon = when {
                         isFull -> Icons.Default.Star
-                        isHalf -> Icons.Default.StarHalf
+                        isHalf -> Icons.AutoMirrored.Filled.StarHalf
                         else -> Icons.Default.StarOutline
                     }
                     val tint = if (isFull || isHalf) AmberStarColor else MaterialTheme.colorScheme.outlineVariant

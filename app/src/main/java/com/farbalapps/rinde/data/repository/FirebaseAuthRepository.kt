@@ -118,6 +118,8 @@ class FirebaseAuthRepository @Inject constructor(
             goalsDao.deleteGoalsByUserId(uid)
             goalsDao.deleteTransactionsByUserId(uid)
         }
+        goalsDao.clearAllGoals() // Limpieza total de metas en Room para evitar remanentes de sesión
+        goalsDao.clearAllTransactions()
         postDao.clearAll() // Borra completamente el feed local de Room para evitar fugas y obligar re-sync
         syncMetadataDao.clearAll() // Borra metadatos para reiniciar sincronizaciones del nuevo usuario
     }

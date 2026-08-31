@@ -121,6 +121,17 @@ class FirebaseGoalsRepository @Inject constructor(
         enqueueSync()
     }
 
+    override suspend fun unarchiveGoal(goalId: String) = withContext(ioDispatcher) {
+        val goalEntity = dao.getGoalById(goalId) ?: throw NoSuchElementException("Meta no encontrada")
+        val updatedGoal = goalEntity.copy(
+            isArchived = false,
+            isSynced = false,
+            updatedAt = System.currentTimeMillis()
+        )
+        dao.updateGoal(updatedGoal)
+        enqueueSync()
+    }
+
     override suspend fun depositToGoal(goalId: String, amount: Double, note: String) = withContext(ioDispatcher) {
         val goalEntity = dao.getGoalById(goalId) ?: throw NoSuchElementException("Meta no encontrada")
         

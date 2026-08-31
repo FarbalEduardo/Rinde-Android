@@ -40,8 +40,8 @@ fun BottomNavigationBar(
     val items = listOf(
         Pair(HomeRoute.Community, Pair(stringResource(id = R.string.home_tab_community), Icons.Default.Public)),
         Pair(HomeRoute.List, Pair(stringResource(id = R.string.home_tab_home), Icons.Default.ShoppingCart)),
-        Pair(HomeRoute.Goals, Pair(stringResource(id = R.string.home_tab_goals), Icons.Default.Flag)),
         Pair(HomeRoute.Assistant, Pair("Chef", Icons.Default.Restaurant)),
+        Pair(HomeRoute.Goals, Pair(stringResource(id = R.string.home_tab_goals), Icons.Default.Flag)),
         Pair(HomeRoute.Profile, Pair("Perfil", Icons.Default.AccountCircle))
     )
 

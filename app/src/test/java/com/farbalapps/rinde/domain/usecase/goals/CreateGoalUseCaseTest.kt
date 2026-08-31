@@ -29,7 +29,7 @@ class CreateGoalUseCaseTest {
     fun given_validGoal_when_invoke_then_insertsSuccessfully() = runBlocking {
         // Arrange
         coEvery { repository.getGoalsSnapshot() } returns emptyList()
-        val goal = SavingsGoal("1", "user1", "Viaje a Japón", 5000.0, 0.0, "flight", "blue", false, 0, 0, 0.0)
+        val goal = SavingsGoal("1", "user1", "Viaje a Japón", 5000.0, 0.0, null, "flight", "blue", false, false, 0, 0L, 0L, 0.0)
         coEvery { repository.createGoal(goal) } just Runs
 
         // Act
@@ -44,7 +44,7 @@ class CreateGoalUseCaseTest {
     fun given_emptyTitle_when_invoke_then_failsWithValidationError() = runBlocking {
         // Arrange
         coEvery { repository.getGoalsSnapshot() } returns emptyList()
-        val goal = SavingsGoal("1", "user1", "", 5000.0, 0.0, "flight", "blue", false, 0, 0, 0.0)
+        val goal = SavingsGoal("1", "user1", "", 5000.0, 0.0, null, "flight", "blue", false, false, 0, 0L, 0L, 0.0)
 
         // Act
         val result = createGoalUseCase(goal)
@@ -59,7 +59,7 @@ class CreateGoalUseCaseTest {
     fun given_zeroAmount_when_invoke_then_failsWithValidationError() = runBlocking {
         // Arrange
         coEvery { repository.getGoalsSnapshot() } returns emptyList()
-        val goal = SavingsGoal("1", "user1", "Viaje a Japón", 0.0, 0.0, "flight", "blue", false, 0, 0, 0.0)
+        val goal = SavingsGoal("1", "user1", "Viaje a Japón", 0.0, 0.0, null, "flight", "blue", false, false, 0, 0L, 0L, 0.0)
 
         // Act
         val result = createGoalUseCase(goal)
@@ -79,7 +79,7 @@ class CreateGoalUseCaseTest {
             mockk<SavingsGoal>()
         )
         coEvery { repository.getGoalsSnapshot() } returns existing
-        val newGoal = SavingsGoal("4", "user1", "Viaje a Japón", 5000.0, 0.0, "flight", "blue", false, 0, 0, 0.0)
+        val newGoal = SavingsGoal("4", "user1", "Viaje a Japón", 5000.0, 0.0, null, "flight", "blue", false, false, 0, 0L, 0L, 0.0)
 
         // Act
         val result = createGoalUseCase(newGoal)

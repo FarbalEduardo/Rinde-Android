@@ -79,6 +79,9 @@ class ListViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(ListUiState())
     val uiState: StateFlow<ListUiState> = _uiState.asStateFlow()
 
+    private val _searchQuery = MutableStateFlow("")
+    private val _selectedFilterGroup = MutableStateFlow("All")
+
     private val pendingHighlightIds = mutableSetOf<String>()
 
     init {
@@ -142,16 +145,23 @@ class ListViewModel @Inject constructor(
 
     private fun observeItems() {
         viewModelScope.launch {
-            getListItemsUseCase()
+            combine(
+                getListItemsUseCase(),
+                _searchQuery,
+                _selectedFilterGroup
+            ) { items, query, group ->
+                Triple(items, query, group)
+            }
                 .catch { e ->
                     _uiState.update { it.copy(isLoading = false, errorMessage = e.message) }
                 }
-                .collect { items ->
+                .collect { (items, query, group) ->
                     _uiState.update { currentState ->
-                        val filteredItems = filterItems(items, currentState.selectedFilterGroup, currentState.searchQuery)
+                        val uniqueItems = items.distinctBy { it.id }
+                        val filteredItems = filterItems(uniqueItems, group, query)
                         val active = filteredItems.filter { !it.isCompleted }
                         val completed = filteredItems.filter { it.isCompleted }
-                        val totals = calculateTotals(active, completed, items)
+                        val totals = calculateTotals(active, completed, uniqueItems)
 
                         currentState.copy(
                             activeItems = active,
@@ -160,6 +170,8 @@ class ListViewModel @Inject constructor(
                             completedTotal = totals.completedTotal,
                             budgetCurrency = totals.currency,
                             budgetProgress = totals.progress,
+                            searchQuery = query,
+                            selectedFilterGroup = group,
                             isLoading = false,
                             errorMessage = null
                         )
@@ -205,13 +217,11 @@ class ListViewModel @Inject constructor(
     }
 
     fun onSearchQueryChanged(query: String) {
-        _uiState.update { it.copy(searchQuery = query) }
-        observeItems()
+        _searchQuery.value = query
     }
 
     fun setFilterGroup(group: String) {
-        _uiState.update { it.copy(selectedFilterGroup = group) }
-        observeItems()
+        _selectedFilterGroup.value = group
     }
 
     fun addItem(

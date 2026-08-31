@@ -34,19 +34,19 @@ class SyncGoalsWorker @AssistedInject constructor(
         val userId = auth.currentUser?.uid ?: return Result.failure()
 
         try {
-            // 1. Sincronizar Metas no sincronizadas
-            val unsyncedGoals = dao.getUnsyncedGoals()
+            // 1. Sincronizar Metas no sincronizadas del usuario actual exclusivamente
+            val unsyncedGoals = dao.getUnsyncedGoalsByUser(userId)
             for (goal in unsyncedGoals) {
                 uploadGoal(userId, goal)
             }
 
-            // 2. Sincronizar Transacciones no sincronizadas
-            val unsyncedTx = dao.getUnsyncedTransactions()
+            // 2. Sincronizar Transacciones no sincronizadas del usuario actual exclusivamente
+            val unsyncedTx = dao.getUnsyncedTransactionsByUser(userId)
             for (tx in unsyncedTx) {
                 uploadTransaction(userId, tx)
             }
 
-            // 3. Traer actualizaciones desde Firebase (E7.4 Sync de dispositivos)
+            // 3. Traer actualizaciones desde Firebase
             fetchRemoteGoals(userId)
 
             return Result.success()
@@ -60,17 +60,27 @@ class SyncGoalsWorker @AssistedInject constructor(
     }
 
     private suspend fun uploadGoal(userId: String, goal: SavingsGoalEntity) {
+        if (goal.userId != userId) {
+            Log.w(TAG, "Skipping cross-user upload: goal.userId (${goal.userId}) != currentUserId ($userId)")
+            return
+        }
+
         val docRef = firestore.collection("users")
             .document(userId)
             .collection("savings_goals")
             .document(goal.id)
 
-        // Usar merge para evitar sobreescritura accidental o colisiones de conexión intermitente (E7.3)
         docRef.set(goal, SetOptions.merge()).await()
         dao.updateGoal(goal.copy(isSynced = true))
     }
 
     private suspend fun uploadTransaction(userId: String, tx: GoalTransactionEntity) {
+        val goal = dao.getGoalById(tx.goalId)
+        if (goal != null && goal.userId != userId) {
+            Log.w(TAG, "Skipping cross-user transaction upload: goal.userId (${goal.userId}) != currentUserId ($userId)")
+            return
+        }
+
         firestore.collection("users")
             .document(userId)
             .collection("savings_goals")
@@ -93,10 +103,11 @@ class SyncGoalsWorker @AssistedInject constructor(
         for (doc in snapshot.documents) {
             val remoteGoal = doc.toObject(SavingsGoalEntity::class.java)
             if (remoteGoal != null) {
+                val goalToInsert = remoteGoal.copy(userId = userId, isSynced = true)
                 val localGoal = dao.getGoalById(remoteGoal.id)
                 // Si no existe localmente o el remoto es más nuevo, actualiza Room
-                if (localGoal == null || remoteGoal.updatedAt > localGoal.updatedAt) {
-                    dao.insertGoal(remoteGoal.copy(isSynced = true))
+                if (localGoal == null || goalToInsert.updatedAt > localGoal.updatedAt) {
+                    dao.insertGoal(goalToInsert)
                 }
             }
         }

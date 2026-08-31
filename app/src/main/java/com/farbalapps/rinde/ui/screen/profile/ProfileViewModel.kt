@@ -77,16 +77,16 @@ class ProfileViewModel @Inject constructor(
         observeProfilePosts(finalUid)
     }
 
-    private fun syncCurrentUser(uid: String) {
+    private fun syncCurrentUser(userId: String) {
         viewModelScope.launch {
-            feedRepository.syncUserVotes(uid)
-            feedRepository.syncUserSavedPosts(uid)
+            feedRepository.syncUserVotes(userId)
+            feedRepository.syncUserSavedPosts(userId)
         }
     }
 
-    private fun observeLocalProfile(uid: String) {
+    private fun observeLocalProfile(userId: String) {
         viewModelScope.launch {
-            getProfileUseCase(uid)
+            getProfileUseCase(userId)
                 .catch { e ->
                     _uiState.update { it.copy(error = "Error local: ${e.message}", isLoading = false) }
                 }
@@ -101,12 +101,12 @@ class ProfileViewModel @Inject constructor(
         }
     }
 
-    private fun syncRemoteProfile(uid: String) {
+    private fun syncRemoteProfile(userId: String) {
         viewModelScope.launch {
             try {
-                syncProfileUseCase(uid)
+                syncProfileUseCase(userId)
             } catch (e: Exception) {
-                android.util.Log.e("ProfileViewModel", "Sync failed for $uid", e)
+                android.util.Log.e("ProfileViewModel", "Sync failed for $userId", e)
                 val currentProfile = _uiState.value.profile
                 if (currentProfile == null || currentProfile.isDummy) {
                     _uiState.update { it.copy(
@@ -118,9 +118,9 @@ class ProfileViewModel @Inject constructor(
         }
     }
 
-    private fun observeProfilePosts(uid: String) {
+    private fun observeProfilePosts(userId: String) {
         viewModelScope.launch {
-            getProfilePostsUseCase(uid)
+            getProfilePostsUseCase(userId)
                 .catch { e ->
                     android.util.Log.e("ProfileViewModel", "Error fetching posts", e)
                 }

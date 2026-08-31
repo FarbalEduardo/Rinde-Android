@@ -21,7 +21,7 @@ data class SearchUiState(
     val recentSearches: List<String> = emptyList()
 )
 
-@OptIn(ExperimentalCoroutinesApi::class)
+@OptIn(ExperimentalCoroutinesApi::class, kotlinx.coroutines.FlowPreview::class)
 @HiltViewModel
 class SearchViewModel @Inject constructor(
     private val searchPostsUseCase: SearchPostsUseCase,

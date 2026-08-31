@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -6,7 +8,6 @@ plugins {
     id("com.google.dagger.hilt.android")
     alias(libs.plugins.kotlin.serialization)
 }
-import java.util.Properties
 
 android {
     namespace = "com.farbalapps.rinde"
@@ -30,7 +31,9 @@ android {
         buildConfigField("String", "CLOUDINARY_CLOUD_NAME", "\"${localProperties.getProperty("cloudinary.cloud_name")?.trim() ?: ""}\"")
         buildConfigField("String", "CLOUDINARY_API_KEY", "\"${localProperties.getProperty("cloudinary.api_key")?.trim() ?: ""}\"")
         buildConfigField("String", "CLOUDINARY_API_SECRET", "\"${localProperties.getProperty("cloudinary.api_secret")?.trim() ?: ""}\"")
+        buildConfigField("String", "APPCHECK_DEBUG_TOKEN", "\"${localProperties.getProperty("appcheck.debug_token")?.trim() ?: ""}\"")
     }
+
 
     buildTypes {
         release {
@@ -98,6 +101,10 @@ dependencies {
     implementation(libs.firebase.auth)
     implementation(libs.firebase.storage)
     implementation(libs.firebase.database)
+    implementation(libs.firebase.ai)
+
+
+
     implementation(libs.google.auth)
     implementation(libs.google.services.base)
     implementation(libs.google.services.location)
@@ -133,6 +140,7 @@ dependencies {
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.reorderable)
 
+
     // Networking (OkHttp también se usa para Cloudinary REST API)
     implementation(libs.retrofit)
     implementation(libs.retrofit.gson)
@@ -143,6 +151,8 @@ dependencies {
     testImplementation(libs.mockk)
     testImplementation(libs.turbine)
     testImplementation(libs.kotlinx.coroutines.test)
+    // org.json real JVM impl — el stub de Android lanza RuntimeException en unit tests
+    testImplementation("org.json:json:20240303")
     implementation(libs.kotlinx.serialization.json)
     
     androidTestImplementation(libs.androidx.junit)

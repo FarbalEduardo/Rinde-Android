@@ -190,15 +190,57 @@ object AppModule {
                 db.execSQL("ALTER TABLE savings_goals ADD COLUMN orderIndex INTEGER NOT NULL DEFAULT 0")
             }
         }
+
+        val MIGRATION_25_26 = object : androidx.room.migration.Migration(25, 26) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `chat_conversations` (" +
+                    "`id` TEXT NOT NULL, " +
+                    "`userId` TEXT NOT NULL, " +
+                    "`title` TEXT NOT NULL, " +
+                    "`createdAt` INTEGER NOT NULL, " +
+                    "`updatedAt` INTEGER NOT NULL, " +
+                    "`sourceListName` TEXT, " +
+                    "`messages` TEXT NOT NULL, " +
+                    "PRIMARY KEY(`id`))"
+                )
+            }
+        }
         
         return Room.databaseBuilder(
             context,
             RindeDatabase::class.java,
             "rinde_database"
-        ).addMigrations(MIGRATION_6_7, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25)
-         .fallbackToDestructiveMigration()
+        ).addMigrations(MIGRATION_6_7, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26)
+         .fallbackToDestructiveMigration(dropAllTables = true)
          .build()
      }
+
+    @Provides
+    @Singleton
+    fun provideChatDao(db: RindeDatabase): com.farbalapps.rinde.data.local.dao.ChatDao {
+        return db.chatDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideChatRepository(
+        dao: com.farbalapps.rinde.data.local.dao.ChatDao,
+        firestore: FirebaseFirestore,
+        auth: FirebaseAuth,
+        @IoDispatcher ioDispatcher: CoroutineDispatcher
+    ): com.farbalapps.rinde.domain.repository.ChatRepository {
+        return com.farbalapps.rinde.data.repository.ChatRepositoryImpl(dao, firestore, auth, ioDispatcher)
+    }
+
+    @Provides
+    @Singleton
+    fun provideAiRepository(
+        @IoDispatcher ioDispatcher: CoroutineDispatcher
+    ): com.farbalapps.rinde.domain.repository.AiRepository {
+        return com.farbalapps.rinde.data.repository.AiRepositoryImpl(ioDispatcher)
+    }
+
 
 
     @Provides

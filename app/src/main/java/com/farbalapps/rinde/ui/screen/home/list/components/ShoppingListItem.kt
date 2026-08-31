@@ -251,7 +251,11 @@ private fun ShoppingItemTopRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.End
         ) {
-            if (!isSelectionMode) {
+            AnimatedVisibility(
+                visible = !isSelectionMode,
+                enter = fadeIn(animationSpec = tween(200)) + scaleIn(initialScale = 0.8f),
+                exit = fadeOut(animationSpec = tween(150)) + scaleOut(targetScale = 0.8f)
+            ) {
                 IconButton(
                     onClick = onDelete,
                     modifier = Modifier.size(32.dp)
@@ -266,18 +270,27 @@ private fun ShoppingItemTopRow(
             }
             Spacer(modifier = Modifier.width(4.dp))
             
-            if (isSelectionMode) {
-                Checkbox(
-                    checked = isSelected,
-                    onCheckedChange = { onSelectionToggle() },
-                    modifier = Modifier.size(32.dp)
-                )
-            } else {
-                Checkbox(
-                    checked = item.isCompleted,
-                    onCheckedChange = onCheckedChange,
-                    modifier = Modifier.size(32.dp)
-                )
+            AnimatedContent(
+                targetState = isSelectionMode,
+                transitionSpec = {
+                    (fadeIn(animationSpec = tween(200)) + scaleIn(initialScale = 0.8f))
+                        .togetherWith(fadeOut(animationSpec = tween(150)) + scaleOut(targetScale = 0.8f))
+                },
+                label = "CheckboxModeTransition"
+            ) { selectionMode ->
+                if (selectionMode) {
+                    Checkbox(
+                        checked = isSelected,
+                        onCheckedChange = { onSelectionToggle() },
+                        modifier = Modifier.size(32.dp)
+                    )
+                } else {
+                    Checkbox(
+                        checked = item.isCompleted,
+                        onCheckedChange = onCheckedChange,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
             }
         }
     }
@@ -306,8 +319,10 @@ private fun ShoppingItemBottomRow(
             modifier = Modifier.weight(1f, fill = false)
         ) {
             if (item.price != null && item.price > 0.0) {
+                val rawTotal = item.price * item.quantity
+                val safeTotal = if (rawTotal.isNaN() || rawTotal.isInfinite()) 0.0 else rawTotal
                 Text(
-                    text = String.format(Locale.getDefault(), "$%.2f", item.price * item.quantity),
+                    text = String.format(Locale.getDefault(), "$%.2f", safeTotal),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary,
@@ -317,21 +332,31 @@ private fun ShoppingItemBottomRow(
                         .clickable { onShowQuickPriceDialog() }
                         .weight(1f, fill = false)
                 )
-            } else if (!isSelectionMode) {
-                IconButton(
-                    onClick = onShowQuickPriceDialog,
-                    modifier = Modifier.size(36.dp)
+            } else {
+                AnimatedVisibility(
+                    visible = !isSelectionMode,
+                    enter = fadeIn(animationSpec = tween(200)) + scaleIn(initialScale = 0.8f),
+                    exit = fadeOut(animationSpec = tween(150)) + scaleOut(targetScale = 0.8f)
                 ) {
-                    Icon(
-                        imageVector = Icons.Outlined.RequestQuote,
-                        contentDescription = "Agregar Precio",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(22.dp)
-                    )
+                    IconButton(
+                        onClick = onShowQuickPriceDialog,
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.RequestQuote,
+                            contentDescription = "Agregar Precio",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
                 }
             }
 
-            if (!isSelectionMode) {
+            AnimatedVisibility(
+                visible = !isSelectionMode,
+                enter = fadeIn(animationSpec = tween(200)) + scaleIn(initialScale = 0.8f),
+                exit = fadeOut(animationSpec = tween(150)) + scaleOut(targetScale = 0.8f)
+            ) {
                 IconButton(
                     onClick = onEdit,
                     modifier = Modifier.size(36.dp)
@@ -349,7 +374,11 @@ private fun ShoppingItemBottomRow(
         Spacer(modifier = Modifier.width(8.dp))
 
         // SECCIÓN DERECHA: Cápsula de Cantidad (+ / -)
-        if (!isSelectionMode) {
+        AnimatedVisibility(
+            visible = !isSelectionMode,
+            enter = fadeIn(animationSpec = tween(200)) + expandHorizontally(),
+            exit = fadeOut(animationSpec = tween(150)) + shrinkHorizontally()
+        ) {
             Surface(
                 shape = CircleShape,
                 color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f)

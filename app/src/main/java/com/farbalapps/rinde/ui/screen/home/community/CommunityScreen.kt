@@ -1,8 +1,7 @@
 package com.farbalapps.rinde.ui.screen.home.community
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -157,6 +156,7 @@ fun CommunityScreen(
             context.startActivity(android.content.Intent.createChooser(shareIntent, "Compartir publicación"))
         },
         onNavigateToPostDetail = onNavigateToPostDetail,
+        onNavigateToUserProfile = onNavigateToUserProfile,
         innerPadding = innerPadding
     )
 
@@ -564,6 +564,7 @@ fun CommunityContent(
     onMarkAvailable: (String) -> Unit = {},
     onSharePost: (CommunityPost) -> Unit = {},
     onNavigateToPostDetail: (String, Boolean, Boolean) -> Unit = { _, _, _ -> },
+    onNavigateToUserProfile: (String) -> Unit = {},
     searchViewModel: SearchViewModel = hiltViewModel(),
     notificationsViewModel: NotificationsViewModel = hiltViewModel(),
     innerPadding: PaddingValues
@@ -739,6 +740,7 @@ fun CommunityContent(
                                             onReportExpired = { onReportExpired(post.id, post.title, post.authorId) },
                                             onMarkAvailable = { onMarkAvailable(post.id) },
                                             onSharePost = { onSharePost(post) },
+                                            onAuthorClick = { onNavigateToUserProfile(post.authorId) },
                                             modifier = Modifier.padding(
                                                 horizontal = paddingMedium / 2,
                                                 vertical = 2.dp
@@ -844,6 +846,7 @@ fun CommunityContent(
                                             onReportExpired = { onReportExpired(post.id, post.title, post.authorId) },
                                             onMarkAvailable = { onMarkAvailable(post.id) },
                                             onSharePost = { onSharePost(post) },
+                                            onAuthorClick = { onNavigateToUserProfile(post.authorId) },
                                             modifier = Modifier.padding(
                                                 horizontal = paddingMedium / 2,
                                                 vertical = 2.dp
@@ -906,31 +909,32 @@ fun CommunityContent(
                                     val finalFalse = if (voteOver != null && post.myVoteValue != voteOver.myVote) (voteOver.falseCount ?: post.falseCount) else post.falseCount
                                     val finalMyVote = if (voteOver != null && post.myVoteValue != voteOver.myVote) voteOver.myVote else post.myVoteValue
                                     val finalScore = finalTruth - finalFalse
-                                    PostCard(
-                                        post = post.copy(
-                                            verificationStatus = overriddenStatus,
-                                            isSavedByMe = overriddenSaved,
-                                            truthCount = finalTruth,
-                                            falseCount = finalFalse,
-                                            myVoteValue = finalMyVote,
-                                            votesScore = finalScore
-                                        ),
-                                        isAuthorVerified = post.isAuthorVerified,
-                                        currentUserId = currentUserId,
-                                        onSaveClick = { onSaveClick(post.id) },
-                                        onPostClick = { onPostClick(post.id) },
-                                        onCommentClick = { onCommentClick(post.id) },
-                                        onDeletePost = { onDeletePost(post.id, post.photos) },
-                                        onEditPost = { onEditPost(post.id) },
-                                        onMarkExpired = { onMarkExpired(post.id) },
-                                        onReportExpired = { onReportExpired(post.id, post.title, post.authorId) },
-                                        onMarkAvailable = { onMarkAvailable(post.id) },
-                                        onSharePost = { onSharePost(post) },
-                                        modifier = Modifier.padding(
-                                            horizontal = paddingMedium / 2,
-                                            vertical = 2.dp
+                                        PostCard(
+                                            post = post.copy(
+                                                verificationStatus = overriddenStatus,
+                                                isSavedByMe = overriddenSaved,
+                                                truthCount = finalTruth,
+                                                falseCount = finalFalse,
+                                                myVoteValue = finalMyVote,
+                                                votesScore = finalScore
+                                            ),
+                                            isAuthorVerified = post.isAuthorVerified,
+                                            currentUserId = currentUserId,
+                                            onSaveClick = { onSaveClick(post.id) },
+                                            onPostClick = { onPostClick(post.id) },
+                                            onCommentClick = { onCommentClick(post.id) },
+                                            onDeletePost = { onDeletePost(post.id, post.photos) },
+                                            onEditPost = { onEditPost(post.id) },
+                                            onMarkExpired = { onMarkExpired(post.id) },
+                                            onReportExpired = { onReportExpired(post.id, post.title, post.authorId) },
+                                            onMarkAvailable = { onMarkAvailable(post.id) },
+                                            onSharePost = { onSharePost(post) },
+                                            onAuthorClick = { onNavigateToUserProfile(post.authorId) },
+                                            modifier = Modifier.padding(
+                                                horizontal = paddingMedium / 2,
+                                                vertical = 2.dp
+                                            )
                                         )
-                                    )
                                 }
                             }
                         }
@@ -974,6 +978,7 @@ fun CommunityContent(
                             ),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        @Suppress("DEPRECATION")
                         SearchBar(
                             query = searchUiState.query,
                             onQueryChange = { searchViewModel.onQueryChange(it) },
@@ -1095,8 +1100,8 @@ fun CommunityContent(
                         // Banner animado de nuevas ofertas
                         AnimatedVisibility(
                             visible = newPostsCount >= 1,
-                            enter = slideInVertically(initialOffsetY = { -it }),
-                            exit = slideOutVertically(targetOffsetY = { -it })
+                            enter = fadeIn(animationSpec = tween(250)) + expandVertically(animationSpec = tween(250)),
+                            exit = fadeOut(animationSpec = tween(200)) + shrinkVertically(animationSpec = tween(200))
                         ) {
                             Box(
                                 modifier = Modifier

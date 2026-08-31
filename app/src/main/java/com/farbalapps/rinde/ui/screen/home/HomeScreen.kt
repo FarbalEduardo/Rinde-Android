@@ -1,6 +1,7 @@
 package com.farbalapps.rinde.ui.screen.home
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -75,16 +76,7 @@ fun HomeScreen(
         )
     }
 
-    val appBarTitle = when {
-        destination?.hasRoute<HomeRoute.List>() == true -> stringResource(id = R.string.app_name)
-        destination?.hasRoute<HomeRoute.Community>() == true -> stringResource(id = R.string.home_tab_community)
-        destination?.hasRoute<HomeRoute.Goals>() == true -> stringResource(id = R.string.home_tab_goals)
-        destination?.hasRoute<HomeRoute.Assistant>() == true -> stringResource(id = R.string.home_tab_chef_ai)
-        destination?.hasRoute<HomeRoute.Profile>() == true -> stringResource(id = R.string.home_tab_profile)
-        else -> stringResource(id = R.string.app_name)
-    }
-
-      var isFabVisible by remember { mutableStateOf(true) }
+    var isFabVisible by remember { mutableStateOf(true) }
     val nestedScrollConnection = remember {
         object : NestedScrollConnection {
             override fun onPostScroll(
@@ -119,18 +111,6 @@ fun HomeScreen(
 
     Scaffold(
         modifier = Modifier.nestedScroll(nestedScrollConnection),
-        topBar = {
-            val isProfile = destination?.hasRoute<HomeRoute.Profile>() == true
-            if (isProfile) {
-                HomeScreenTopBar(
-                    title = appBarTitle,
-                    showSearch = false,
-                    onSearchClick = {},
-                    showSettings = isProfile,
-                    onSettingsClick = { navController.navigate(HomeRoute.Settings) }
-                )
-            }
-        },
         bottomBar = {
             if (isTopLevelRoute) {
                 BottomNavigationBar(
@@ -141,7 +121,7 @@ fun HomeScreen(
         },
         floatingActionButton = {
             HomeScreenFab(
-                isVisible = isFabVisible,
+                isVisible = isFabVisible && !uiState.isSelectionMode,
                 destination = destination,
                 isGoalsFabVisible = isGoalsFabVisible,
                 onAddProduct = { showAddProductSheet = true },
@@ -290,8 +270,8 @@ fun HomeScreenFab(
 ) {
     AnimatedVisibility(
         visible = isVisible,
-        enter = fadeIn() + scaleIn(),
-        exit = fadeOut() + scaleOut()
+        enter = fadeIn(animationSpec = tween(250)) + scaleIn(initialScale = 0.8f),
+        exit = fadeOut(animationSpec = tween(200)) + scaleOut(targetScale = 0.8f)
     ) {
         when {
             destination?.hasRoute<HomeRoute.List>() == true -> {
@@ -300,7 +280,7 @@ fun HomeScreenFab(
                     containerColor = com.farbalapps.rinde.ui.theme.RindePrimary,
                     contentColor = androidx.compose.ui.graphics.Color.White
                 ) {
-                    Icon(Icons.Default.Add, stringResource(id = R.string.add_entry))
+                    Icon(Icons.Default.AddShoppingCart, stringResource(id = R.string.add_entry))
                 }
             }
             destination?.hasRoute<HomeRoute.Community>() == true || destination?.hasRoute<HomeRoute.Profile>() == true -> {
@@ -309,7 +289,7 @@ fun HomeScreenFab(
                     containerColor = com.farbalapps.rinde.ui.theme.RindePrimary,
                     contentColor = androidx.compose.ui.graphics.Color.White
                 ) {
-                    Icon(Icons.Default.Add, stringResource(id = R.string.community_fab_desc))
+                    Icon(Icons.Default.PostAdd, stringResource(id = R.string.community_fab_desc))
                 }
             }
             destination?.hasRoute<HomeRoute.Goals>() == true -> {
