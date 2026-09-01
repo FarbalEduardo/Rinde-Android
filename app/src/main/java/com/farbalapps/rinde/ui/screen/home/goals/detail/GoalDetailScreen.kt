@@ -57,7 +57,12 @@ fun GoalDetailScreen(
     LaunchedEffect(key1 = true) {
         viewModel.events.collectLatest { event ->
             when (event) {
-                is GoalsEvent.Success -> Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
+                is GoalsEvent.Success -> {
+                    Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
+                    if (event.message.contains("archivada", ignoreCase = true)) {
+                        onBack()
+                    }
+                }
                 is GoalsEvent.ValidationError -> Toast.makeText(context, event.message, Toast.LENGTH_LONG).show()
                 is GoalsEvent.GoalCompleted -> Toast.makeText(context, "🎉 ¡Felicidades! Completaste la meta: ${event.title}", Toast.LENGTH_LONG).show()
                 is GoalsEvent.DepositExceedsTarget -> {
@@ -72,7 +77,8 @@ fun GoalDetailScreen(
         uiState = uiState,
         onBack = onBack,
         onAddDepositClick = { showDepositBottomSheet = true },
-        onEditGoalClick = { showEditGoalBottomSheet = true }
+        onEditGoalClick = { showEditGoalBottomSheet = true },
+        onArchiveGoalClick = { viewModel.archiveGoal() }
     )
 
     if (showEditGoalBottomSheet && uiState is GoalDetailUiState.Content) {
@@ -138,7 +144,8 @@ fun GoalDetailContent(
     uiState: GoalDetailUiState,
     onBack: () -> Unit,
     onAddDepositClick: () -> Unit,
-    onEditGoalClick: () -> Unit
+    onEditGoalClick: () -> Unit,
+    onArchiveGoalClick: () -> Unit = {}
 ) {
     Scaffold(
         topBar = {
@@ -149,6 +156,7 @@ fun GoalDetailContent(
         },
         bottomBar = {
             if (uiState is GoalDetailUiState.Content) {
+                val content = uiState as GoalDetailUiState.Content
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     color = MaterialTheme.colorScheme.background,
@@ -160,47 +168,84 @@ fun GoalDetailContent(
                             .fillMaxWidth()
                             .padding(horizontal = 20.dp, vertical = 14.dp)
                     ) {
-                        Button(
-                            onClick = onAddDepositClick,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(56.dp),
-                            shape = RoundedCornerShape(50),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary
-                            ),
-                            elevation = ButtonDefaults.buttonElevation(
-                                defaultElevation = 6.dp,
-                                pressedElevation = 2.dp
-                            )
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center
+                        if (content.goal.isCompleted) {
+                            Button(
+                                onClick = onArchiveGoalClick,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(56.dp),
+                                shape = RoundedCornerShape(50),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFF2E7D32)
+                                ),
+                                elevation = ButtonDefaults.buttonElevation(
+                                    defaultElevation = 6.dp,
+                                    pressedElevation = 2.dp
+                                )
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(28.dp)
-                                        .background(Color.White.copy(alpha = 0.25f), shape = CircleShape),
-                                    contentAlignment = Alignment.Center
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.Add,
+                                        imageVector = Icons.Default.Inventory2,
                                         contentDescription = null,
                                         tint = Color.White,
                                         modifier = Modifier.size(20.dp)
                                     )
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Text(
+                                        text = "Archivar como guardada",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White,
+                                        letterSpacing = 0.5.sp
+                                    )
                                 }
-
-                                Spacer(modifier = Modifier.width(12.dp))
-
-                                Text(
-                                    text = "Agregar a la meta",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White,
-                                    letterSpacing = 0.5.sp
+                            }
+                        } else {
+                            Button(
+                                onClick = onAddDepositClick,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(56.dp),
+                                shape = RoundedCornerShape(50),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary
+                                ),
+                                elevation = ButtonDefaults.buttonElevation(
+                                    defaultElevation = 6.dp,
+                                    pressedElevation = 2.dp
                                 )
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(28.dp)
+                                            .background(Color.White.copy(alpha = 0.25f), shape = CircleShape),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Add,
+                                            contentDescription = null,
+                                            tint = Color.White,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.width(12.dp))
+
+                                    Text(
+                                        text = "Agregar a la meta",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White,
+                                        letterSpacing = 0.5.sp
+                                    )
+                                }
                             }
                         }
                     }
@@ -230,7 +275,10 @@ fun GoalDetailContent(
                     }
                 }
                 is GoalDetailUiState.Content -> {
-                    GoalDetailBody(content = uiState)
+                    GoalDetailBody(
+                        content = uiState,
+                        onArchiveGoalClick = onArchiveGoalClick
+                    )
                 }
             }
         }
@@ -284,7 +332,8 @@ private fun GoalDetailTopAppBar(
 
 @Composable
 private fun GoalDetailBody(
-    content: GoalDetailUiState.Content
+    content: GoalDetailUiState.Content,
+    onArchiveGoalClick: () -> Unit = {}
 ) {
     val scrollState = rememberScrollState()
 
@@ -295,6 +344,67 @@ private fun GoalDetailBody(
             .padding(horizontal = 20.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        if (content.goal.isCompleted) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color(0xFFE8F5E9)
+                ),
+                border = BorderStroke(1.dp, Color(0xFFA5D6A7))
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = null,
+                            tint = Color(0xFF2E7D32),
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Column {
+                            Text(
+                                text = "¡Meta cumplida!",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF1B5E20)
+                            )
+                            Text(
+                                text = "Toca aquí para guardarla en tu historial.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color(0xFF2E7D32)
+                            )
+                        }
+                    }
+
+                    Button(
+                        onClick = onArchiveGoalClick,
+                        shape = RoundedCornerShape(50),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF2E7D32)
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Inventory2,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Archivar", fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+
         MainGoalCard(content = content)
 
         GridInfoCards(content = content)

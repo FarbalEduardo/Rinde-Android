@@ -13,11 +13,14 @@ class SaveCurrentListUseCase @Inject constructor(
     private val savedListRepository: SavedListRepository
 ) {
     suspend operator fun invoke(name: String, items: List<ShoppingItem>) {
-        val totalItems = items.size
-        val completedItems = items.count { it.isCompleted }
-        val itemsWithPrice = items.filter { it.price != null }
+        val purchasedItems = items.filter { it.isCompleted }
+        if (purchasedItems.isEmpty()) return
+
+        val totalItems = purchasedItems.size
+        val completedItems = purchasedItems.size
+        val itemsWithPrice = purchasedItems.filter { it.price != null }
         val totalPrice = if (itemsWithPrice.isNotEmpty()) itemsWithPrice.sumOf { (it.price ?: 0.0) * it.quantity } else null
-        val currency = items.firstOrNull { it.price != null }?.currency ?: "MXN"
+        val currency = purchasedItems.firstOrNull { it.price != null }?.currency ?: "MXN"
         val now = System.currentTimeMillis()
 
         val savedList = SavedShoppingList(
@@ -29,7 +32,7 @@ class SaveCurrentListUseCase @Inject constructor(
             completedItems = completedItems,
             totalPrice = totalPrice,
             currency = currency,
-            items = items
+            items = purchasedItems
         )
         savedListRepository.saveList(savedList)
     }

@@ -70,7 +70,8 @@ object AppModule {
         userVoteDao: com.farbalapps.rinde.data.local.dao.UserVoteDao,
         postDao: com.farbalapps.rinde.data.local.dao.PostDao,
         syncMetadataDao: com.farbalapps.rinde.data.local.dao.SyncMetadataDao,
-        goalsDao: com.farbalapps.rinde.data.local.dao.GoalsDao
+        goalsDao: com.farbalapps.rinde.data.local.dao.GoalsDao,
+        goalsRepositoryProvider: javax.inject.Provider<com.farbalapps.rinde.domain.repository.GoalsRepository>
     ): AuthRepository {
         return FirebaseAuthRepository(
             firebaseAuth,
@@ -78,7 +79,8 @@ object AppModule {
             userVoteDao,
             postDao,
             syncMetadataDao,
-            goalsDao
+            goalsDao,
+            goalsRepositoryProvider
         )
     }
 

@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.History
 fun EmptyGoalsContent(
     onCreateFirstGoalClick: () -> Unit,
     onShowArchivedGoalsClick: () -> Unit = {},
+    hasArchivedGoals: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     // Animación infinita de pulso de respiración viva (breathing pulse effect)
@@ -87,21 +88,6 @@ fun EmptyGoalsContent(
             .padding(24.dp),
         contentAlignment = Alignment.Center
     ) {
-        IconButton(
-            onClick = onShowArchivedGoalsClick,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .size(44.dp)
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), shape = CircleShape)
-        ) {
-            Icon(
-                imageVector = Icons.Default.History,
-                contentDescription = "Historial de metas archivadas",
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(24.dp)
-            )
-        }
-
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
@@ -122,10 +108,41 @@ fun EmptyGoalsContent(
             // Textos
             EmptyGoalsTextContent()
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(28.dp))
 
             // Botón de Acción Principal
             CreateFirstGoalButton(onClick = onCreateFirstGoalClick)
+
+            if (hasArchivedGoals) {
+                Spacer(modifier = Modifier.height(14.dp))
+
+                Surface(
+                    onClick = onShowArchivedGoalsClick,
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f),
+                    modifier = Modifier.fillMaxWidth(0.85f)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.History,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Ver metas guardadas",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
         }
     }
 }

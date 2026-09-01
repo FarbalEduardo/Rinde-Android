@@ -4,6 +4,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.google.firebase.firestore.PropertyName
 
 /**
  * Entidad de Room para el historial de depósitos/transacciones realizadas en las metas.
@@ -26,5 +27,7 @@ data class GoalTransactionEntity(
     val amount: Double = 0.0,
     val note: String = "",
     val timestamp: Long = 0L,
-    val isSynced: Boolean = false
+    @get:PropertyName("isSynced") @set:PropertyName("isSynced")
+    var isSynced: Boolean = false
 )
+

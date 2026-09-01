@@ -262,12 +262,14 @@ private fun ListScreenDialogs(
     onShowReorderDialogChange: (Boolean) -> Unit
 ) {
     if (uiState.showSaveListDialog) {
-        val allItemsCount = uiState.activeItems.size + uiState.completedItems.size
-        val totalPriceSum = ((uiState.activeTotal ?: 0.0) + (uiState.completedTotal ?: 0.0)).let { if (it > 0) it else null }
+        val purchasedCount = uiState.completedItems.size
+        val unpurchasedCount = uiState.activeItems.size
+        val purchasedPriceSum = uiState.completedTotal
 
         SaveListDialog(
-            totalItems = allItemsCount,
-            totalPrice = totalPriceSum,
+            purchasedItemsCount = purchasedCount,
+            unpurchasedItemsCount = unpurchasedCount,
+            totalPrice = purchasedPriceSum,
             currency = uiState.budgetCurrency,
             onDismiss = { viewModel.closeSaveListDialog() },
             onConfirm = { name, clearAfterSave ->
@@ -282,6 +284,9 @@ private fun ListScreenDialogs(
             onDismiss = { viewModel.closeSavedListsSheet() },
             onSelectList = { list ->
                 viewModel.selectSavedListForDetail(list)
+            },
+            onRenameList = { list ->
+                viewModel.startRenamingSavedList(list)
             },
             onDeleteList = { list ->
                 viewModel.deleteSavedList(list)
@@ -304,7 +309,7 @@ private fun ListScreenDialogs(
     uiState.renamingSavedList?.let { targetList ->
         RenameListDialog(
             initialName = targetList.name,
-            onDismiss = { viewModel.startRenamingSavedList(targetList) }, // cancels if null passed? No, pass null in state
+            onDismiss = { viewModel.cancelRenamingSavedList() },
             onConfirm = { newName ->
                 viewModel.renameSavedList(newName)
             }

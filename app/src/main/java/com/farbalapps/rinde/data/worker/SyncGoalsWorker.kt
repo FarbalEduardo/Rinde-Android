@@ -101,13 +101,44 @@ class SyncGoalsWorker @AssistedInject constructor(
             .await()
 
         for (doc in snapshot.documents) {
-            val remoteGoal = doc.toObject(SavingsGoalEntity::class.java)
+            var remoteGoal = doc.toObject(SavingsGoalEntity::class.java)
             if (remoteGoal != null) {
+                // Migración: documentos antiguos almacenaban isArchived como "archived"
+                // (bug de serialización Kotlin/Firestore). Leemos ambos campos para compatibilidad.
+                val legacyArchived = doc.getBoolean("archived") ?: false
+                val legacyCompleted = doc.getBoolean("completed") ?: false
+                val legacySynced = doc.getBoolean("synced") ?: false
+
+                // Si el documento tiene el campo legacy y el valor actual es false,
+                // es porque se leyó del campo incorrecto. Aplicamos el valor correcto.
+                if (legacyArchived && !remoteGoal.isArchived) {
+                    remoteGoal = remoteGoal.copy(isArchived = true)
+                }
+                if (legacyCompleted && !remoteGoal.isCompleted) {
+                    remoteGoal = remoteGoal.copy(isCompleted = true)
+                }
+
                 val goalToInsert = remoteGoal.copy(userId = userId, isSynced = true)
                 val localGoal = dao.getGoalById(remoteGoal.id)
+
                 // Si no existe localmente o el remoto es más nuevo, actualiza Room
                 if (localGoal == null || goalToInsert.updatedAt > localGoal.updatedAt) {
                     dao.insertGoal(goalToInsert)
+                }
+
+                // Si había campos legacy, re-subir a Firestore con los nombres correctos
+                if (legacyArchived || legacyCompleted || legacySynced) {
+                    try {
+                        firestore.collection("users")
+                            .document(userId)
+                            .collection("savings_goals")
+                            .document(goalToInsert.id)
+                            .set(goalToInsert, SetOptions.merge())
+                            .await()
+                        Log.d(TAG, "Migrated legacy boolean fields for goal: ${goalToInsert.id}")
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Could not migrate goal ${goalToInsert.id}: ${e.message}")
+                    }
                 }
             }
         }

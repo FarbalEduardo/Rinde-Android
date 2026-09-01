@@ -123,7 +123,10 @@ fun GoalsScreenContent(
             canReactivate = canAddMoreGoals,
             onDismissRequest = { showArchivedGoalsModal = false },
             onDeleteGoal = { id -> onDeleteGoal(id) },
-            onUnarchiveGoal = { id -> onUnarchiveGoal(id) }
+            onUnarchiveGoal = { id ->
+                onUnarchiveGoal(id)
+                showArchivedGoalsModal = false
+            }
         )
     }
 
@@ -140,7 +143,8 @@ fun GoalsScreenContent(
             is GoalsUiState.Empty -> {
                 EmptyGoalsContent(
                     onCreateFirstGoalClick = { showCreateBottomSheetInternal = true },
-                    onShowArchivedGoalsClick = { showArchivedGoalsModal = true }
+                    onShowArchivedGoalsClick = { showArchivedGoalsModal = true },
+                    hasArchivedGoals = (uiState as GoalsUiState.Empty).hasArchivedGoals
                 )
             }
             is GoalsUiState.Error -> {

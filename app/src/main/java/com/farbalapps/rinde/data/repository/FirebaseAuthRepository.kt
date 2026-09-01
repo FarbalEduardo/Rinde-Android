@@ -16,7 +16,9 @@ import com.farbalapps.rinde.data.local.dao.GoalsDao
 import com.farbalapps.rinde.data.local.dao.SyncMetadataDao
 import com.farbalapps.rinde.data.local.dao.UserVoteDao
 import com.farbalapps.rinde.data.util.SavedPostsMemoryCache
+import com.farbalapps.rinde.domain.repository.GoalsRepository
 import javax.inject.Inject
+import javax.inject.Provider
 
 class FirebaseAuthRepository @Inject constructor(
     private val firebaseAuth: FirebaseAuth = FirebaseAuth.getInstance(),
@@ -24,7 +26,8 @@ class FirebaseAuthRepository @Inject constructor(
     private val userVoteDao: UserVoteDao,
     private val postDao: PostDao,
     private val syncMetadataDao: SyncMetadataDao,
-    private val goalsDao: GoalsDao
+    private val goalsDao: GoalsDao,
+    private val goalsRepositoryProvider: Provider<GoalsRepository>
 ) : AuthRepository {
     
     override fun login(email: String, password: String): Flow<Resource<User>> = callbackFlow {
@@ -114,6 +117,9 @@ class FirebaseAuthRepository @Inject constructor(
     override suspend fun clearUserLocalState() {
         val uid = getCurrentUser()?.id ?: ""
         if (uid.isNotEmpty()) {
+            try {
+                goalsRepositoryProvider.get().forceSyncBeforeLogout(uid)
+            } catch (_: Exception) { }
             userVoteDao.clearUserVotes(uid)
             goalsDao.deleteGoalsByUserId(uid)
             goalsDao.deleteTransactionsByUserId(uid)

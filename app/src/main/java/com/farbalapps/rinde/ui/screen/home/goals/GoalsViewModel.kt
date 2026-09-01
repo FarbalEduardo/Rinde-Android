@@ -21,6 +21,7 @@ class GoalsViewModel @Inject constructor(
     private val archiveGoalUseCase: ArchiveGoalUseCase,
     private val unarchiveGoalUseCase: UnarchiveGoalUseCase,
     private val reorderGoalsUseCase: ReorderGoalsUseCase,
+    private val syncGoalsUseCase: SyncGoalsUseCase,
     private val settingsRepository: com.farbalapps.rinde.domain.repository.SettingsRepository
 ) : ViewModel() {
 
@@ -35,17 +36,25 @@ class GoalsViewModel @Inject constructor(
 
     init {
         loadGoalsData()
+        syncGoals()
+    }
+
+    fun syncGoals() {
+        viewModelScope.launch {
+            syncGoalsUseCase()
+        }
     }
 
     private fun loadGoalsData() {
         viewModelScope.launch {
             combine(
                 getGoalsUseCase(),
+                getArchivedGoalsUseCase(),
                 getGoalsSummaryUseCase(),
                 settingsRepository.isPrivacyMode()
-            ) { goals, summary, isPrivacyMode ->
+            ) { goals, archivedGoals, summary, isPrivacyMode ->
                 if (goals.isEmpty()) {
-                    GoalsUiState.Empty
+                    GoalsUiState.Empty(hasArchivedGoals = archivedGoals.isNotEmpty())
                 } else {
                     // E1.2 - E1.4: Lógica del layout adaptativo
                     // La primera de la lista ordenada por cantidad ahorrada es la destacada

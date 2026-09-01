@@ -419,14 +419,14 @@ class ListViewModel @Inject constructor(
     }
 
     fun saveCurrentList(name: String, clearAfterSave: Boolean = false) {
-        val allItems = _uiState.value.activeItems + _uiState.value.completedItems
-        if (allItems.isEmpty()) return
+        val completedItems = _uiState.value.completedItems
+        if (completedItems.isEmpty()) return
 
         viewModelScope.launch {
             try {
-                saveCurrentListUseCase(name, allItems)
+                saveCurrentListUseCase(name, completedItems)
                 if (clearAfterSave) {
-                    deleteMultipleItemsUseCase(allItems)
+                    deleteMultipleItemsUseCase(completedItems)
                 }
                 closeSaveListDialog()
             } catch (e: Exception) {
@@ -471,8 +471,12 @@ class ListViewModel @Inject constructor(
         }
     }
 
-    fun startRenamingSavedList(savedList: SavedShoppingList) {
+    fun startRenamingSavedList(savedList: SavedShoppingList?) {
         _uiState.update { it.copy(renamingSavedList = savedList) }
+    }
+
+    fun cancelRenamingSavedList() {
+        _uiState.update { it.copy(renamingSavedList = null) }
     }
 
     fun renameSavedList(newName: String) {

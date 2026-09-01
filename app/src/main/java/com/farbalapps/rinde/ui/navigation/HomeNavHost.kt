@@ -26,6 +26,7 @@ import com.farbalapps.rinde.ui.screen.profile.SettingsScreen
 import com.farbalapps.rinde.ui.screen.profile.edit.EditProfileScreen
 import com.farbalapps.rinde.ui.screen.profile.extras.SavedPostsScreen
 import com.farbalapps.rinde.ui.screen.profile.extras.BlockedUsersScreen
+import com.farbalapps.rinde.ui.screen.profile.posts.UserPostsScreen
 
 import androidx.navigation.toRoute
 
@@ -133,7 +134,23 @@ private fun androidx.navigation.NavGraphBuilder.addProfileScreens(
         ProfileScreen(
             innerPadding = innerPadding,
             onEditProfile = { navController.navigate(HomeRoute.EditProfile) },
-            onNavigateToSettings = { navController.navigate(HomeRoute.Settings) },
+            onNavigateToPosts = { userId, userName -> navController.navigate(HomeRoute.UserPosts(userId, userName)) },
+            onNavigateToSaved = { navController.navigate(HomeRoute.SavedPosts) },
+            onNavigateToBlocked = { navController.navigate(HomeRoute.BlockedUsers) },
+            onLogout = onLogout
+        )
+    }
+    composable<HomeRoute.UserPosts>(
+        enterTransition = { slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(300)) + fadeIn() },
+        exitTransition = { slideOutHorizontally(targetOffsetX = { -it / 3 }, animationSpec = tween(300)) + fadeOut() },
+        popEnterTransition = { slideInHorizontally(initialOffsetX = { -it / 3 }, animationSpec = tween(300)) + fadeIn() },
+        popExitTransition = { slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(300)) + fadeOut() }
+    ) { backStackEntry ->
+        val args = backStackEntry.toRoute<HomeRoute.UserPosts>()
+        UserPostsScreen(
+            userId = args.userId,
+            userName = args.userName,
+            onBack = { navController.popBackStack() },
             onNavigateToPostDetail = { postId -> navController.navigate(HomeRoute.PostDetail(postId)) },
             onEditPost = { postId -> navController.navigate(HomeRoute.EditPost(postId)) }
         )
@@ -186,8 +203,9 @@ private fun androidx.navigation.NavGraphBuilder.addProfileScreens(
             innerPadding = innerPadding,
             targetUserId = args.userId,
             onBack = { navController.popBackStack() },
-            onNavigateToPostDetail = { postId -> navController.navigate(HomeRoute.PostDetail(postId)) },
-            onEditPost = { postId -> navController.navigate(HomeRoute.EditPost(postId)) }
+            onNavigateToPosts = { userId, userName -> navController.navigate(HomeRoute.UserPosts(userId, userName)) },
+            onNavigateToSaved = { navController.navigate(HomeRoute.SavedPosts) },
+            onNavigateToBlocked = { navController.navigate(HomeRoute.BlockedUsers) }
         )
     }
 }

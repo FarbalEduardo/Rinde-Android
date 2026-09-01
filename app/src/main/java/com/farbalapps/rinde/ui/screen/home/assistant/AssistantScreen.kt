@@ -224,17 +224,21 @@ private fun ChefChatMessageItem(message: ChatMessage) {
         mutableStateOf(isUser || !isRecentMessage)
     }
 
-    // Typewriter effect (stream text letter by letter like ChatGPT/Gemini)
+    // Streaming effect (stream text word by word like ChatGPT/Gemini)
     LaunchedEffect(message.id, message.text) {
         if (isUser || !isRecentMessage) {
             displayedText = message.text
             isTypingComplete = true
         } else {
-            val fullText = message.text
-            for (i in 1..fullText.length) {
-                displayedText = fullText.substring(0, i)
-                delay(12L)
+            // Split preserving whitespace and newlines
+            val words = message.text.split(Regex("(?<=\\s)"))
+            val builder = StringBuilder()
+            for (word in words) {
+                builder.append(word)
+                displayedText = builder.toString()
+                delay(40L) // smooth delay per word
             }
+            displayedText = message.text
             isTypingComplete = true
         }
     }

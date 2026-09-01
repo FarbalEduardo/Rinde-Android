@@ -6,7 +6,7 @@ import com.farbalapps.rinde.domain.usecase.goals.GoalsSummary
 sealed interface GoalsUiState {
     object Loading : GoalsUiState
     
-    object Empty : GoalsUiState
+    data class Empty(val hasArchivedGoals: Boolean = false) : GoalsUiState
     
     data class Content(
         val featuredGoal: SavingsGoal?,

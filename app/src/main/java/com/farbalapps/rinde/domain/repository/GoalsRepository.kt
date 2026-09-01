@@ -79,4 +79,9 @@ interface GoalsRepository {
      * Reordena la lista de metas y sincroniza con Firestore.
      */
     suspend fun reorderGoals(goals: List<SavingsGoal>)
+
+    /**
+     * Sube de forma síncrona todas las metas y transacciones pendientes antes de cerrar sesión.
+     */
+    suspend fun forceSyncBeforeLogout(userId: String)
 }

@@ -19,6 +19,9 @@ sealed interface HomeRoute {
     data class UserProfile(val userId: String) : HomeRoute
 
     @Serializable
+    data class UserPosts(val userId: String, val userName: String = "") : HomeRoute
+
+    @Serializable
     data class PostDetail(
         val postId: String,
         val scrollToComments: Boolean = false,

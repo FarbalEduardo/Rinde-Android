@@ -221,6 +221,41 @@ class FirebaseGoalsRepository @Inject constructor(
         enqueueSync()
     }
 
+    override suspend fun forceSyncBeforeLogout(userId: String): Unit = withContext(ioDispatcher) {
+        try {
+            val unsyncedGoals = dao.getUnsyncedGoalsByUser(userId)
+            for (goal in unsyncedGoals) {
+                if (goal.userId == userId) {
+                    firestore.collection("users")
+                        .document(userId)
+                        .collection("savings_goals")
+                        .document(goal.id)
+                        .set(goal, com.google.firebase.firestore.SetOptions.merge())
+                        .await()
+                    dao.updateGoal(goal.copy(isSynced = true))
+                }
+            }
+
+            val unsyncedTx = dao.getUnsyncedTransactionsByUser(userId)
+            for (tx in unsyncedTx) {
+                val goal = dao.getGoalById(tx.goalId)
+                if (goal != null && goal.userId == userId) {
+                    firestore.collection("users")
+                        .document(userId)
+                        .collection("savings_goals")
+                        .document(tx.goalId)
+                        .collection("transactions")
+                        .document(tx.id)
+                        .set(tx, com.google.firebase.firestore.SetOptions.merge())
+                        .await()
+                    dao.insertTransaction(tx.copy(isSynced = true))
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error in forceSyncBeforeLogout", e)
+        }
+    }
+
     private fun enqueueSync() {
         val syncRequest = OneTimeWorkRequestBuilder<SyncGoalsWorker>().build()
         workManager.enqueue(syncRequest)

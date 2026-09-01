@@ -12,6 +12,9 @@ import com.farbalapps.rinde.domain.usecase.profile.UpdatePrivacyUseCase
 import com.farbalapps.rinde.domain.usecase.profile.SyncProfileUseCase
 import com.farbalapps.rinde.domain.usecase.profile.ClearUploadStatusUseCase
 import com.farbalapps.rinde.domain.usecase.profile.GetSavedPostsUseCase
+import com.farbalapps.rinde.data.local.AppLanguage
+import com.farbalapps.rinde.data.local.ThemeMode
+import com.farbalapps.rinde.domain.usecase.settings.*
 import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -38,12 +41,27 @@ class ProfileViewModel @Inject constructor(
     private val syncProfileUseCase: SyncProfileUseCase,
     private val clearUploadStatusUseCase: ClearUploadStatusUseCase,
     private val toggleVoteUseCase: ToggleVoteUseCase,
+    private val getThemeUseCase: GetThemeUseCase,
+    private val setThemeUseCase: SetThemeUseCase,
+    private val getLanguageUseCase: GetLanguageUseCase,
+    private val setLanguageUseCase: SetLanguageUseCase,
+    private val isProfilePrivateUseCase: IsProfilePrivateUseCase,
+    private val togglePrivacyUseCase: TogglePrivacyUseCase,
     private val firebaseAuth: FirebaseAuth,
     private val feedRepository: FeedRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileUiState())
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
+
+    val themeMode: StateFlow<ThemeMode> = getThemeUseCase()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ThemeMode.SYSTEM)
+
+    val appLanguage: StateFlow<AppLanguage> = getLanguageUseCase()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AppLanguage.ES)
+
+    val isProfilePrivate: StateFlow<Boolean> = isProfilePrivateUseCase()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     val postStatusOverlay = feedRepository.globalPostStatus
     val savedStatusOverlay = feedRepository.globalSavedStatus
@@ -223,6 +241,24 @@ class ProfileViewModel @Inject constructor(
             ).onSuccess {
                 _uiState.update { it.copy(snackbarMessage = "Reporte enviado al autor") }
             }
+        }
+    }
+
+    fun setTheme(mode: ThemeMode) {
+        viewModelScope.launch {
+            setThemeUseCase(mode)
+        }
+    }
+
+    fun setLanguage(language: AppLanguage) {
+        viewModelScope.launch {
+            setLanguageUseCase(language)
+        }
+    }
+
+    fun togglePrivacy(isPrivate: Boolean) {
+        viewModelScope.launch {
+            togglePrivacyUseCase(isPrivate)
         }
     }
 

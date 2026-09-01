@@ -55,15 +55,78 @@ fun ChefRandomRecommendationCard(
     modifier: Modifier = Modifier
 ) {
     var isDismissed by remember { mutableStateOf(false) }
+    var showDetailDialog by remember { mutableStateOf(false) }
     if (isDismissed) return
 
     val randomTip = remember { CHEF_RECOMMENDATIONS.random() }
 
+    if (showDetailDialog) {
+        AlertDialog(
+            onDismissRequest = { showDetailDialog = false },
+            shape = RoundedCornerShape(24.dp),
+            containerColor = MaterialTheme.colorScheme.surface,
+            icon = {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .background(
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
+                            shape = CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AutoAwesome,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            },
+            title = {
+                Text(
+                    text = "Consejo Rinde",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            },
+            text = {
+                Text(
+                    text = randomTip,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    lineHeight = 22.sp
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = { showDetailDialog = false },
+                    shape = RoundedCornerShape(50),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Text(
+                        text = "¡Entendido!",
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        )
+    }
+
     Card(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable { showDetailDialog = true },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        border = androidx.compose.foundation.BorderStroke(
+            width = 1.dp,
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
@@ -77,7 +140,7 @@ fun ChefRandomRecommendationCard(
                 modifier = Modifier
                     .size(32.dp)
                     .background(
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
                         shape = CircleShape
                     ),
                 contentAlignment = Alignment.Center
@@ -105,7 +168,7 @@ fun ChefRandomRecommendationCard(
                 Text(
                     text = randomTip,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     lineHeight = 16.sp
@@ -119,7 +182,7 @@ fun ChefRandomRecommendationCard(
                 Icon(
                     imageVector = Icons.Default.Close,
                     contentDescription = "Descartar tip",
-                    tint = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.6f),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                     modifier = Modifier.size(14.dp)
                 )
             }
