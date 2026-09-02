@@ -27,6 +27,7 @@ import com.farbalapps.rinde.ui.screen.profile.edit.EditProfileScreen
 import com.farbalapps.rinde.ui.screen.profile.extras.SavedPostsScreen
 import com.farbalapps.rinde.ui.screen.profile.extras.BlockedUsersScreen
 import com.farbalapps.rinde.ui.screen.profile.posts.UserPostsScreen
+import com.farbalapps.rinde.ui.screen.profile.about.AboutScreen
 
 import androidx.navigation.toRoute
 
@@ -137,6 +138,7 @@ private fun androidx.navigation.NavGraphBuilder.addProfileScreens(
             onNavigateToPosts = { userId, userName -> navController.navigate(HomeRoute.UserPosts(userId, userName)) },
             onNavigateToSaved = { navController.navigate(HomeRoute.SavedPosts) },
             onNavigateToBlocked = { navController.navigate(HomeRoute.BlockedUsers) },
+            onNavigateToAbout = { navController.navigate(HomeRoute.About) },
             onLogout = onLogout
         )
     }
@@ -167,6 +169,14 @@ private fun androidx.navigation.NavGraphBuilder.addProfileScreens(
             onNavigateToSaved = { navController.navigate(HomeRoute.SavedPosts) },
             onNavigateToBlocked = { navController.navigate(HomeRoute.BlockedUsers) }
         )
+    }
+    composable<HomeRoute.About>(
+        enterTransition = { slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(300)) + fadeIn() },
+        exitTransition = { slideOutHorizontally(targetOffsetX = { -it / 3 }, animationSpec = tween(300)) + fadeOut() },
+        popEnterTransition = { slideInHorizontally(initialOffsetX = { -it / 3 }, animationSpec = tween(300)) + fadeIn() },
+        popExitTransition = { slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(300)) + fadeOut() }
+    ) {
+        AboutScreen(onBack = { navController.popBackStack() })
     }
     composable<HomeRoute.EditProfile>(
         enterTransition = { slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(300)) + fadeIn() },

@@ -53,12 +53,12 @@ fun SearchContent(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Búsquedas recientes",
+                            text = androidx.compose.ui.res.stringResource(com.farbalapps.rinde.R.string.search_recent_title),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
                         TextButton(onClick = onClearRecentSearches) {
-                            Text("Borrar todo", style = MaterialTheme.typography.labelMedium)
+                            Text(androidx.compose.ui.res.stringResource(com.farbalapps.rinde.R.string.search_clear_all), style = MaterialTheme.typography.labelMedium)
                         }
                     }
 

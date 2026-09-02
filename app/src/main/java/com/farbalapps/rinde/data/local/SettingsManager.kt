@@ -52,6 +52,10 @@ class SettingsManager @Inject constructor(
         context.settingsDataStore.edit { prefs ->
             prefs[APP_LANGUAGE] = language.name
         }
+        val localeTag = if (language == AppLanguage.EN) "en" else "es"
+        androidx.appcompat.app.AppCompatDelegate.setApplicationLocales(
+            androidx.core.os.LocaleListCompat.forLanguageTags(localeTag)
+        )
     }
 
     suspend fun setPrivacyMode(enabled: Boolean) {

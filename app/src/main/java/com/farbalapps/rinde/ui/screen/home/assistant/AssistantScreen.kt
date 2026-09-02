@@ -105,12 +105,12 @@ fun AssistantScreen(
                         }
                         Column {
                             Text(
-                                text = "Chef",
+                                text = androidx.compose.ui.res.stringResource(com.farbalapps.rinde.R.string.assistant_title),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = "Recetas y Cocina",
+                                text = androidx.compose.ui.res.stringResource(com.farbalapps.rinde.R.string.assistant_subtitle),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -122,7 +122,7 @@ fun AssistantScreen(
                     IconButton(onClick = { viewModel.toggleHistorySheet(true) }) {
                         Icon(
                             imageVector = Icons.Default.History,
-                            contentDescription = "Historial de recetas",
+                            contentDescription = androidx.compose.ui.res.stringResource(com.farbalapps.rinde.R.string.assistant_history_desc),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -130,7 +130,7 @@ fun AssistantScreen(
                     IconButton(onClick = { viewModel.startNewConversation() }) {
                         Icon(
                             imageVector = Icons.Default.Add,
-                            contentDescription = "Nueva conversación",
+                            contentDescription = androidx.compose.ui.res.stringResource(com.farbalapps.rinde.R.string.assistant_new_chat_desc),
                             tint = RindePrimary
                         )
                     }
@@ -700,7 +700,7 @@ private fun ChatHistorySheetContent(
             ) {
                 Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("Nueva", style = MaterialTheme.typography.labelMedium)
+                Text(androidx.compose.ui.res.stringResource(com.farbalapps.rinde.R.string.assistant_btn_new), style = MaterialTheme.typography.labelMedium)
             }
         }
 
@@ -708,7 +708,7 @@ private fun ChatHistorySheetContent(
 
         if (conversations.isEmpty()) {
             Text(
-                text = "No tienes conversaciones guardadas aún.",
+                text = androidx.compose.ui.res.stringResource(com.farbalapps.rinde.R.string.assistant_empty_history),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(vertical = 24.dp)
@@ -742,8 +742,13 @@ private fun ChatHistorySheetContent(
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
+                                val fallbackSource = androidx.compose.ui.res.stringResource(com.farbalapps.rinde.R.string.assistant_pantry_fallback)
                                 Text(
-                                    text = "${item.messages.size} mensajes • ${item.sourceListName ?: "Despensa"}",
+                                    text = androidx.compose.ui.res.stringResource(
+                                        com.farbalapps.rinde.R.string.assistant_messages_count,
+                                        item.messages.size,
+                                        item.sourceListName ?: fallbackSource
+                                    ),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -752,7 +757,7 @@ private fun ChatHistorySheetContent(
                             IconButton(onClick = { onDeleteConversation(item.id) }) {
                                 Icon(
                                     imageVector = Icons.Default.Delete,
-                                    contentDescription = "Eliminar",
+                                    contentDescription = androidx.compose.ui.res.stringResource(com.farbalapps.rinde.R.string.assistant_delete_conversation),
                                     tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f),
                                     modifier = Modifier.size(20.dp)
                                 )

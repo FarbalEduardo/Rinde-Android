@@ -386,7 +386,7 @@ fun ProfileGroupItem(
                     .clip(RoundedCornerShape(8.dp))
                     .background(
                         if (titleColor == MaterialTheme.colorScheme.error) {
-                            MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f)
+                            MaterialTheme.colorScheme.error.copy(alpha = 0.12f)
                         } else {
                             MaterialTheme.colorScheme.surfaceVariant
                         }
@@ -414,6 +414,7 @@ fun ProfileGroupItem(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = if (titleColor == MaterialTheme.colorScheme.error) FontWeight.SemiBold else FontWeight.Normal,
                     color = titleColor
                 )
                 if (subtitle != null) {
@@ -530,9 +531,9 @@ fun ThemeSelectorSheet(
 
             ThemeMode.entries.forEach { mode ->
                 val label = when (mode) {
-                    ThemeMode.SYSTEM -> "Sistema (Automático)"
-                    ThemeMode.LIGHT -> "Modo Claro"
-                    ThemeMode.DARK -> "Modo Oscuro"
+                    ThemeMode.SYSTEM -> stringResource(R.string.theme_system)
+                    ThemeMode.LIGHT -> stringResource(R.string.theme_light)
+                    ThemeMode.DARK -> stringResource(R.string.theme_dark)
                 }
                 Row(
                     modifier = Modifier
@@ -590,8 +591,8 @@ fun LanguageSelectorSheet(
 
             AppLanguage.entries.forEach { lang ->
                 val label = when (lang) {
-                    AppLanguage.ES -> "Español"
-                    AppLanguage.EN -> "English"
+                    AppLanguage.ES -> stringResource(R.string.language_es)
+                    AppLanguage.EN -> stringResource(R.string.language_en)
                 }
                 Row(
                     modifier = Modifier

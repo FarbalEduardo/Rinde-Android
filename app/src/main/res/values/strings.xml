@@ -232,4 +232,70 @@
     <string name="badge_verified">Usuario verificado</string>
     <string name="settings_item_verify_account">Verificar mi cuenta</string>
     <string name="privacy_restriction_msg">Tu perfil es privado. Solo puedes votar por la veracidad de las ofertas.</string>
+
+    <!-- Theme & Language Options -->
+    <string name="theme_system">Sistema (Automático)</string>
+    <string name="theme_light">Modo Claro</string>
+    <string name="theme_dark">Modo Oscuro</string>
+    <string name="language_es">Español</string>
+    <string name="language_en">English</string>
+
+    <!-- Chef AI / Assistant Screen -->
+    <string name="assistant_title">Chef</string>
+    <string name="assistant_subtitle">Recetas y Cocina</string>
+    <string name="assistant_history_desc">Historial de recetas</string>
+    <string name="assistant_new_chat_desc">Nueva conversación</string>
+    <string name="assistant_empty_history">No tienes conversaciones guardadas aún.</string>
+    <string name="assistant_delete_conversation">Eliminar</string>
+    <string name="assistant_btn_new">Nueva</string>
+    <string name="assistant_messages_count">%1$d mensajes • %2$s</string>
+    <string name="assistant_pantry_fallback">Despensa</string>
+
+    <!-- Community Screen & Feed -->
+    <string name="community_tab_discover">✨ Descubrir</string>
+    <string name="community_tab_hot">🔥 Lo más Hot</string>
+    <string name="community_tab_saved">🔖 Guardados</string>
+    <string name="community_empty_discover_title">Aún no hay publicaciones</string>
+    <string name="community_empty_discover_desc">Las nuevas ofertas publicadas por la comunidad aparecerán en esta sección.</string>
+    <string name="community_empty_hot_title">Aún no hay publicaciones Hot</string>
+    <string name="community_empty_hot_desc">Las publicaciones con más votos y mejor valoración de la comunidad aparecerán aquí.</string>
+    <string name="community_empty_saved_title">No tienes publicaciones guardadas</string>
+    <string name="community_empty_saved_desc">Guarda las ofertas que te interesen para acceder a ellas fácilmente en cualquier momento.</string>
+    <string name="community_error_load_failed">No se pudieron cargar las publicaciones</string>
+    <string name="community_error_append_failed">No se pudieron cargar más ofertas.</string>
+    <string name="community_btn_retry">Reintentar</string>
+    <string name="community_share_subject">¡Mira esta oferta en Rinde!\n%1$s\nhttps://rinde.app/post/%2$s</string>
+    <string name="community_share_chooser_title">Compartir publicación</string>
+    <string name="community_new_offers_banner">Hay %d nuevas ofertas</string>
+    <string name="community_notif_title">Notificaciones</string>
+    <string name="wishlist_add_title">Añadir</string>
+    <string name="wishlist_add_desc">Añadir a Wishlist</string>
+
+    <!-- Goals Screen & Details -->
+    <string name="goals_limit_reached">Límite de metas alcanzado (máximo 2).</string>
+    <string name="goals_completed_toast">🎉 ¡Felicidades! Completaste la meta: %s</string>
+    <string name="goals_dialog_limit_title">Límite alcanzado</string>
+    <string name="goals_dialog_limit_text">Solo puedes tener hasta 2 metas activas simultáneamente. Completa o archiva una meta existente para crear una nueva.</string>
+    <string name="goals_dialog_limit_ok">Entendido</string>
+    <string name="goals_empty_hero_title">Empieza a ahorrar para tus sueños</string>
+    <string name="goals_empty_hero_desc">Crea apartados personalizados con metas de ahorro y monitorea tu progreso semanal.</string>
+    <string name="goals_btn_create_first">Crea tu primera meta</string>
+    <string name="goals_btn_view_archived">Ver metas guardadas</string>
+    <string name="goals_privacy_show">Mostrar saldos</string>
+    <string name="goals_privacy_hide">Ocultar saldos</string>
+    <string name="goals_privacy_masked">$ ***.**</string>
+    <string name="goals_privacy_masked_pair">$ ***.** / $ ***.**</string>
+    <string name="goals_progress_summary">Has alcanzado el %d%% de tus objetivos</string>
+    <string name="goals_dialog_new_title">Nueva Meta de Ahorro</string>
+    <string name="goals_dialog_edit_title">Editar Meta de Ahorro</string>
+    <string name="goals_label_start_date">Fecha Inicio</string>
+    <string name="goals_label_target_date">Fecha Límite</string>
+    <string name="goals_card_completed_badge">🎉 ¡Meta cumplida! (Toca para archivar)</string>
+    <string name="goals_action_archive">Archivar meta</string>
+    <string name="goals_action_deposit">Abonar saldo</string>
+
+    <!-- Search & Common -->
+    <string name="search_recent_title">Búsquedas recientes</string>
+    <string name="search_clear_all">Limpiar todo</string>
+    <string name="empty_list_save_error">La lista está vacía y no se puede guardar.</string>
 </resources>

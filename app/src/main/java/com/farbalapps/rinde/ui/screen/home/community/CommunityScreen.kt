@@ -149,11 +149,13 @@ fun CommunityScreen(
         onReportExpired = { postId, title, authorId -> viewModel.reportAsExpired(postId, title, authorId) },
         onMarkAvailable = { viewModel.markAsAvailable(it) },
         onSharePost = { post ->
+            val shareText = context.getString(R.string.community_share_subject, post.title, post.id)
+            val chooserTitle = context.getString(R.string.community_share_chooser_title)
             val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
                 type = "text/plain"
-                putExtra(android.content.Intent.EXTRA_TEXT, "¡Mira esta oferta en Rinde!\n${post.title}\nhttps://rinde.app/post/${post.id}")
+                putExtra(android.content.Intent.EXTRA_TEXT, shareText)
             }
-            context.startActivity(android.content.Intent.createChooser(shareIntent, "Compartir publicación"))
+            context.startActivity(android.content.Intent.createChooser(shareIntent, chooserTitle))
         },
         onNavigateToPostDetail = onNavigateToPostDetail,
         onNavigateToUserProfile = onNavigateToUserProfile,
@@ -169,16 +171,16 @@ fun EmptyFeedState(
 ) {
     val (title, subtitle) = when (tab) {
         CommunityTab.DISCOVER -> Pair(
-            "Aún no hay publicaciones",
-            "Las nuevas ofertas publicadas por la comunidad aparecerán en esta sección."
+            stringResource(R.string.community_empty_discover_title),
+            stringResource(R.string.community_empty_discover_desc)
         )
         CommunityTab.HOT -> Pair(
-            "Aún no hay publicaciones Hot",
-            "Las publicaciones con más votos y mejor valoración de la comunidad aparecerán aquí."
+            stringResource(R.string.community_empty_hot_title),
+            stringResource(R.string.community_empty_hot_desc)
         )
         CommunityTab.SAVED -> Pair(
-            "No tienes publicaciones guardadas",
-            "Guarda las ofertas que te interesen para acceder a ellas fácilmente en cualquier momento."
+            stringResource(R.string.community_empty_saved_title),
+            stringResource(R.string.community_empty_saved_desc)
         )
     }
 
@@ -505,7 +507,7 @@ fun FeedErrorState(
                 }
 
                 Text(
-                    text = "No se pudieron cargar las publicaciones",
+                    text = stringResource(R.string.community_error_load_failed),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -521,7 +523,7 @@ fun FeedErrorState(
                     onClick = onRetry
                 ) {
                     Text(
-                        text = "Reintentar",
+                        text = stringResource(R.string.community_btn_retry),
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.SemiBold
@@ -1082,7 +1084,7 @@ fun CommunityContent(
                                 IconButton(onClick = { showNotificationsSheet = true }) {
                                     Icon(
                                         imageVector = Icons.Outlined.Notifications,
-                                        contentDescription = "Notificaciones",
+                                        contentDescription = stringResource(R.string.community_notif_title),
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
@@ -1112,7 +1114,7 @@ fun CommunityContent(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    text = "Hay $newPostsCount nuevas ofertas",
+                                    text = stringResource(R.string.community_new_offers_banner, newPostsCount),
                                     style = MaterialTheme.typography.labelMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer

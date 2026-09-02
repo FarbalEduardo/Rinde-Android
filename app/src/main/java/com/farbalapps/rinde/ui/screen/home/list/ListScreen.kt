@@ -91,7 +91,7 @@ fun ListScreen(
                     onCancelSelection = { viewModel.toggleSelectionMode(false) },
                     onSaveList = { 
                         if (totalItemsCount == 0) {
-                            android.widget.Toast.makeText(context, "La lista está vacía y no se puede guardar.", android.widget.Toast.LENGTH_SHORT).show()
+                            android.widget.Toast.makeText(context, context.getString(R.string.empty_list_save_error), android.widget.Toast.LENGTH_SHORT).show()
                         } else {
                             viewModel.openSaveListDialog() 
                         }

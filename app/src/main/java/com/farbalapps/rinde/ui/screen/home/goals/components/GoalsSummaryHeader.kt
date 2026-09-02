@@ -48,7 +48,9 @@ fun GoalsSummaryHeader(
             ) {
                 Icon(
                     imageVector = if (isPrivacyMode) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                    contentDescription = if (isPrivacyMode) "Mostrar saldos" else "Ocultar saldos",
+                    contentDescription = androidx.compose.ui.res.stringResource(
+                        if (isPrivacyMode) com.farbalapps.rinde.R.string.goals_privacy_show else com.farbalapps.rinde.R.string.goals_privacy_hide
+                    ),
                     tint = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             }
@@ -60,7 +62,7 @@ fun GoalsSummaryHeader(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "RESUMEN TOTAL",
+                    text = androidx.compose.ui.res.stringResource(com.farbalapps.rinde.R.string.goals_total_summary),
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
@@ -70,7 +72,7 @@ fun GoalsSummaryHeader(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = if (isPrivacyMode) "$ ***.**" else String.format("$%,.2f", summary.totalSaved),
+                    text = if (isPrivacyMode) androidx.compose.ui.res.stringResource(com.farbalapps.rinde.R.string.goals_privacy_masked) else String.format("$%,.2f", summary.totalSaved),
                     style = MaterialTheme.typography.displayMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -84,7 +86,7 @@ fun GoalsSummaryHeader(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Has alcanzado el ${summary.progressPercent}% de tus objetivos",
+                        text = androidx.compose.ui.res.stringResource(com.farbalapps.rinde.R.string.goals_progress_summary, summary.progressPercent),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onPrimaryContainer,

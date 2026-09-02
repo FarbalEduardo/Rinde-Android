@@ -11,6 +11,7 @@ composeBom = "2024.09.00"
 googleServices = "4.4.4"
 firebaseBom = "34.17.0"
 dataStore = "1.1.1"
+appcompat = "1.7.0"
 
 lifecycleCompose = "2.8.4"
 navigationCompose = "2.8.0"
@@ -44,6 +45,7 @@ cloudinary-android = { group = "com.cloudinary", name = "cloudinary-android", ve
 
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "splashscreen" }
+androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }

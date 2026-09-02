@@ -83,7 +83,7 @@ fun FeaturedGoalCard(
                                 modifier = Modifier.size(16.dp)
                             )
                             Text(
-                                text = "🎉 ¡Meta cumplida! (Toca para archivar)",
+                                text = androidx.compose.ui.res.stringResource(com.farbalapps.rinde.R.string.goals_card_completed_badge),
                                 style = MaterialTheme.typography.labelMedium,
                                 color = Color(0xFF2E7D32),
                                 fontWeight = FontWeight.Bold

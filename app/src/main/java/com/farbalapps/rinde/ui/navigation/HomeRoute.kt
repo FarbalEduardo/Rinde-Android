@@ -14,6 +14,7 @@ sealed interface HomeRoute {
     @Serializable data object BlockedUsers : HomeRoute
     @Serializable data object CreatePost : HomeRoute
     @Serializable data object Settings : HomeRoute
+    @Serializable data object About : HomeRoute
 
     @Serializable
     data class UserProfile(val userId: String) : HomeRoute

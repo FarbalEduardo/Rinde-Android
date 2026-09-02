@@ -135,7 +135,7 @@ fun EmptyGoalsContent(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Ver metas guardadas",
+                            text = androidx.compose.ui.res.stringResource(com.farbalapps.rinde.R.string.goals_btn_view_archived),
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
@@ -262,7 +262,7 @@ private fun AnimatedGoalGraphic(
 @Composable
 private fun EmptyGoalsTextContent() {
     Text(
-        text = "Empieza a ahorrar para tus sueños",
+        text = androidx.compose.ui.res.stringResource(com.farbalapps.rinde.R.string.goals_empty_hero_title),
         style = MaterialTheme.typography.headlineSmall,
         fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.onSurface,
@@ -272,7 +272,7 @@ private fun EmptyGoalsTextContent() {
     Spacer(modifier = Modifier.height(8.dp))
 
     Text(
-        text = "Crea apartados personalizados con metas de ahorro y monitorea tu progreso semanal.",
+        text = androidx.compose.ui.res.stringResource(com.farbalapps.rinde.R.string.goals_empty_hero_desc),
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         textAlign = TextAlign.Center,
@@ -307,7 +307,7 @@ private fun CreateFirstGoalButton(onClick: () -> Unit) {
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "Crea tu primera meta",
+                text = androidx.compose.ui.res.stringResource(com.farbalapps.rinde.R.string.goals_btn_create_first),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )

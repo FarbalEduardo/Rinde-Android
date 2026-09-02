@@ -283,7 +283,7 @@ fun HomeScreenFab(
                     Icon(Icons.Default.AddShoppingCart, stringResource(id = R.string.add_entry))
                 }
             }
-            destination?.hasRoute<HomeRoute.Community>() == true || destination?.hasRoute<HomeRoute.Profile>() == true -> {
+            destination?.hasRoute<HomeRoute.Community>() == true  -> {
                 FloatingActionButton(
                     onClick = onAddCommunityPost,
                     containerColor = com.farbalapps.rinde.ui.theme.RindePrimary,
@@ -292,9 +292,7 @@ fun HomeScreenFab(
                     Icon(Icons.Default.PostAdd, stringResource(id = R.string.community_fab_desc))
                 }
             }
-            destination?.hasRoute<HomeRoute.Goals>() == true -> {
-                // El FAB se oculta en la pantalla de metas ya que se utiliza DashedAddGoalCard
-            }
+
         }
     }
 }

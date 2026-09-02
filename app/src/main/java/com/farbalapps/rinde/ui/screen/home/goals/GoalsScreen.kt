@@ -41,8 +41,8 @@ fun GoalsScreen(
             when (event) {
                 is GoalsEvent.Success -> Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
                 is GoalsEvent.ValidationError -> Toast.makeText(context, event.message, Toast.LENGTH_LONG).show()
-                is GoalsEvent.GoalLimitReached -> Toast.makeText(context, "Límite de metas alcanzado (máximo 2).", Toast.LENGTH_SHORT).show()
-                is GoalsEvent.GoalCompleted -> Toast.makeText(context, "🎉 ¡Felicidades! Completaste la meta: ${event.title}", Toast.LENGTH_LONG).show()
+                is GoalsEvent.GoalLimitReached -> Toast.makeText(context, context.getString(com.farbalapps.rinde.R.string.goals_limit_reached), Toast.LENGTH_SHORT).show()
+                is GoalsEvent.GoalCompleted -> Toast.makeText(context, context.getString(com.farbalapps.rinde.R.string.goals_completed_toast, event.title), Toast.LENGTH_LONG).show()
                 is GoalsEvent.DepositExceedsTarget -> { }
             }
         }
@@ -98,11 +98,11 @@ fun GoalsScreenContent(
     if (showLimitDialog) {
         AlertDialog(
             onDismissRequest = { showLimitDialog = false },
-            title = { Text("Límite de metas alcanzado") },
-            text = { Text("Actualmente solo puedes tener un máximo de 2 metas activas. Elimina una meta existente o espera a nuestras próximas actualizaciones para tener metas ilimitadas.") },
+            title = { Text(androidx.compose.ui.res.stringResource(com.farbalapps.rinde.R.string.goals_dialog_limit_title)) },
+            text = { Text(androidx.compose.ui.res.stringResource(com.farbalapps.rinde.R.string.goals_dialog_limit_text)) },
             confirmButton = {
                 TextButton(onClick = { showLimitDialog = false }) {
-                    Text("Entendido")
+                    Text(androidx.compose.ui.res.stringResource(com.farbalapps.rinde.R.string.goals_dialog_limit_ok))
                 }
             }
         )

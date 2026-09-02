@@ -14,6 +14,8 @@ import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -30,6 +32,7 @@ data class ProfileActions(
     val onNavigateToPosts: (userId: String, userName: String) -> Unit = { _, _ -> },
     val onNavigateToSaved: () -> Unit = {},
     val onNavigateToBlocked: () -> Unit = {},
+    val onNavigateToAbout: () -> Unit = {},
     val onLogout: () -> Unit = {},
     val onSetTheme: (ThemeMode) -> Unit = {},
     val onSetLanguage: (AppLanguage) -> Unit = {},
@@ -46,6 +49,7 @@ fun ProfileScreen(
     onNavigateToPosts: (userId: String, userName: String) -> Unit = { _, _ -> },
     onNavigateToSaved: () -> Unit = {},
     onNavigateToBlocked: () -> Unit = {},
+    onNavigateToAbout: () -> Unit = {},
     onLogout: () -> Unit = {},
     viewModel: ProfileViewModel = hiltViewModel()
 ) {
@@ -110,13 +114,14 @@ fun ProfileScreen(
         )
     }
 
-    val actions = remember(viewModel, onBack, onEditProfile, onNavigateToPosts, onNavigateToSaved, onNavigateToBlocked, onLogout) {
+    val actions = remember(viewModel, onBack, onEditProfile, onNavigateToPosts, onNavigateToSaved, onNavigateToBlocked, onNavigateToAbout, onLogout) {
         ProfileActions(
             onBack = { onBack?.invoke() },
             onEditProfile = onEditProfile,
             onNavigateToPosts = onNavigateToPosts,
             onNavigateToSaved = onNavigateToSaved,
             onNavigateToBlocked = onNavigateToBlocked,
+            onNavigateToAbout = onNavigateToAbout,
             onLogout = { showLogoutDialog = true },
             onSetTheme = { viewModel.setTheme(it) },
             onSetLanguage = { viewModel.setLanguage(it) },
@@ -159,7 +164,10 @@ fun ProfileScreen(
         modifier = Modifier.fillMaxSize()
     ) { padding ->
         ProfileContent(
-            innerPadding = padding,
+            innerPadding = PaddingValues (
+                top = padding.calculateTopPadding(),
+                bottom = innerPadding.calculateBottomPadding() 
+            ),
             uiState = uiState,
             currentTheme = themeMode,
             currentLanguage = appLanguage,
@@ -210,7 +218,7 @@ fun ProfileContent(
                 start = 16.dp,
                 end = 16.dp,
                 top = 8.dp,
-                bottom = 40.dp
+                bottom = 16.dp
             )
         ) {
             // 1. Tarjeta Principal de Identidad / Perfil (Header)
@@ -249,11 +257,7 @@ fun ProfileContent(
                 }
                 item {
                     ProfileGroupCard {
-                        ProfileGroupItem(
-                            icon = Icons.Default.PersonOutline,
-                            title = stringResource(R.string.edit_profile_title),
-                            onClick = actions.onEditProfile
-                        )
+
                         ProfileGroupItem(
                             icon = if (isPrivate) Icons.Default.Lock else Icons.Default.LockOpen,
                             title = stringResource(R.string.settings_item_privacy_label),
@@ -285,13 +289,13 @@ fun ProfileContent(
                 item {
                     ProfileGroupCard {
                         val themeText = when (currentTheme) {
-                            ThemeMode.SYSTEM -> "Sistema"
-                            ThemeMode.LIGHT -> "Claro"
-                            ThemeMode.DARK -> "Oscuro"
+                            ThemeMode.SYSTEM -> stringResource(R.string.theme_system)
+                            ThemeMode.LIGHT -> stringResource(R.string.theme_light)
+                            ThemeMode.DARK -> stringResource(R.string.theme_dark)
                         }
                         val languageText = when (currentLanguage) {
-                            AppLanguage.ES -> "Español"
-                            AppLanguage.EN -> "English"
+                            AppLanguage.ES -> stringResource(R.string.language_es)
+                            AppLanguage.EN -> stringResource(R.string.language_en)
                         }
                         ProfileGroupItem(
                             icon = Icons.Default.Palette,
@@ -309,7 +313,7 @@ fun ProfileContent(
                     }
                 }
 
-                // 5. Sección: Información y Sesión
+                // 5. Sección: Información y Soporte
                 item {
                     ProfileSectionTitle(title = stringResource(R.string.settings_section_more))
                 }
@@ -318,8 +322,16 @@ fun ProfileContent(
                         ProfileGroupItem(
                             icon = Icons.Default.Info,
                             title = stringResource(R.string.settings_item_about),
-                            onClick = { }
+                            showDivider = false,
+                            onClick = actions.onNavigateToAbout
                         )
+                    }
+                }
+
+                // 6. Al final de la lista: Cerrar sesión
+                item {
+                    Spacer(modifier = Modifier.height(14.dp))
+                    ProfileGroupCard {
                         ProfileGroupItem(
                             icon = Icons.AutoMirrored.Filled.Logout,
                             title = stringResource(R.string.settings_btn_logout),
@@ -347,8 +359,6 @@ fun ProfileContent(
                     }
                 }
             }
-
-            item { Spacer(modifier = Modifier.height(24.dp)) }
         }
     }
 }
