@@ -5,6 +5,8 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -31,6 +33,7 @@ import androidx.compose.ui.tooling.preview.Preview
 @Composable
 fun EditProfileScreen(
     onBack: () -> Unit,
+    onAccountDeleted: () -> Unit = onBack,
     viewModel: EditProfileViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -41,13 +44,20 @@ fun EditProfileScreen(
         }
     }
 
+    LaunchedEffect(uiState.isAccountDeleted) {
+        if (uiState.isAccountDeleted) {
+            onAccountDeleted()
+        }
+    }
+
     EditProfileContent(
         uiState = uiState,
         onBack = onBack,
         onNameChange = { viewModel.onNameChange(it) },
         onPhotoChange = { viewModel.onPhotoChange(it) },
         onPrivacyToggle = { viewModel.togglePrivacy(it) },
-        onSave = { viewModel.saveProfile() }
+        onSave = { viewModel.saveProfile() },
+        onDeleteAccount = { viewModel.deleteAccount() }
     )
 }
 
@@ -59,7 +69,8 @@ fun EditProfileContent(
     onNameChange: (String) -> Unit,
     onPhotoChange: (String?) -> Unit,
     onPrivacyToggle: (Boolean) -> Unit,
-    onSave: () -> Unit
+    onSave: () -> Unit,
+    onDeleteAccount: () -> Unit
 ) {
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
@@ -81,13 +92,15 @@ fun EditProfileContent(
                 .fillMaxSize()
                 .padding(innerPadding)
                 .padding(horizontal = 24.dp)
+                .verticalScroll(androidx.compose.foundation.rememberScrollState())
         ) {
             EditProfileForm(
                 uiState = uiState,
                 onNameChange = onNameChange,
                 onPhotoChange = onPhotoChange,
                 onPrivacyToggle = onPrivacyToggle,
-                onSave = onSave
+                onSave = onSave,
+                onDeleteAccount = onDeleteAccount
             )
         }
     }
@@ -100,7 +113,8 @@ fun EditProfileForm(
     onNameChange: (String) -> Unit,
     onPhotoChange: (String?) -> Unit,
     onPrivacyToggle: (Boolean) -> Unit,
-    onSave: () -> Unit
+    onSave: () -> Unit,
+    onDeleteAccount: () -> Unit
 ) {
     val photoLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
@@ -190,6 +204,84 @@ fun EditProfileForm(
             modifier = Modifier.padding(top = 8.dp, start = 4.dp)
         )
     }
+
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = {
+                Text(
+                    text = stringResource(R.string.settings_delete_account_dialog_title),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text(
+                    text = stringResource(R.string.settings_delete_account_dialog_desc),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDeleteDialog = false
+                        onDeleteAccount()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Text(
+                        text = stringResource(R.string.settings_delete_account_confirm),
+                        color = MaterialTheme.colorScheme.onError
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text(stringResource(R.string.btn_cancel))
+                }
+            }
+        )
+    }
+
+    Spacer(modifier = Modifier.height(36.dp))
+
+    // Zona de eliminación de cuenta
+    HorizontalDivider(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+    )
+
+    Spacer(modifier = Modifier.height(20.dp))
+
+    OutlinedButton(
+        onClick = { showDeleteDialog = true },
+        modifier = Modifier.fillMaxWidth().height(50.dp),
+        shape = MaterialTheme.shapes.large,
+        colors = ButtonDefaults.outlinedButtonColors(
+            contentColor = MaterialTheme.colorScheme.error
+        ),
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.error.copy(alpha = 0.4f)
+        )
+    ) {
+        Icon(
+            imageVector = Icons.Default.DeleteForever,
+            contentDescription = null,
+            modifier = Modifier.size(20.dp),
+            tint = MaterialTheme.colorScheme.error
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = stringResource(R.string.settings_btn_delete_account),
+            fontWeight = FontWeight.SemiBold
+        )
+    }
+
+    Spacer(modifier = Modifier.height(32.dp))
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -257,7 +349,8 @@ fun EditProfileScreenPreview() {
             onNameChange = {},
             onPhotoChange = {},
             onPrivacyToggle = {},
-            onSave = {}
+            onSave = {},
+            onDeleteAccount = {}
         )
     }
 }

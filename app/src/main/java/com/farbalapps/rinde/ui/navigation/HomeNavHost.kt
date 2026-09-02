@@ -184,7 +184,10 @@ private fun androidx.navigation.NavGraphBuilder.addProfileScreens(
         popEnterTransition = { slideInHorizontally(initialOffsetX = { -it / 3 }, animationSpec = tween(300)) + fadeIn() },
         popExitTransition = { slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(300)) + fadeOut() }
     ) {
-        EditProfileScreen(onBack = { navController.popBackStack() })
+        EditProfileScreen(
+            onBack = { navController.popBackStack() },
+            onAccountDeleted = onLogout
+        )
     }
     composable<HomeRoute.SavedPosts>(
         enterTransition = { slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(300)) + fadeIn() },

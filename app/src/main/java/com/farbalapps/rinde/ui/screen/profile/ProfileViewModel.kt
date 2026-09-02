@@ -47,6 +47,7 @@ class ProfileViewModel @Inject constructor(
     private val setLanguageUseCase: SetLanguageUseCase,
     private val isProfilePrivateUseCase: IsProfilePrivateUseCase,
     private val togglePrivacyUseCase: TogglePrivacyUseCase,
+    private val settingsManager: com.farbalapps.rinde.data.local.SettingsManager,
     private val firebaseAuth: FirebaseAuth,
     private val feedRepository: FeedRepository
 ) : ViewModel() {
@@ -59,6 +60,12 @@ class ProfileViewModel @Inject constructor(
 
     val appLanguage: StateFlow<AppLanguage> = getLanguageUseCase()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AppLanguage.ES)
+
+    val appCurrency: StateFlow<com.farbalapps.rinde.data.local.AppCurrency> = settingsManager.appCurrency
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), com.farbalapps.rinde.data.local.AppCurrency.CLP)
+
+    val isBunkerMode: StateFlow<Boolean> = settingsManager.isBunkerMode
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     val isProfilePrivate: StateFlow<Boolean> = isProfilePrivateUseCase()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
@@ -259,6 +266,18 @@ class ProfileViewModel @Inject constructor(
     fun togglePrivacy(isPrivate: Boolean) {
         viewModelScope.launch {
             togglePrivacyUseCase(isPrivate)
+        }
+    }
+
+    fun setCurrency(currency: com.farbalapps.rinde.data.local.AppCurrency) {
+        viewModelScope.launch {
+            settingsManager.setAppCurrency(currency)
+        }
+    }
+
+    fun toggleBunkerMode(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsManager.setBunkerMode(enabled)
         }
     }
 

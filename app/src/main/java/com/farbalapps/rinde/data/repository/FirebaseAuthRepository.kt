@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import com.google.firebase.auth.AuthResult
 import com.google.android.gms.tasks.Task
+import kotlinx.coroutines.tasks.await
 
 import com.farbalapps.rinde.data.local.dao.PostDao
 import com.farbalapps.rinde.data.local.dao.GoalsDao
@@ -157,4 +158,12 @@ class FirebaseAuthRepository @Inject constructor(
             }
         awaitClose { }
     }
+
+    override suspend fun deleteAccount(): Result<Unit> = kotlin.runCatching {
+        val user = firebaseAuth.currentUser ?: throw IllegalStateException("No active user")
+        clearUserLocalState()
+        user.delete().await()
+        logout()
+    }
 }
+

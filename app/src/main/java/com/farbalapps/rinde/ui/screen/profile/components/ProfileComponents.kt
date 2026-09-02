@@ -623,3 +623,82 @@ fun LanguageSelectorSheet(
         }
     }
 }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CurrencySelectorSheet(
+    currentCurrency: com.farbalapps.rinde.data.local.AppCurrency,
+    onCurrencySelected: (com.farbalapps.rinde.data.local.AppCurrency) -> Unit,
+    onDismiss: () -> Unit
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 36.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.settings_item_currency),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(vertical = 12.dp)
+            )
+
+            com.farbalapps.rinde.data.local.AppCurrency.entries.forEach { currency ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable {
+                            onCurrencySelected(currency)
+                            onDismiss()
+                        }
+                        .padding(vertical = 12.dp, horizontal = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = currency.symbol,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = currency.code,
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = if (currency == currentCurrency) FontWeight.Bold else FontWeight.Normal
+                            )
+                            Text(
+                                text = currency.label,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    RadioButton(
+                        selected = (currency == currentCurrency),
+                        onClick = {
+                            onCurrencySelected(currency)
+                            onDismiss()
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+

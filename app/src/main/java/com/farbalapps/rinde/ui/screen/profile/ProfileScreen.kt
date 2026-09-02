@@ -19,6 +19,9 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.farbalapps.rinde.R
 import com.farbalapps.rinde.data.local.AppLanguage
 import com.farbalapps.rinde.data.local.ThemeMode
@@ -56,12 +59,18 @@ fun ProfileScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     val appLanguage by viewModel.appLanguage.collectAsStateWithLifecycle()
+    val appCurrency by viewModel.appCurrency.collectAsStateWithLifecycle()
+    val isBunkerMode by viewModel.isBunkerMode.collectAsStateWithLifecycle()
     val isProfilePrivate by viewModel.isProfilePrivate.collectAsStateWithLifecycle()
 
     val snackbarHostState = remember { SnackbarHostState() }
     var showLogoutDialog by remember { mutableStateOf(false) }
     var showThemeSheet by remember { mutableStateOf(false) }
     var showLanguageSheet by remember { mutableStateOf(false) }
+    var showCurrencySheet by remember { mutableStateOf(false) }
+
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(targetUserId) {
         viewModel.loadProfile(targetUserId)
@@ -111,6 +120,14 @@ fun ProfileScreen(
             currentLanguage = appLanguage,
             onLanguageSelected = { viewModel.setLanguage(it) },
             onDismiss = { showLanguageSheet = false }
+        )
+    }
+
+    if (showCurrencySheet) {
+        CurrencySelectorSheet(
+            currentCurrency = appCurrency,
+            onCurrencySelected = { viewModel.setCurrency(it) },
+            onDismiss = { showCurrencySheet = false }
         )
     }
 
@@ -171,9 +188,38 @@ fun ProfileScreen(
             uiState = uiState,
             currentTheme = themeMode,
             currentLanguage = appLanguage,
+            currentCurrency = appCurrency,
+            isBunkerMode = isBunkerMode,
             isPrivate = isProfilePrivate,
             onShowThemeSheet = { showThemeSheet = true },
             onShowLanguageSheet = { showLanguageSheet = true },
+            onShowCurrencySheet = { showCurrencySheet = true },
+            onToggleBunkerMode = { viewModel.toggleBunkerMode(it) },
+            onClearCache = {
+                coroutineScope.launch {
+                    withContext(Dispatchers.IO) {
+                        runCatching { context.cacheDir.deleteRecursively() }
+                    }
+                    snackbarHostState.showSnackbar(context.getString(R.string.settings_storage_cleared))
+                }
+            },
+            onShareApp = {
+                val sendIntent = android.content.Intent().apply {
+                    action = android.content.Intent.ACTION_SEND
+                    putExtra(android.content.Intent.EXTRA_TEXT, context.getString(R.string.settings_share_text))
+                    type = "text/plain"
+                }
+                context.startActivity(android.content.Intent.createChooser(sendIntent, null))
+            },
+            onRateApp = {
+                runCatching {
+                    val uri = android.net.Uri.parse("market://details?id=${context.packageName}")
+                    context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, uri))
+                }.onFailure {
+                    val uri = android.net.Uri.parse("https://play.google.com/store/apps/details?id=${context.packageName}")
+                    context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, uri))
+                }
+            },
             actions = actions
         )
     }
@@ -185,9 +231,16 @@ fun ProfileContent(
     uiState: ProfileUiState,
     currentTheme: ThemeMode,
     currentLanguage: AppLanguage,
+    currentCurrency: com.farbalapps.rinde.data.local.AppCurrency,
+    isBunkerMode: Boolean,
     isPrivate: Boolean,
     onShowThemeSheet: () -> Unit,
     onShowLanguageSheet: () -> Unit,
+    onShowCurrencySheet: () -> Unit,
+    onToggleBunkerMode: (Boolean) -> Unit,
+    onClearCache: () -> Unit,
+    onShareApp: () -> Unit,
+    onRateApp: () -> Unit,
     actions: ProfileActions
 ) {
     Surface(
@@ -251,13 +304,39 @@ fun ProfileContent(
                     }
                 }
 
-                // 3. Sección: Cuenta y Seguridad
+                // 3. Sección: Preferencias de Compra
+                item {
+                    ProfileSectionTitle(title = stringResource(R.string.settings_section_preferences))
+                }
+                item {
+                    ProfileGroupCard {
+                        ProfileGroupItem(
+                            icon = Icons.Default.AttachMoney,
+                            title = stringResource(R.string.settings_item_currency),
+                            value = currentCurrency.code,
+                            onClick = onShowCurrencySheet
+                        )
+                        ProfileGroupItem(
+                            icon = Icons.Default.WifiOff,
+                            title = stringResource(R.string.settings_item_bunker),
+                            subtitle = stringResource(R.string.settings_item_bunker_desc),
+                            trailingContent = {
+                                Switch(
+                                    checked = isBunkerMode,
+                                    onCheckedChange = onToggleBunkerMode
+                                )
+                            },
+                            showDivider = false
+                        )
+                    }
+                }
+
+                // 4. Sección: Cuenta y Seguridad
                 item {
                     ProfileSectionTitle(title = stringResource(R.string.settings_section_privacy))
                 }
                 item {
                     ProfileGroupCard {
-
                         ProfileGroupItem(
                             icon = if (isPrivate) Icons.Default.Lock else Icons.Default.LockOpen,
                             title = stringResource(R.string.settings_item_privacy_label),
@@ -282,7 +361,7 @@ fun ProfileContent(
                     }
                 }
 
-                // 4. Sección: Preferencias
+                // 5. Sección: Aplicación y Medios
                 item {
                     ProfileSectionTitle(title = stringResource(R.string.settings_section_app))
                 }
@@ -307,18 +386,35 @@ fun ProfileContent(
                             icon = Icons.Default.Language,
                             title = stringResource(R.string.settings_item_language),
                             value = languageText,
-                            showDivider = false,
                             onClick = onShowLanguageSheet
+                        )
+                        ProfileGroupItem(
+                            icon = Icons.Default.CleaningServices,
+                            title = stringResource(R.string.settings_item_storage),
+                            subtitle = stringResource(R.string.settings_item_storage_desc),
+                            showChevron = false,
+                            showDivider = false,
+                            onClick = onClearCache
                         )
                     }
                 }
 
-                // 5. Sección: Información y Soporte
+                // 6. Sección: Comunidad y Soporte
                 item {
                     ProfileSectionTitle(title = stringResource(R.string.settings_section_more))
                 }
                 item {
                     ProfileGroupCard {
+                        ProfileGroupItem(
+                            icon = Icons.Default.Share,
+                            title = stringResource(R.string.settings_item_share),
+                            onClick = onShareApp
+                        )
+                        ProfileGroupItem(
+                            icon = Icons.Default.StarRate,
+                            title = stringResource(R.string.settings_item_rate),
+                            onClick = onRateApp
+                        )
                         ProfileGroupItem(
                             icon = Icons.Default.Info,
                             title = stringResource(R.string.settings_item_about),
@@ -328,7 +424,7 @@ fun ProfileContent(
                     }
                 }
 
-                // 6. Al final de la lista: Cerrar sesión
+                // 7. Al final de la lista: Cerrar sesión
                 item {
                     Spacer(modifier = Modifier.height(14.dp))
                     ProfileGroupCard {
@@ -437,9 +533,16 @@ fun ProfileScreenPreview() {
                 ),
                 currentTheme = ThemeMode.SYSTEM,
                 currentLanguage = AppLanguage.ES,
+                currentCurrency = com.farbalapps.rinde.data.local.AppCurrency.CLP,
+                isBunkerMode = false,
                 isPrivate = false,
                 onShowThemeSheet = {},
                 onShowLanguageSheet = {},
+                onShowCurrencySheet = {},
+                onToggleBunkerMode = {},
+                onClearCache = {},
+                onShareApp = {},
+                onRateApp = {},
                 actions = ProfileActions()
             )
         }

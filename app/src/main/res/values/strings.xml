@@ -298,4 +298,22 @@
     <string name="search_recent_title">Búsquedas recientes</string>
     <string name="search_clear_all">Limpiar todo</string>
     <string name="empty_list_save_error">La lista está vacía y no se puede guardar.</string>
+
+    <!-- Profile Extended Options -->
+    <string name="settings_section_preferences">Preferencias de Compra</string>
+    <string name="settings_item_currency">Moneda predeterminada</string>
+    <string name="settings_item_bunker">Modo Búnker (Offline)</string>
+    <string name="settings_item_bunker_desc">Precarga datos y optimiza escaneo sin conexión</string>
+    <string name="settings_item_storage">Almacenamiento y Caché</string>
+    <string name="settings_item_storage_desc">Liberar espacio ocupado por imágenes locales</string>
+    <string name="settings_storage_cleared">Caché limpiada con éxito</string>
+    <string name="settings_item_share">Invitar amigos a Rinde</string>
+    <string name="settings_share_text">¡Descarga Rinde! La app comunitaria para encontrar las mejores ofertas y comparar precios inteligentes. https://rinde.app</string>
+    <string name="settings_item_rate">Calificar la aplicación</string>
+    <string name="settings_section_account_danger">Gestión de Cuenta</string>
+    <string name="settings_btn_delete_account">Eliminar mi cuenta</string>
+    <string name="settings_delete_account_desc">Borra permanentemente tu perfil y datos</string>
+    <string name="settings_delete_account_dialog_title">¿Eliminar cuenta permanentemente?</string>
+    <string name="settings_delete_account_dialog_desc">Esta acción es irreversible. Se eliminará tu perfil, historial y datos de Rinde.</string>
+    <string name="settings_delete_account_confirm">Eliminar definitivamente</string>
 </resources>

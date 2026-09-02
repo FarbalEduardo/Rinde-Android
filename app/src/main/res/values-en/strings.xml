@@ -296,4 +296,22 @@
     <string name="search_recent_title">Recent searches</string>
     <string name="search_clear_all">Clear all</string>
     <string name="empty_list_save_error">List is empty and cannot be saved.</string>
+
+    <!-- Profile Extended Options -->
+    <string name="settings_section_preferences">Shopping Preferences</string>
+    <string name="settings_item_currency">Default currency</string>
+    <string name="settings_item_bunker">Bunker Mode (Offline)</string>
+    <string name="settings_item_bunker_desc">Preload data and optimize offline scanning</string>
+    <string name="settings_item_storage">Storage &amp; Cache</string>
+    <string name="settings_item_storage_desc">Free up space used by cached images</string>
+    <string name="settings_storage_cleared">Cache cleared successfully</string>
+    <string name="settings_item_share">Invite friends to Rinde</string>
+    <string name="settings_share_text">Download Rinde! The community app to find the best deals and smart price comparisons. https://rinde.app</string>
+    <string name="settings_item_rate">Rate the app</string>
+    <string name="settings_section_account_danger">Account Management</string>
+    <string name="settings_btn_delete_account">Delete my account</string>
+    <string name="settings_delete_account_desc">Permanently delete your profile and data</string>
+    <string name="settings_delete_account_dialog_title">Delete account permanently?</string>
+    <string name="settings_delete_account_dialog_desc">This action cannot be undone. Your profile, history and Rinde data will be deleted.</string>
+    <string name="settings_delete_account_confirm">Delete permanently</string>
 </resources>

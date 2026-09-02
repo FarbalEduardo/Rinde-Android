@@ -13,6 +13,12 @@ val Context.settingsDataStore by preferencesDataStore(name = "settings_prefs")
 
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
 enum class AppLanguage { ES, EN }
+enum class AppCurrency(val symbol: String, val code: String, val label: String) {
+    CLP("$", "CLP", "Peso chileno (CLP)"),
+    MXN("$", "MXN", "Peso mexicano (MXN)"),
+    USD("$", "USD", "Dólar estadounidense (USD)"),
+    EUR("€", "EUR", "Euro (EUR)")
+}
 
 class SettingsManager @Inject constructor(
     @ApplicationContext private val context: Context
@@ -20,6 +26,8 @@ class SettingsManager @Inject constructor(
     companion object {
         private val THEME_MODE = stringPreferencesKey("theme_mode")
         private val APP_LANGUAGE = stringPreferencesKey("app_language")
+        private val APP_CURRENCY = stringPreferencesKey("app_currency")
+        private val BUNKER_MODE = androidx.datastore.preferences.core.booleanPreferencesKey("bunker_mode")
         private val PRIVACY_MODE = androidx.datastore.preferences.core.booleanPreferencesKey("privacy_mode")
     }
 
@@ -31,6 +39,15 @@ class SettingsManager @Inject constructor(
     val appLanguage: Flow<AppLanguage> = context.settingsDataStore.data.map { prefs ->
         val name = prefs[APP_LANGUAGE] ?: AppLanguage.ES.name
         AppLanguage.valueOf(name)
+    }
+
+    val appCurrency: Flow<AppCurrency> = context.settingsDataStore.data.map { prefs ->
+        val name = prefs[APP_CURRENCY] ?: AppCurrency.CLP.name
+        runCatching { AppCurrency.valueOf(name) }.getOrDefault(AppCurrency.CLP)
+    }
+
+    val isBunkerMode: Flow<Boolean> = context.settingsDataStore.data.map { prefs ->
+        prefs[BUNKER_MODE] ?: false
     }
 
     val isPrivacyMode: Flow<Boolean> = context.settingsDataStore.data.map { prefs ->
@@ -56,6 +73,18 @@ class SettingsManager @Inject constructor(
         androidx.appcompat.app.AppCompatDelegate.setApplicationLocales(
             androidx.core.os.LocaleListCompat.forLanguageTags(localeTag)
         )
+    }
+
+    suspend fun setAppCurrency(currency: AppCurrency) {
+        context.settingsDataStore.edit { prefs ->
+            prefs[APP_CURRENCY] = currency.name
+        }
+    }
+
+    suspend fun setBunkerMode(enabled: Boolean) {
+        context.settingsDataStore.edit { prefs ->
+            prefs[BUNKER_MODE] = enabled
+        }
     }
 
     suspend fun setPrivacyMode(enabled: Boolean) {
