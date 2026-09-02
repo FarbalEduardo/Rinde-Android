@@ -305,31 +305,31 @@ fun ProfileContent(
                 }
 
                 // 3. Sección: Preferencias de Compra
-                item {
-                    ProfileSectionTitle(title = stringResource(R.string.settings_section_preferences))
-                }
-                item {
-                    ProfileGroupCard {
-                        ProfileGroupItem(
-                            icon = Icons.Default.AttachMoney,
-                            title = stringResource(R.string.settings_item_currency),
-                            value = currentCurrency.code,
-                            onClick = onShowCurrencySheet
-                        )
-                        ProfileGroupItem(
-                            icon = Icons.Default.WifiOff,
-                            title = stringResource(R.string.settings_item_bunker),
-                            subtitle = stringResource(R.string.settings_item_bunker_desc),
-                            trailingContent = {
-                                Switch(
-                                    checked = isBunkerMode,
-                                    onCheckedChange = onToggleBunkerMode
-                                )
-                            },
-                            showDivider = false
-                        )
-                    }
-                }
+//                item {
+//                    ProfileSectionTitle(title = stringResource(R.string.settings_section_preferences))
+//                }
+//                item {
+//                    ProfileGroupCard {
+//                        ProfileGroupItem(
+//                            icon = Icons.Default.AttachMoney,
+//                            title = stringResource(R.string.settings_item_currency),
+//                            value = currentCurrency.code,
+//                            onClick = onShowCurrencySheet
+//                        )
+//                        ProfileGroupItem(
+//                            icon = Icons.Default.WifiOff,
+//                            title = stringResource(R.string.settings_item_bunker),
+//                            subtitle = stringResource(R.string.settings_item_bunker_desc),
+//                            trailingContent = {
+//                                Switch(
+//                                    checked = isBunkerMode,
+//                                    onCheckedChange = onToggleBunkerMode
+//                                )
+//                            },
+//                            showDivider = false
+//                        )
+//                    }
+//                }
 
                 // 4. Sección: Cuenta y Seguridad
                 item {
@@ -352,12 +352,12 @@ fun ProfileContent(
                                 )
                             }
                         )
-                        ProfileGroupItem(
-                            icon = Icons.Default.Block,
-                            title = stringResource(R.string.settings_item_blocked),
-                            showDivider = false,
-                            onClick = actions.onNavigateToBlocked
-                        )
+//                        ProfileGroupItem(
+//                            icon = Icons.Default.Block,
+//                            title = stringResource(R.string.settings_item_blocked),
+//                            showDivider = false,
+//                            onClick = actions.onNavigateToBlocked
+//                        )
                     }
                 }
 
@@ -388,14 +388,14 @@ fun ProfileContent(
                             value = languageText,
                             onClick = onShowLanguageSheet
                         )
-                        ProfileGroupItem(
-                            icon = Icons.Default.CleaningServices,
-                            title = stringResource(R.string.settings_item_storage),
-                            subtitle = stringResource(R.string.settings_item_storage_desc),
-                            showChevron = false,
-                            showDivider = false,
-                            onClick = onClearCache
-                        )
+//                        ProfileGroupItem(
+//                            icon = Icons.Default.CleaningServices,
+//                            title = stringResource(R.string.settings_item_storage),
+//                            subtitle = stringResource(R.string.settings_item_storage_desc),
+//                            showChevron = false,
+//                            showDivider = false,
+//                            onClick = onClearCache
+//                        )
                     }
                 }
 

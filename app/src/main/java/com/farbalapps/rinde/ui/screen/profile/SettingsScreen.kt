@@ -52,23 +52,60 @@ fun SettingsScreen(
     }
 
     if (showThemeSheet) {
-        SettingsSelectionSheet(
-            title = stringResource(R.string.settings_item_theme),
-            options = ThemeMode.entries.map { it.name },
-            selectedOption = themeMode.name,
-            onOptionSelected = { viewModel.setTheme(ThemeMode.valueOf(it)) },
-            onDismiss = { showThemeSheet = false }
+        val themeOptions = listOf(
+            ThemeMode.SYSTEM.name to stringResource(R.string.theme_system),
+            ThemeMode.LIGHT.name to stringResource(R.string.theme_light),
+            ThemeMode.DARK.name to stringResource(R.string.theme_dark)
         )
+        ModalBottomSheet(onDismissRequest = { showThemeSheet = false }) {
+            Column(modifier = Modifier.padding(bottom = 32.dp)) {
+                Text(
+                    text = stringResource(R.string.settings_item_theme),
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.padding(16.dp)
+                )
+                themeOptions.forEach { (themeKey, label) ->
+                    ListItem(
+                        modifier = Modifier.clickable {
+                            viewModel.setTheme(ThemeMode.valueOf(themeKey))
+                            showThemeSheet = false
+                        },
+                        headlineContent = { Text(label) },
+                        trailingContent = {
+                            RadioButton(selected = themeKey == themeMode.name, onClick = null)
+                        }
+                    )
+                }
+            }
+        }
     }
 
     if (showLanguageSheet) {
-        SettingsSelectionSheet(
-            title = stringResource(R.string.settings_item_language),
-            options = AppLanguage.entries.map { it.name },
-            selectedOption = appLanguage.name,
-            onOptionSelected = { viewModel.setLanguage(AppLanguage.valueOf(it)) },
-            onDismiss = { showLanguageSheet = false }
+        val options = listOf(
+            AppLanguage.ES.name to stringResource(R.string.language_es),
+            AppLanguage.EN.name to stringResource(R.string.language_en)
         )
+        ModalBottomSheet(onDismissRequest = { showLanguageSheet = false }) {
+            Column(modifier = Modifier.padding(bottom = 32.dp)) {
+                Text(
+                    text = stringResource(R.string.settings_item_language),
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.padding(16.dp)
+                )
+                options.forEach { (langKey, label) ->
+                    ListItem(
+                        modifier = Modifier.clickable {
+                            viewModel.setLanguage(AppLanguage.valueOf(langKey))
+                            showLanguageSheet = false
+                        },
+                        headlineContent = { Text(label) },
+                        trailingContent = {
+                            RadioButton(selected = langKey == appLanguage.name, onClick = null)
+                        }
+                    )
+                }
+            }
+        }
     }
 
     Scaffold(

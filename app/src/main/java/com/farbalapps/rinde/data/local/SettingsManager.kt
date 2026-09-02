@@ -37,8 +37,14 @@ class SettingsManager @Inject constructor(
     }
 
     val appLanguage: Flow<AppLanguage> = context.settingsDataStore.data.map { prefs ->
-        val name = prefs[APP_LANGUAGE] ?: AppLanguage.ES.name
-        AppLanguage.valueOf(name)
+        val savedName = prefs[APP_LANGUAGE]
+        if (savedName != null) {
+            runCatching { AppLanguage.valueOf(savedName) }.getOrDefault(AppLanguage.ES)
+        } else {
+            // Detectar idioma del teléfono por defecto si el usuario nunca lo ha cambiado manualmente
+            val systemLocale = java.util.Locale.getDefault().language.lowercase()
+            if (systemLocale.startsWith("en")) AppLanguage.EN else AppLanguage.ES
+        }
     }
 
     val appCurrency: Flow<AppCurrency> = context.settingsDataStore.data.map { prefs ->

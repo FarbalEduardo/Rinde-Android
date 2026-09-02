@@ -121,6 +121,7 @@ class ProfileSocialDelegate @Inject constructor(
                                 }
                         }
                         val ordered = postIds.mapNotNull { id -> posts.find { it.id == id } }
+                            .map { it.copy(isSavedByMe = true) }
                         trySend(ordered)
                     } catch (e: Exception) {
                         android.util.Log.e("ProfileSocialDelegate", "❌ Error hydrating saved posts", e)

@@ -195,7 +195,10 @@ private fun androidx.navigation.NavGraphBuilder.addProfileScreens(
         popEnterTransition = { slideInHorizontally(initialOffsetX = { -it / 3 }, animationSpec = tween(300)) + fadeIn() },
         popExitTransition = { slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(300)) + fadeOut() }
     ) {
-        SavedPostsScreen(onBack = { navController.popBackStack() })
+        SavedPostsScreen(
+            onBack = { navController.popBackStack() },
+            onPostClick = { postId -> navController.navigate(HomeRoute.PostDetail(postId)) }
+        )
     }
     composable<HomeRoute.BlockedUsers>(
         enterTransition = { slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(300)) + fadeIn() },
