@@ -33,6 +33,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.farbalapps.rinde.ui.theme.RindePrimary
+import com.farbalapps.rinde.ui.theme.RindeTheme
+import androidx.compose.ui.tooling.preview.Preview
 import kotlinx.coroutines.delay
 
 private data class Feature(
@@ -224,9 +226,9 @@ fun AboutScreen(onBack: () -> Unit) {
                     )
                     Spacer(Modifier.height(28.dp))
                     Text(
-                        text = "Desarrollado con amor como proyecto de portafolio\npor Eduardo Farbal - 2026",
+                        text = "Desarrollado con dedicación por Eduardo Farbal (FarbalApps)\n© 2026 Rinde - Ahorro Inteligente & Comunidad.\nTodos los derechos reservados.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                         textAlign = TextAlign.Center,
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)
                     )
@@ -402,3 +404,12 @@ private fun AboutSectionTitle(title: String, modifier: Modifier = Modifier) {
     Text(text = title, style = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground, modifier = modifier)
 }
+
+@Preview(showBackground = true)
+@Composable
+private fun AboutScreenPreview() {
+    RindeTheme {
+        AboutScreen(onBack = {})
+    }
+}
+

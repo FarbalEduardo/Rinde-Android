@@ -41,6 +41,7 @@ import kotlinx.coroutines.flow.collectLatest
 import java.util.Locale
 
 import com.farbalapps.rinde.ui.screen.home.goals.components.CreateGoalBottomSheet
+import androidx.compose.ui.tooling.preview.Preview
 
 @Composable
 fun GoalDetailScreen(
@@ -714,7 +715,7 @@ private fun GridInfoItem(
     }
 }
 
-@androidx.compose.ui.tooling.preview.Preview(name = "Goal Detail Light", showBackground = true)
+@Preview(name = "Goal Detail Light", showBackground = true)
 @Composable
 fun GoalDetailContentLightPreview() {
     val mockGoal = SavingsGoal(
@@ -750,7 +751,7 @@ fun GoalDetailContentLightPreview() {
     }
 }
 
-@androidx.compose.ui.tooling.preview.Preview(
+@Preview(
     name = "Goal Detail Dark",
     showBackground = true,
     uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES

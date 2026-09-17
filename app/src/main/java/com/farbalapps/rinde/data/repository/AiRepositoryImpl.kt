@@ -63,7 +63,7 @@ class AiRepositoryImpl @Inject constructor(
     private val generativeModel by lazy {
         Firebase.ai(backend = GenerativeBackend.googleAI())
             .generativeModel(
-                modelName = "gemini-3.6-flash",
+                modelName = "gemini-3.5-flash-lite",
                 systemInstruction = content { text(systemPrompt) },
                 generationConfig = generationConfig {
                     responseMimeType = "application/json"

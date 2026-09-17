@@ -316,4 +316,62 @@
     <string name="settings_delete_account_dialog_title">¿Eliminar cuenta permanentemente?</string>
     <string name="settings_delete_account_dialog_desc">Esta acción es irreversible. Se eliminará tu perfil, historial y datos de Rinde.</string>
     <string name="settings_delete_account_confirm">Eliminar definitivamente</string>
+
+    <!-- Legal & Support -->
+    <string name="settings_item_privacy">Política de Privacidad</string>
+    <string name="settings_item_terms">Condiciones de Uso</string>
+    <string name="legal_screen_title">Legal y Privacidad</string>
+    <string name="legal_tab_privacy">Privacidad</string>
+    <string name="legal_tab_terms">Condiciones</string>
+
+    <!-- Rinde Dashboard Screen -->
+    <string name="dashboard_title">Rinde</string>
+    <string name="dashboard_subtitle">Tu panorama financiero</string>
+    <string name="dashboard_financial_health">SALUD FINANCIERA</string>
+    <string name="dashboard_available_real">Disponible real este mes</string>
+    <string name="dashboard_health_good">Rindiendo bien</string>
+    <string name="dashboard_health_warning">Atención a gastos</string>
+    <string name="dashboard_health_critical">Presupuesto ajustado</string>
+    <string name="dashboard_income_title">Ingresos</string>
+    <string name="dashboard_my_list_title">Mi Lista</string>
+    <string name="dashboard_goals_committed_title">Comprometido</string>
+    <string name="dashboard_extra_expenses_title">Gastos del hogar</string>
+    <string name="dashboard_expenses_percent">Gastos %1$d%%</string>
+    <string name="dashboard_free_percent">Libre %1$d%%</string>
+    <string name="dashboard_add_extra_expense">+ Agregar gasto</string>
+    <string name="dashboard_empty_income_title">Configura tus ingresos</string>
+    <string name="dashboard_empty_income_desc">Indica tu sueldo o ganancias (mensual, quincenal, semanal o diario) para calcular con precisión cuánto rinde tu dinero este mes.</string>
+    <string name="dashboard_btn_setup_income">Agregar mi ingreso</string>
+    <string name="dashboard_btn_edit_income">Editar</string>
+    <string name="dashboard_income_sheet_title">Configurar Ingreso</string>
+    <string name="dashboard_income_sheet_desc">Selecciona la periodicidad con la que recibes tu dinero. Rinde calculará la equivalencia mensual automáticamente.</string>
+    <string name="dashboard_income_amount_label">Monto de tu ingreso</string>
+    <string name="dashboard_freq_monthly">Mensual</string>
+    <string name="dashboard_freq_biweekly">Quincenal</string>
+    <string name="dashboard_freq_weekly">Semanal</string>
+    <string name="dashboard_freq_daily">Diario</string>
+    <string name="dashboard_freq_monthly_sub">1 vez al mes</string>
+    <string name="dashboard_freq_biweekly_sub">2 veces al mes</string>
+    <string name="dashboard_freq_weekly_sub">Semanal (~4.3x)</string>
+    <string name="dashboard_freq_daily_sub">Diario (~30 días)</string>
+    <string name="dashboard_monthly_equiv_note">Equivalente mensual: %1$s</string>
+    <string name="dashboard_extra_sheet_title">Nuevo Gasto del Hogar</string>
+    <string name="dashboard_extra_sheet_desc">Agrega pagos recurrentes como luz, agua, renta, internet o despensa extra.</string>
+    <string name="dashboard_extra_label_input">Concepto (ej. Luz, Agua, Renta)</string>
+    <string name="dashboard_extra_amount_input">Monto a pagar</string>
+    <string name="dashboard_extra_btn_save">Guardar gasto</string>
+    <string name="dashboard_goals_title">VELOCIDAD DE TUS METAS</string>
+    <string name="dashboard_goals_empty_title">Aún no tienes metas activas</string>
+    <string name="dashboard_goals_empty_desc">Crea metas de ahorro para apartar dinero y asegurar tu futuro financiero.</string>
+    <string name="dashboard_btn_go_to_goals">Ir a Metas</string>
+    <string name="dashboard_goals_on_track">En buen ritmo</string>
+    <string name="dashboard_goals_needs_boost">Impulsar</string>
+    <string name="dashboard_btn_add_savings">Agregar →</string>
+    <string name="dashboard_savings_title">AHORRO GRACIAS A RINDE</string>
+    <string name="dashboard_savings_since">Desde que usas Rinde</string>
+    <string name="dashboard_savings_view_details">Ver detalles →</string>
+    <string name="dashboard_extra_edit_sheet_title">Editar Gasto del Hogar</string>
+    <string name="dashboard_extra_edit_sheet_desc">Modifica el concepto o el monto de este gasto del hogar.</string>
+    <string name="dashboard_extra_btn_update">Actualizar gasto</string>
+    <string name="dashboard_extra_btn_delete">Eliminar gasto</string>
 </resources>

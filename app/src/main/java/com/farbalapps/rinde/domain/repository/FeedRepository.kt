@@ -28,6 +28,11 @@ interface FeedRepository {
     fun getPostById(postId: String): Flow<CommunityPost>
 
     /**
+     * Obtiene una captura puntual de un post por su ID (desde caché local o remoto).
+     */
+    suspend fun getPostByIdOnce(postId: String): CommunityPost?
+
+    /**
      * NUEVO: Posts de un usuario (todos los estados) — para Perfil
      */
     fun getUserPosts(userId: String): Flow<List<CommunityPost>>
@@ -84,6 +89,15 @@ interface FeedRepository {
     suspend fun reportPostAsExpired(postId: String, postTitle: String, authorId: String, currentUserId: String, currentUserName: String): Result<Unit>
     fun getUnreadNotificationsCount(userId: String): Flow<Int>
 
+    // Métodos de votación desacoplados de Android SDK / WorkManager / Room
+    suspend fun isNetworkAvailable(): Boolean
+    suspend fun handleOfflineVote(userId: String, postId: String, voteValue: Int, authorId: String)
+    suspend fun applyOptimisticVote(postId: String, voteValue: Int)
+    suspend fun revertOptimisticVote(postId: String)
+    suspend fun syncLocalVoteAfterSuccess(postId: String, voteValue: Int, counts: Triple<Int, Int, Int>)
+    suspend fun recalculateAuthorTrustScore(authorId: String): Result<Unit>
+
     /** Limpia los MutableStateFlow globales del feed en logout. */
     fun clearSessionState()
 }
+

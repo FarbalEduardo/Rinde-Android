@@ -14,6 +14,7 @@ import kotlinx.coroutines.tasks.await
 
 import com.farbalapps.rinde.data.local.dao.PostDao
 import com.farbalapps.rinde.data.local.dao.GoalsDao
+import com.farbalapps.rinde.data.local.dao.FinancialDao
 import com.farbalapps.rinde.data.local.dao.SyncMetadataDao
 import com.farbalapps.rinde.data.local.dao.UserVoteDao
 import com.farbalapps.rinde.data.util.SavedPostsMemoryCache
@@ -28,6 +29,7 @@ class FirebaseAuthRepository @Inject constructor(
     private val postDao: PostDao,
     private val syncMetadataDao: SyncMetadataDao,
     private val goalsDao: GoalsDao,
+    private val financialDao: FinancialDao,
     private val goalsRepositoryProvider: Provider<GoalsRepository>
 ) : AuthRepository {
     
@@ -124,9 +126,13 @@ class FirebaseAuthRepository @Inject constructor(
             userVoteDao.clearUserVotes(uid)
             goalsDao.deleteGoalsByUserId(uid)
             goalsDao.deleteTransactionsByUserId(uid)
+            financialDao.deleteProfileByUserId(uid)
+            financialDao.deleteExpensesByUserId(uid)
         }
         goalsDao.clearAllGoals() // Limpieza total de metas en Room para evitar remanentes de sesión
         goalsDao.clearAllTransactions()
+        financialDao.clearAllFinancialProfiles() // Limpieza de salud financiera para evitar fuga entre sesiones
+        financialDao.clearAllExtraExpenses()
         postDao.clearAll() // Borra completamente el feed local de Room para evitar fugas y obligar re-sync
         syncMetadataDao.clearAll() // Borra metadatos para reiniciar sincronizaciones del nuevo usuario
     }

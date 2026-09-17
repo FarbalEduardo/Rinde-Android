@@ -1023,15 +1023,11 @@ fun CommunityContent(
                                         )
                                     }
                                 }
-                                // TODO: Implementar menú de 3 puntos (MoreVert) con las siguientes funciones futuras:
+                                // Roadmap de búsqueda y filtrado de feed:
                                 //   1. "Ordenar por: Más recientes / Más votados / Más comentados"
-                                //      → Cambiar el criterio de ordenación del feed con opciones de sort.
                                 //   2. "Filtrar por categoría"
-                                //      → Filtrar el feed mostrando sólo publicaciones de una categoría específica.
                                 //   3. "Ocultar ofertas ya vistas"
-                                //      → Marcar posts como vistos y no volver a mostrarlos en el feed principal.
                                 //   4. "Configuración del feed"
-                                //      → Pantalla de preferencias: tipo de publicaciones, zonas de caza preferidas.
                             },
                             colors = SearchBarDefaults.colors(
                                 containerColor = if (searchActive) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.surfaceVariant,

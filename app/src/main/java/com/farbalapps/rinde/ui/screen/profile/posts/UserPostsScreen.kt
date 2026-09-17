@@ -27,6 +27,8 @@ import com.farbalapps.rinde.ui.screen.home.community.components.PostCard
 import com.farbalapps.rinde.ui.screen.profile.EmptyProfileState
 import com.farbalapps.rinde.ui.screen.profile.ProfileUiState
 import com.farbalapps.rinde.ui.screen.profile.ProfileViewModel
+import com.farbalapps.rinde.ui.theme.RindeTheme
+import androidx.compose.ui.tooling.preview.Preview
 
 private fun sharePost(context: Context, post: CommunityPost) {
     val shareIntent = Intent(Intent.ACTION_SEND).apply {
@@ -196,3 +198,30 @@ fun UserPostsContent(
         }
     }
 }
+
+@Preview(showBackground = true)
+@Composable
+private fun UserPostsContentPreview() {
+    RindeTheme {
+        UserPostsContent(
+            innerPadding = PaddingValues(0.dp),
+            uiState = ProfileUiState(
+                profile = com.farbalapps.rinde.domain.model.Profile(
+                    id = "user1",
+                    name = "Eduardo Farbal",
+                    photoUrl = null
+                ),
+                posts = emptyList(),
+                isLoading = false
+            ),
+            onPostClick = {},
+            onEditPost = {},
+            onToggleSave = {},
+            onDeletePost = {},
+            onMarkExpired = {},
+            onReportExpired = {},
+            onMarkAvailable = {}
+        )
+    }
+}
+

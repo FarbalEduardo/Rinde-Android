@@ -1,6 +1,7 @@
 package com.farbalapps.rinde.domain.usecase.settings
 
-import com.farbalapps.rinde.data.local.ThemeMode
+import com.farbalapps.rinde.domain.model.AppLanguage
+import com.farbalapps.rinde.domain.model.ThemeMode
 import com.farbalapps.rinde.domain.repository.SettingsRepository
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
@@ -20,13 +21,13 @@ class SetThemeUseCase @Inject constructor(
 class GetLanguageUseCase @Inject constructor(
     private val repository: SettingsRepository
 ) {
-    operator fun invoke(): Flow<com.farbalapps.rinde.data.local.AppLanguage> = repository.getAppLanguage()
+    operator fun invoke(): Flow<AppLanguage> = repository.getAppLanguage()
 }
 
 class SetLanguageUseCase @Inject constructor(
     private val repository: SettingsRepository
 ) {
-    suspend operator fun invoke(language: com.farbalapps.rinde.data.local.AppLanguage) = repository.setAppLanguage(language)
+    suspend operator fun invoke(language: AppLanguage) = repository.setAppLanguage(language)
 }
 
 class IsProfilePrivateUseCase @Inject constructor(

@@ -36,6 +36,7 @@ data class ProfileActions(
     val onNavigateToSaved: () -> Unit = {},
     val onNavigateToBlocked: () -> Unit = {},
     val onNavigateToAbout: () -> Unit = {},
+    val onNavigateToLegal: (initialTab: Int) -> Unit = {},
     val onLogout: () -> Unit = {},
     val onSetTheme: (ThemeMode) -> Unit = {},
     val onSetLanguage: (AppLanguage) -> Unit = {},
@@ -53,6 +54,7 @@ fun ProfileScreen(
     onNavigateToSaved: () -> Unit = {},
     onNavigateToBlocked: () -> Unit = {},
     onNavigateToAbout: () -> Unit = {},
+    onNavigateToLegal: (initialTab: Int) -> Unit = {},
     onLogout: () -> Unit = {},
     viewModel: ProfileViewModel = hiltViewModel()
 ) {
@@ -131,7 +133,7 @@ fun ProfileScreen(
         )
     }
 
-    val actions = remember(viewModel, onBack, onEditProfile, onNavigateToPosts, onNavigateToSaved, onNavigateToBlocked, onNavigateToAbout, onLogout) {
+    val actions = remember(viewModel, onBack, onEditProfile, onNavigateToPosts, onNavigateToSaved, onNavigateToBlocked, onNavigateToAbout, onNavigateToLegal, onLogout) {
         ProfileActions(
             onBack = { onBack?.invoke() },
             onEditProfile = onEditProfile,
@@ -139,6 +141,7 @@ fun ProfileScreen(
             onNavigateToSaved = onNavigateToSaved,
             onNavigateToBlocked = onNavigateToBlocked,
             onNavigateToAbout = onNavigateToAbout,
+            onNavigateToLegal = onNavigateToLegal,
             onLogout = { showLogoutDialog = true },
             onSetTheme = { viewModel.setTheme(it) },
             onSetLanguage = { viewModel.setLanguage(it) },
@@ -414,6 +417,16 @@ fun ProfileContent(
                             icon = Icons.Default.StarRate,
                             title = stringResource(R.string.settings_item_rate),
                             onClick = onRateApp
+                        )
+                        ProfileGroupItem(
+                            icon = Icons.Default.Shield,
+                            title = stringResource(R.string.settings_item_privacy),
+                            onClick = { actions.onNavigateToLegal(0) }
+                        )
+                        ProfileGroupItem(
+                            icon = Icons.Default.Gavel,
+                            title = stringResource(R.string.settings_item_terms),
+                            onClick = { actions.onNavigateToLegal(1) }
                         )
                         ProfileGroupItem(
                             icon = Icons.Default.Info,

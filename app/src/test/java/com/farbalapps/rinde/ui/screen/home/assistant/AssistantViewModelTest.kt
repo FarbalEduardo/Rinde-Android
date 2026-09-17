@@ -72,11 +72,17 @@ class AssistantViewModelTest {
         assertTrue(state.messages.isNotEmpty())
         assertEquals("model", state.messages.first().role)
         
-        // Detergente should be filtered out by FilterCookableItemsUseCase
-        val ingredientNames = state.availableIngredients.map { it.name }
-        assertTrue(ingredientNames.contains("Pollo"))
-        assertTrue(ingredientNames.contains("Arroz"))
-        assertFalse(ingredientNames.contains("Detergente"))
+        // Non-cookable items (like Detergente) should have isCookable = false
+        val pollo = state.availableIngredients.find { it.name == "Pollo" }
+        val arroz = state.availableIngredients.find { it.name == "Arroz" }
+        val detergente = state.availableIngredients.find { it.name == "Detergente" }
+
+        assertNotNull(pollo)
+        assertTrue(pollo!!.isCookable)
+        assertNotNull(arroz)
+        assertTrue(arroz!!.isCookable)
+        assertNotNull(detergente)
+        assertFalse(detergente!!.isCookable)
     }
 
     @Test

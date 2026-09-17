@@ -140,54 +140,49 @@ private fun NormalHeaderContent(
 
         Spacer(modifier = Modifier.height(4.dp))
 
-        // 2. Fila 1: Chips de Categorías (scroll horizontal)
-        CategorySelectionRow(
-            categories = categories,
-            selectedCategory = selectedCategory,
-            onCategorySelected = onCategorySelected,
-            onCategoryLongClick = onCategoryLongClick,
-            onAddCategoryClick = onAddCategoryClick,
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        // 3. Fila 2: Botones Guardar e Historial abajo del row de chips, alineados a la DERECHA
+        // 2. Fila: Chips de Categorías (scroll horizontal) + Iconos de Acciones (fijos a la derecha)
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 2.dp, end = 4.dp),
-            horizontalArrangement = Arrangement.End,
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(
-                onClick = onSaveList,
-                modifier = Modifier.size(36.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.BookmarkAdd,
-                    contentDescription = "Guardar lista",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
+            CategorySelectionRow(
+                categories = categories,
+                selectedCategory = selectedCategory,
+                onCategorySelected = onCategorySelected,
+                onCategoryLongClick = onCategoryLongClick,
+                onAddCategoryClick = onAddCategoryClick,
+                modifier = Modifier.weight(1f)
+            )
 
-            Spacer(modifier = Modifier.width(4.dp))
-
-            IconButton(
-                onClick = onOpenHistory,
-                modifier = Modifier.size(36.dp)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                modifier = Modifier.padding(start = 4.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.History,
-                    contentDescription = "Ver listas guardadas",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(20.dp)
-                )
+                IconButton(
+                    onClick = onSaveList,
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.BookmarkAdd,
+                        contentDescription = "Guardar lista",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                IconButton(
+                    onClick = onOpenHistory,
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.History,
+                        contentDescription = "Ver listas guardadas",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
         }
-
-        HorizontalDivider(
-            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
-            thickness = 0.5.dp
-        )
     }
 }

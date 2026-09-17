@@ -60,6 +60,7 @@ import com.farbalapps.rinde.ui.screen.home.community.components.ShimmerBox
 import kotlin.math.roundToInt
 import java.text.SimpleDateFormat
 import java.util.Locale
+import androidx.compose.ui.tooling.preview.Preview
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1260,12 +1261,12 @@ private fun androidx.compose.foundation.lazy.LazyListScope.CommentsListItems(
     }
 }
 
-// TODO: Replace with the actual time formatting logic from DateUtils if preferred.
+// Format comment time using DateUtils
 fun formatCommentTime(timestamp: Long): String {
     return com.farbalapps.rinde.util.DateUtils.formatTimeAgo(timestamp)
 }
 
-@androidx.compose.ui.tooling.preview.Preview(showBackground = true)
+@Preview(showBackground = true)
 @Composable
 fun PostDetailScreenPreview() {
     com.farbalapps.rinde.ui.theme.RindeTheme {

@@ -1,6 +1,7 @@
 package com.farbalapps.rinde.ui.navigation
 
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -30,6 +31,7 @@ import com.farbalapps.rinde.ui.screen.profile.posts.UserPostsScreen
 import com.farbalapps.rinde.ui.screen.profile.about.AboutScreen
 
 import androidx.navigation.toRoute
+import androidx.navigation.NavGraph.Companion.findStartDestination
 
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.tween
@@ -51,19 +53,48 @@ fun HomeNavHost(
 ) {
     NavHost(
         navController = navController,
-        startDestination = HomeRoute.Community,
+        startDestination = HomeRoute.Dashboard,
         modifier = modifier,
         enterTransition = { fadeIn(animationSpec = tween(280)) },
         exitTransition = { fadeOut(animationSpec = tween(200)) },
         popEnterTransition = { fadeIn(animationSpec = tween(280)) },
         popExitTransition = { fadeOut(animationSpec = tween(200)) }
     ) {
+        addDashboardScreen(navController, innerPadding)
         addListScreen(innerPadding, listViewModel)
-        addCommunityScreen(navController, innerPadding)
         addGoalsScreen(navController, innerPadding, addGoalTrigger)
-        addAssistantScreen(innerPadding)
         addProfileScreens(navController, innerPadding, onLogout)
+        addCommunityScreen(navController, innerPadding)
         addPostScreens(navController)
+    }
+}
+
+private fun androidx.navigation.NavGraphBuilder.addDashboardScreen(
+    navController: NavHostController,
+    innerPadding: PaddingValues
+) {
+    composable<HomeRoute.Dashboard> {
+        com.farbalapps.rinde.ui.screen.home.dashboard.DashboardScreen(
+            innerPadding = innerPadding,
+            onGoalClick = { goalId -> navController.navigate(HomeRoute.GoalDetail(goalId)) },
+            onNavigateToGoals = {
+                navController.navigate(HomeRoute.Goals) {
+                    popUpTo(navController.graph.findStartDestination().id) {
+                        saveState = true
+                    }
+                    launchSingleTop = true
+                    restoreState = true
+                }
+            },
+            onNavigateToProfile = { navController.navigate(HomeRoute.Profile) },
+            onCardClick = { navController.navigate(HomeRoute.FinancialDetail) }
+        )
+    }
+
+    composable<HomeRoute.FinancialDetail> {
+        com.farbalapps.rinde.ui.screen.home.dashboard.detail.FinancialDetailScreen(
+            onBack = { navController.popBackStack() }
+        )
     }
 }
 
@@ -139,6 +170,7 @@ private fun androidx.navigation.NavGraphBuilder.addProfileScreens(
             onNavigateToSaved = { navController.navigate(HomeRoute.SavedPosts) },
             onNavigateToBlocked = { navController.navigate(HomeRoute.BlockedUsers) },
             onNavigateToAbout = { navController.navigate(HomeRoute.About) },
+            onNavigateToLegal = { initialTab -> navController.navigate(HomeRoute.Legal(initialTab)) },
             onLogout = onLogout
         )
     }
@@ -167,7 +199,8 @@ private fun androidx.navigation.NavGraphBuilder.addProfileScreens(
             onBack = { navController.popBackStack() },
             onLogout = onLogout,
             onNavigateToSaved = { navController.navigate(HomeRoute.SavedPosts) },
-            onNavigateToBlocked = { navController.navigate(HomeRoute.BlockedUsers) }
+            onNavigateToBlocked = { navController.navigate(HomeRoute.BlockedUsers) },
+            onNavigateToAbout = { navController.navigate(HomeRoute.About) }
         )
     }
     composable<HomeRoute.About>(
@@ -177,6 +210,18 @@ private fun androidx.navigation.NavGraphBuilder.addProfileScreens(
         popExitTransition = { slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(300)) + fadeOut() }
     ) {
         AboutScreen(onBack = { navController.popBackStack() })
+    }
+    composable<HomeRoute.Legal>(
+        enterTransition = { slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(300)) + fadeIn() },
+        exitTransition = { slideOutHorizontally(targetOffsetX = { -it / 3 }, animationSpec = tween(300)) + fadeOut() },
+        popEnterTransition = { slideInHorizontally(initialOffsetX = { -it / 3 }, animationSpec = tween(300)) + fadeIn() },
+        popExitTransition = { slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(300)) + fadeOut() }
+    ) { backStackEntry ->
+        val legalRoute = backStackEntry.toRoute<HomeRoute.Legal>()
+        com.farbalapps.rinde.ui.screen.profile.legal.LegalScreen(
+            initialTab = legalRoute.initialTab,
+            onBack = { navController.popBackStack() }
+        )
     }
     composable<HomeRoute.EditProfile>(
         enterTransition = { slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(300)) + fadeIn() },
@@ -221,7 +266,8 @@ private fun androidx.navigation.NavGraphBuilder.addProfileScreens(
             onBack = { navController.popBackStack() },
             onNavigateToPosts = { userId, userName -> navController.navigate(HomeRoute.UserPosts(userId, userName)) },
             onNavigateToSaved = { navController.navigate(HomeRoute.SavedPosts) },
-            onNavigateToBlocked = { navController.navigate(HomeRoute.BlockedUsers) }
+            onNavigateToBlocked = { navController.navigate(HomeRoute.BlockedUsers) },
+            onNavigateToLegal = { initialTab -> navController.navigate(HomeRoute.Legal(initialTab)) }
         )
     }
 }

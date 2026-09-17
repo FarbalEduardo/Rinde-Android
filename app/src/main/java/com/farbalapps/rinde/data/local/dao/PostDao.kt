@@ -127,6 +127,9 @@ interface PostDao {
         LIMIT :limit
     """)
     suspend fun searchPostsLike(query: String, limit: Int = 50): List<CommunityPostEntity>
+
+    @Query("UPDATE community_posts SET authorName = :authorName, authorPhotoUrl = :authorPhotoUrl WHERE authorId = :authorId")
+    suspend fun updateAuthorDetails(authorId: String, authorName: String, authorPhotoUrl: String?)
 }
 
 

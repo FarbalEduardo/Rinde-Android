@@ -65,7 +65,7 @@ fun HomeScreen(
     }
 
     // Intercept back button to show confirmation dialog
-    androidx.activity.compose.BackHandler(enabled = destination?.hasRoute<HomeRoute.Community>() == true) {
+    androidx.activity.compose.BackHandler(enabled = destination?.hasRoute<HomeRoute.Dashboard>() == true) {
         showExitDialog = true
     }
 
@@ -98,10 +98,10 @@ fun HomeScreen(
     }
 
     val isTopLevelRoute = destination?.let { dest ->
+        dest.hasRoute<HomeRoute.Dashboard>() ||
+        dest.hasRoute<HomeRoute.Community>() ||
         dest.hasRoute<HomeRoute.List>() || 
-        dest.hasRoute<HomeRoute.Community>() || 
         dest.hasRoute<HomeRoute.Goals>() || 
-        dest.hasRoute<HomeRoute.Assistant>() || 
         dest.hasRoute<HomeRoute.Profile>()
     } ?: false
 

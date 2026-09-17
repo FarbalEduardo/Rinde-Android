@@ -52,6 +52,10 @@ android {
         checkDependencies = false
     }
 
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
+
     flavorDimensions += "environment"
     productFlavors {
         create("dev") {

@@ -49,54 +49,33 @@ class MainActivity : ComponentActivity() {
                 com.farbalapps.rinde.data.local.ThemeMode.SYSTEM -> androidx.compose.foundation.isSystemInDarkTheme()
             }
 
-            // Detección y aplicación dinámica del Locale (Inglés / Español)
-            val appLanguage by settingsManager.appLanguage.collectAsState(initial = com.farbalapps.rinde.data.local.AppLanguage.ES)
-            val targetLocale = remember(appLanguage) {
-                if (appLanguage == com.farbalapps.rinde.data.local.AppLanguage.EN) java.util.Locale.ENGLISH else java.util.Locale("es")
-            }
-
             // Sincronizar con AppCompatDelegate para componentes y el sistema
+            val appLanguage by settingsManager.appLanguage.collectAsState(initial = com.farbalapps.rinde.data.local.AppLanguage.ES)
             androidx.compose.runtime.LaunchedEffect(appLanguage) {
                 val localeTag = if (appLanguage == com.farbalapps.rinde.data.local.AppLanguage.EN) "en" else "es"
-                androidx.appcompat.app.AppCompatDelegate.setApplicationLocales(
-                    androidx.core.os.LocaleListCompat.forLanguageTags(localeTag)
-                )
-            }
-
-            val baseConfiguration = androidx.compose.ui.platform.LocalConfiguration.current
-            val baseContext = androidx.compose.ui.platform.LocalContext.current
-
-            val localizedConfiguration = remember(targetLocale, baseConfiguration) {
-                android.content.res.Configuration(baseConfiguration).apply {
-                    setLocale(targetLocale)
-                    setLayoutDirection(targetLocale)
-                }
-            }
-
-            val localizedContext = remember(targetLocale, baseContext, localizedConfiguration) {
-                baseContext.createConfigurationContext(localizedConfiguration)
-            }
-
-            androidx.compose.runtime.CompositionLocalProvider(
-                androidx.compose.ui.platform.LocalConfiguration provides localizedConfiguration,
-                androidx.compose.ui.platform.LocalContext provides localizedContext
-            ) {
-                RindeTheme(darkTheme = isDarkTheme) {
-                    val navController = rememberNavController()
-                    val isLoggedByFirebase = authRepository.isUserLoggedIn()
-                    val isLoggedBySessionManager by sessionManager.isUserLoggedIn.collectAsState(initial = false)
-                    
-                    val startDestination = remember {
-                        if (isLoggedByFirebase || isLoggedBySessionManager) "home" else "welcome"
-                    }
-
-                    RindeAppNavHost(
-                        navController = navController, 
-                        startDestination = startDestination,
-                        authRepository = authRepository,
-                        feedRepository = feedRepository
+                val current = androidx.appcompat.app.AppCompatDelegate.getApplicationLocales()
+                if (current.toLanguageTags() != localeTag) {
+                    androidx.appcompat.app.AppCompatDelegate.setApplicationLocales(
+                        androidx.core.os.LocaleListCompat.forLanguageTags(localeTag)
                     )
                 }
+            }
+
+            RindeTheme(darkTheme = isDarkTheme) {
+                val navController = rememberNavController()
+                val isLoggedByFirebase = authRepository.isUserLoggedIn()
+                val isLoggedBySessionManager by sessionManager.isUserLoggedIn.collectAsState(initial = false)
+                
+                val startDestination = remember {
+                    if (isLoggedByFirebase || isLoggedBySessionManager) "home" else "welcome"
+                }
+
+                RindeAppNavHost(
+                    navController = navController, 
+                    startDestination = startDestination,
+                    authRepository = authRepository,
+                    feedRepository = feedRepository
+                )
             }
         }
     }

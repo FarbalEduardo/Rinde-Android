@@ -91,13 +91,15 @@ class AssistantViewModel @Inject constructor(
                     val validSelected = getValidSelectedList(listNames)
                     val ingredientChips = buildIngredientChipsForList(validSelected)
 
-                    _uiState.value.copy(
-                        availableLists = listNames,
-                        selectedListName = validSelected,
-                        availableIngredients = ingredientChips
-                    )
-                }.collect { updatedState ->
-                    _uiState.value = updatedState
+                    Triple(listNames, validSelected, ingredientChips)
+                }.collect { (listNames, validSelected, ingredientChips) ->
+                    _uiState.update { current ->
+                        current.copy(
+                            availableLists = listNames,
+                            selectedListName = validSelected,
+                            availableIngredients = ingredientChips
+                        )
+                    }
                 }
             } catch (_: Exception) { }
         }

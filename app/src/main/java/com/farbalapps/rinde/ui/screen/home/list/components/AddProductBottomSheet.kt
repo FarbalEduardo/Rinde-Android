@@ -175,7 +175,7 @@ fun AddProductBottomSheet(
 
                 // Product Category Selection (Fruits, Vegetables, etc)
                 AnimatedVisibility(
-                    visible = selectedTab == 0 && !isEditing,
+                    visible = (!isEditing && selectedTab == 0) || selectedTab == 1,
                     enter = fadeIn(animationSpec = tween(250)) + expandVertically(animationSpec = tween(250)),
                     exit = fadeOut(animationSpec = tween(200)) + shrinkVertically(animationSpec = tween(200))
                 ) {
@@ -255,9 +255,19 @@ fun AddProductBottomSheet(
                 units = units,
                 onUnitSelected = { selectedUnit = it },
                 onActionClick = {
-                    initialItem?.let {
-                        onProductUpdated(it.id, it.name, it.category, quantity, selectedUnit, it.emoji, parsedPrice, currency)
-                        onShowMessage(msgUpdated.format(it.name))
+                    initialItem?.let { item ->
+                        val (updatedName, updatedCategory, updatedEmoji) = if (selectedTab == 1) {
+                            val nameToUse = if (customName.isNotBlank()) customName else item.name
+                            val catToUse = if (selectedProductCategory == defaultCategory) defaultCustomCategory else selectedProductCategory
+                            Triple(nameToUse, catToUse, "")
+                        } else {
+                            val nameToUse = selectedItem?.nombre ?: item.name
+                            val catToUse = selectedItem?.categoria ?: item.category
+                            val emojiToUse = selectedItem?.emoji ?: item.emoji
+                            Triple(nameToUse, catToUse, emojiToUse)
+                        }
+                        onProductUpdated(item.id, updatedName, updatedCategory, quantity, selectedUnit, updatedEmoji, parsedPrice, currency)
+                        onShowMessage(msgUpdated.format(updatedName))
                         onDismiss()
                     } ?: run {
                         if (selectedTab == 0) {

@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.farbalapps.rinde.domain.model.SavingsGoal
 import com.farbalapps.rinde.ui.screen.home.goals.components.*
+import androidx.compose.ui.tooling.preview.Preview
 import kotlinx.coroutines.flow.collectLatest
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -348,3 +349,23 @@ private fun ActiveGoalsHeader(
         }
     }
 }
+
+@Preview(showBackground = true)
+@Composable
+private fun GoalsScreenPreview() {
+    com.farbalapps.rinde.ui.theme.RindeTheme {
+        GoalsScreenContent(
+            uiState = GoalsUiState.Empty(hasArchivedGoals = false),
+            archivedGoals = emptyList(),
+            onDeposit = { _, _, _, _ -> },
+            onCreateGoal = { _, _, _, _, _, _ -> },
+            onDeleteGoal = {},
+            onArchiveGoal = {},
+            onUnarchiveGoal = {},
+            onTogglePrivacyMode = {},
+            onToggleReorderMode = {},
+            onReorderGoals = {}
+        )
+    }
+}
+

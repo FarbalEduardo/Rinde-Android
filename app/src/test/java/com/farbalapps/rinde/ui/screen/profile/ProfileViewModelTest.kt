@@ -39,6 +39,13 @@ class ProfileViewModelTest {
     private val syncProfileUseCase = mockk<SyncProfileUseCase>()
     private val clearUploadStatusUseCase = mockk<ClearUploadStatusUseCase>()
     private val toggleVoteUseCase = mockk<ToggleVoteUseCase>()
+    private val getThemeUseCase = mockk<com.farbalapps.rinde.domain.usecase.settings.GetThemeUseCase>(relaxed = true)
+    private val setThemeUseCase = mockk<com.farbalapps.rinde.domain.usecase.settings.SetThemeUseCase>(relaxed = true)
+    private val getLanguageUseCase = mockk<com.farbalapps.rinde.domain.usecase.settings.GetLanguageUseCase>(relaxed = true)
+    private val setLanguageUseCase = mockk<com.farbalapps.rinde.domain.usecase.settings.SetLanguageUseCase>(relaxed = true)
+    private val isProfilePrivateUseCase = mockk<com.farbalapps.rinde.domain.usecase.settings.IsProfilePrivateUseCase>(relaxed = true)
+    private val togglePrivacyUseCase = mockk<com.farbalapps.rinde.domain.usecase.settings.TogglePrivacyUseCase>(relaxed = true)
+    private val settingsManager = mockk<com.farbalapps.rinde.data.local.SettingsManager>(relaxed = true)
     private val feedRepository = mockk<FeedRepository>()
     private val firebaseAuth = mockk<FirebaseAuth>()
     private val firebaseUser = mockk<FirebaseUser>()
@@ -116,6 +123,13 @@ class ProfileViewModelTest {
             syncProfileUseCase,
             clearUploadStatusUseCase,
             toggleVoteUseCase,
+            getThemeUseCase,
+            setThemeUseCase,
+            getLanguageUseCase,
+            setLanguageUseCase,
+            isProfilePrivateUseCase,
+            togglePrivacyUseCase,
+            settingsManager,
             firebaseAuth,
             feedRepository
         )
@@ -159,6 +173,13 @@ class ProfileViewModelTest {
             syncProfileUseCase,
             clearUploadStatusUseCase,
             toggleVoteUseCase,
+            getThemeUseCase,
+            setThemeUseCase,
+            getLanguageUseCase,
+            setLanguageUseCase,
+            isProfilePrivateUseCase,
+            togglePrivacyUseCase,
+            settingsManager,
             firebaseAuth,
             feedRepository
         )

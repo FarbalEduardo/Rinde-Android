@@ -314,4 +314,63 @@
     <string name="settings_delete_account_dialog_title">Delete account permanently?</string>
     <string name="settings_delete_account_dialog_desc">This action cannot be undone. Your profile, history and Rinde data will be deleted.</string>
     <string name="settings_delete_account_confirm">Delete permanently</string>
+
+    <!-- Legal & Support -->
+    <string name="settings_item_privacy">Privacy Policy</string>
+    <string name="settings_item_terms">Terms of Use</string>
+    <string name="legal_screen_title">Legal &amp; Privacy</string>
+    <string name="legal_tab_privacy">Privacy</string>
+    <string name="legal_tab_terms">Terms of Use</string>
+
+    <!-- Rinde Dashboard Screen -->
+    <string name="dashboard_title">Rinde</string>
+    <string name="dashboard_subtitle">Your financial overview</string>
+    <string name="dashboard_financial_health">FINANCIAL HEALTH</string>
+    <string name="dashboard_available_real">Real available this month</string>
+    <string name="dashboard_health_good">Doing great</string>
+    <string name="dashboard_health_warning">Watch spending</string>
+    <string name="dashboard_health_critical">Tight budget</string>
+    <string name="dashboard_income_title">Income</string>
+    <string name="dashboard_my_list_title">My List</string>
+    <string name="dashboard_goals_committed_title">savings goals</string>
+    <string name="dashboard_extra_expenses_title">Home expenses</string>
+    <string name="dashboard_expenses_percent">Expenses %1$d%%</string>
+    <string name="dashboard_free_percent">Free %1$d%%</string>
+    <string name="dashboard_add_extra_expense">+ Add expense</string>
+    <string name="dashboard_empty_income_title">Set up your income</string>
+    <string name="dashboard_empty_income_desc">Enter your salary or earnings (monthly, biweekly, weekly or daily) to accurately track how much you have left.</string>
+    <string name="dashboard_btn_setup_income">Add my income</string>
+    <string name="dashboard_btn_edit_income">Edit</string>
+    <string name="dashboard_income_sheet_title">Set Up Income</string>
+    <string name="dashboard_income_sheet_desc">Choose your pay frequency. Rinde will automatically calculate the monthly equivalent.</string>
+    <string name="dashboard_income_amount_label">Income amount</string>
+    <string name="dashboard_freq_monthly">Monthly</string>
+    <string name="dashboard_freq_biweekly">Biweekly</string>
+    <string name="dashboard_freq_weekly">Weekly</string>
+    <string name="dashboard_freq_daily">Daily</string>
+    <string name="dashboard_freq_monthly_sub">Once a month</string>
+    <string name="dashboard_freq_biweekly_sub">Twice a month</string>
+    <string name="dashboard_freq_weekly_sub">Weekly (~4.3x)</string>
+    <string name="dashboard_freq_daily_sub">Daily (~30 days)</string>
+    <string name="dashboard_monthly_equiv_note">Monthly equivalent: %1$s</string>
+    <string name="dashboard_extra_sheet_title">New Home Expense</string>
+    <string name="dashboard_extra_sheet_desc">Add recurring expenses like electricity, water, rent, internet or extra groceries.</string>
+    <string name="dashboard_extra_label_input">Description (e.g. Electricity, Water, Rent)</string>
+    <string name="dashboard_extra_amount_input">Amount</string>
+    <string name="dashboard_extra_btn_save">Save expense</string>
+    <string name="dashboard_goals_title">GOAL PACE</string>
+    <string name="dashboard_goals_empty_title">No active goals yet</string>
+    <string name="dashboard_goals_empty_desc">Create savings goals to set aside money and secure your financial future.</string>
+    <string name="dashboard_btn_go_to_goals">Go to Goals</string>
+    <string name="dashboard_goals_on_track">On track</string>
+    <string name="dashboard_goals_needs_boost">Needs boost</string>
+    <string name="dashboard_btn_add_savings">Add →</string>
+    <string name="dashboard_savings_title">SAVINGS THANKS TO RINDE</string>
+    <string name="dashboard_savings_since">Since you joined Rinde</string>
+    <string name="dashboard_savings_view_details">View details →</string>
+    <string name="dashboard_extra_edit_sheet_title">Edit Home Expense</string>
+    <string name="dashboard_extra_edit_sheet_desc">Modify the description or amount for this home expense.</string>
+    <string name="dashboard_extra_btn_update">Update expense</string>
+    <string name="dashboard_extra_btn_delete">Delete expense</string>
 </resources>
+

@@ -1,9 +1,5 @@
 package com.farbalapps.rinde.domain.usecase
 
-import android.content.Context
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
-import androidx.work.WorkManager
 import com.farbalapps.rinde.domain.model.User
 import com.farbalapps.rinde.domain.repository.AuthRepository
 import com.farbalapps.rinde.domain.repository.FeedRepository
@@ -14,18 +10,12 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import com.farbalapps.rinde.data.local.dao.PostDao
 
 class ToggleVoteUseCaseTest {
 
     private lateinit var feedRepository: FeedRepository
     private lateinit var authRepository: AuthRepository
     private lateinit var updateAuthorTrustScoreUseCase: UpdateAuthorTrustScoreUseCase
-    private val workManager = mockk<WorkManager>(relaxed = true)
-    private val context = mockk<Context>(relaxed = true)
-    private val connectivityManager = mockk<ConnectivityManager>()
-    private val networkCapabilities = mockk<NetworkCapabilities>()
-    private val postDao = mockk<PostDao>(relaxed = true)
     private lateinit var toggleVoteUseCase: ToggleVoteUseCase
 
     @Before
@@ -34,19 +24,13 @@ class ToggleVoteUseCaseTest {
         authRepository = mockk()
         updateAuthorTrustScoreUseCase = mockk(relaxed = true)
 
-        every { context.getSystemService(Context.CONNECTIVITY_SERVICE) } returns connectivityManager
-        every { connectivityManager.activeNetwork } returns mockk()
-        every { connectivityManager.getNetworkCapabilities(any()) } returns networkCapabilities
         // Red disponible por defecto
-        every { networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) } returns true
+        coEvery { feedRepository.isNetworkAvailable() } returns true
 
         toggleVoteUseCase = ToggleVoteUseCase(
             feedRepository,
             authRepository,
-            updateAuthorTrustScoreUseCase,
-            workManager,
-            postDao,
-            context
+            updateAuthorTrustScoreUseCase
         )
     }
 
@@ -70,6 +54,7 @@ class ToggleVoteUseCaseTest {
 
         assertTrue(result is VoteResult.ServerError)
         coVerify(exactly = 0) { updateAuthorTrustScoreUseCase(any()) }
+        coVerify(exactly = 1) { feedRepository.revertOptimisticVote("post123") }
     }
 
     @Test
@@ -85,5 +70,20 @@ class ToggleVoteUseCaseTest {
         assertTrue(result is VoteResult.Success)
         coVerify(exactly = 1) { feedRepository.toggleVoteTransaction(userId, "post123", 1) }
         coVerify(exactly = 1) { updateAuthorTrustScoreUseCase(authorId) }
+        coVerify(exactly = 1) { feedRepository.syncLocalVoteAfterSuccess("post123", 1, Triple(5, 1, 4)) }
+    }
+
+    @Test
+    fun `cuando no hay red debe guardar voto offline y retornar Offline`() = runBlocking {
+        val userId = "user123"
+        val authorId = "author456"
+        every { authRepository.getCurrentUser() } returns User(id = userId, email = "test@test.com")
+        coEvery { feedRepository.isNetworkAvailable() } returns false
+
+        val result = toggleVoteUseCase("post123", 1, authorId)
+
+        assertTrue(result is VoteResult.Offline)
+        coVerify(exactly = 1) { feedRepository.handleOfflineVote(userId, "post123", 1, authorId) }
+        coVerify(exactly = 0) { feedRepository.toggleVoteTransaction(any(), any(), any()) }
     }
 }

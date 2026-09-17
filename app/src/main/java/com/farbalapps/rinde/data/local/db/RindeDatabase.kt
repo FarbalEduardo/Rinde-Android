@@ -31,6 +31,9 @@ import com.farbalapps.rinde.data.local.entity.SavedListEntity
 import com.farbalapps.rinde.data.local.dao.SavedListDao
 import com.farbalapps.rinde.data.local.entity.ChatConversationEntity
 import com.farbalapps.rinde.data.local.dao.ChatDao
+import com.farbalapps.rinde.data.local.entity.FinancialProfileEntity
+import com.farbalapps.rinde.data.local.entity.ExtraExpenseEntity
+import com.farbalapps.rinde.data.local.dao.FinancialDao
 
 @Database(
     entities = [
@@ -46,9 +49,11 @@ import com.farbalapps.rinde.data.local.dao.ChatDao
         GoalTransactionEntity::class,
         PendingVoteEntity::class,
         SavedListEntity::class,
-        ChatConversationEntity::class
+        ChatConversationEntity::class,
+        FinancialProfileEntity::class,
+        ExtraExpenseEntity::class
     ],
-    version = 26,
+    version = 28,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -64,6 +69,7 @@ abstract class RindeDatabase : RoomDatabase() {
     abstract fun pendingVoteDao(): PendingVoteDao
     abstract fun savedListDao(): SavedListDao
     abstract fun chatDao(): ChatDao
+    abstract fun financialDao(): FinancialDao
 }
 
 

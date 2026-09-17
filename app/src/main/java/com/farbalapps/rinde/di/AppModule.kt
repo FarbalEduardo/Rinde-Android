@@ -71,6 +71,7 @@ object AppModule {
         postDao: com.farbalapps.rinde.data.local.dao.PostDao,
         syncMetadataDao: com.farbalapps.rinde.data.local.dao.SyncMetadataDao,
         goalsDao: com.farbalapps.rinde.data.local.dao.GoalsDao,
+        financialDao: com.farbalapps.rinde.data.local.dao.FinancialDao,
         goalsRepositoryProvider: javax.inject.Provider<com.farbalapps.rinde.domain.repository.GoalsRepository>
     ): AuthRepository {
         return FirebaseAuthRepository(
@@ -80,6 +81,7 @@ object AppModule {
             postDao,
             syncMetadataDao,
             goalsDao,
+            financialDao,
             goalsRepositoryProvider
         )
     }
@@ -208,15 +210,66 @@ object AppModule {
                 )
             }
         }
+
+        val MIGRATION_26_27 = object : androidx.room.migration.Migration(26, 27) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `financial_profiles` (" +
+                    "`id` TEXT NOT NULL, " +
+                    "`income` REAL NOT NULL, " +
+                    "`incomeFrequency` TEXT NOT NULL, " +
+                    "`currency` TEXT NOT NULL DEFAULT 'MXN', " +
+                    "`updatedAt` INTEGER NOT NULL, " +
+                    "PRIMARY KEY(`id`))"
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `extra_expenses` (" +
+                    "`id` TEXT NOT NULL, " +
+                    "`userId` TEXT NOT NULL, " +
+                    "`label` TEXT NOT NULL, " +
+                    "`amount` REAL NOT NULL, " +
+                    "`iconKey` TEXT NOT NULL DEFAULT 'receipt', " +
+                    "`month` INTEGER NOT NULL, " +
+                    "`year` INTEGER NOT NULL, " +
+                    "`createdAt` INTEGER NOT NULL, " +
+                    "PRIMARY KEY(`id`))"
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_extra_expenses_userId_year_month` ON `extra_expenses` (`userId`, `year`, `month`)")
+            }
+        }
+
+        val MIGRATION_27_28 = object : androidx.room.migration.Migration(27, 28) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `financial_profiles` ADD COLUMN `customStartDate` INTEGER DEFAULT NULL")
+                db.execSQL("ALTER TABLE `financial_profiles` ADD COLUMN `customEndDate` INTEGER DEFAULT NULL")
+            }
+        }
         
         return Room.databaseBuilder(
             context,
             RindeDatabase::class.java,
             "rinde_database"
-        ).addMigrations(MIGRATION_6_7, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26)
+        ).addMigrations(MIGRATION_6_7, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28)
          .fallbackToDestructiveMigration(dropAllTables = true)
          .build()
      }
+
+    @Provides
+    @Singleton
+    fun provideFinancialDao(db: RindeDatabase): com.farbalapps.rinde.data.local.dao.FinancialDao {
+        return db.financialDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideDashboardRepository(
+        dao: com.farbalapps.rinde.data.local.dao.FinancialDao,
+        auth: FirebaseAuth,
+        firestore: FirebaseFirestore,
+        @IoDispatcher ioDispatcher: CoroutineDispatcher
+    ): com.farbalapps.rinde.domain.repository.DashboardRepository {
+        return com.farbalapps.rinde.data.repository.DashboardRepositoryImpl(dao, auth, firestore, ioDispatcher)
+    }
 
     @Provides
     @Singleton

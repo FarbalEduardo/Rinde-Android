@@ -24,6 +24,27 @@ import javax.inject.Inject
 
 import com.farbalapps.rinde.data.local.dao.PendingVoteDao
 import com.farbalapps.rinde.data.local.entity.PendingVoteEntity
+import com.farbalapps.rinde.data.local.entity.toDomainModel
+import com.farbalapps.rinde.data.mapper.toDomain
+import com.farbalapps.rinde.data.mapper.toSavedSnapshotMap
+import com.farbalapps.rinde.data.remote.model.CommunityPostDto
+import com.farbalapps.rinde.data.remote.model.SavedPostSnapshotDto
+import com.farbalapps.rinde.data.worker.VoteSyncWorker
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import androidx.work.BackoffPolicy
+import androidx.work.Constraints
+import androidx.work.ExistingWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import com.google.firebase.firestore.SetOptions
+import dagger.hilt.android.qualifiers.ApplicationContext
+import java.util.Date
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
+import kotlin.math.max
 
 class FeedInteractionDelegate @Inject constructor(
     private val firestore: FirebaseFirestore,
@@ -31,8 +52,11 @@ class FeedInteractionDelegate @Inject constructor(
     private val postDao: PostDao,
     private val userVoteDao: UserVoteDao,
     private val pendingVoteDao: PendingVoteDao,
-    private val savedPostsMemoryCache: SavedPostsMemoryCache
+    private val savedPostsMemoryCache: SavedPostsMemoryCache,
+    private val workManager: WorkManager,
+    @ApplicationContext private val context: Context
 ) {
+
     companion object {
         private const val TAG = "FeedInteractionDelegate"
         private const val FEED_LIMIT = 30L
@@ -69,46 +93,73 @@ class FeedInteractionDelegate @Inject constructor(
         userId: String,
         snapshotToPosts: suspend (com.google.firebase.firestore.QuerySnapshot?) -> List<CommunityPost>
     ): Flow<List<CommunityPost>> = callbackFlow {
-        android.util.Log.d(TAG, "🔖 Iniciando Saved Posts para user: $userId")
-
-        var postsListener: com.google.firebase.firestore.ListenerRegistration? = null
+        android.util.Log.d(TAG, "🔖 Iniciando Saved Posts para user: $userId (Snapshot optimizado)")
 
         val savedListener = firestore.collection("users").document(userId)
             .collection("saved_posts")
             .orderBy("savedAt", Query.Direction.DESCENDING)
             .limit(FEED_LIMIT)
             .addSnapshotListener { snapshot, error ->
-                if (error != null) return@addSnapshotListener
-
-                val postIds = snapshot?.documents?.map { it.id } ?: emptyList()
-                if (postIds.isEmpty()) {
+                if (error != null) {
+                    android.util.Log.e(TAG, "❌ Error al escuchar saved_posts: ${error.message}")
                     trySend(emptyList())
                     return@addSnapshotListener
                 }
 
-                postsListener?.remove()
+                if (snapshot == null || snapshot.isEmpty) {
+                    trySend(emptyList())
+                    return@addSnapshotListener
+                }
 
-                postsListener = firestore.collection("posts")
-                    .whereEqualTo("isActive", true)
-                    .whereIn(FieldPath.documentId(), postIds.take(30))
-                    .addSnapshotListener { postSnapshot, postError ->
-                        if (postError != null) {
-                            android.util.Log.e(TAG, "❌ Error en Saved Posts posts: ${postError.message}")
-                            trySend(emptyList())
-                            return@addSnapshotListener
+                launch {
+                    try {
+                        val legacyDocIds = mutableListOf<String>()
+                        val resultPosts = mutableListOf<CommunityPost>()
+
+                        for (doc in snapshot.documents) {
+                            val title = doc.getString("title")
+                            if (!title.isNullOrBlank()) {
+                                // 1. Desnormalizado directo: parsear snapshot sin queries secundarias
+                                val snapshotDto = doc.toObject(SavedPostSnapshotDto::class.java)
+                                if (snapshotDto != null && snapshotDto.isActive) {
+                                    resultPosts.add(snapshotDto.copy(postId = doc.id).toDomain())
+                                }
+                            } else {
+                                // 2. Documento legado (solo tenía savedAt): marcar para fallback
+                                legacyDocIds.add(doc.id)
+                            }
                         }
-                        launch {
-                            val posts = snapshotToPosts(postSnapshot)
-                                .map { it.copy(isSavedByMe = true) }
-                                .sortedBy { postIds.indexOf(it.id) }
-                            trySend(posts)
+
+                        // Si hay documentos legados antiguos, resolverlos mediante fallback
+                        if (legacyDocIds.isNotEmpty()) {
+                            val legacyPosts = legacyDocIds.chunked(30).flatMap { chunk ->
+                                firestore.collection("posts")
+                                    .whereEqualTo("isActive", true)
+                                    .whereIn(FieldPath.documentId(), chunk)
+                                    .get().await()
+                                    .documents.mapNotNull { d ->
+                                        d.toObject(CommunityPostDto::class.java)?.copy(id = d.id)?.toDomain()
+                                            ?.copy(isSavedByMe = true)
+                                    }
+                            }
+                            resultPosts.addAll(legacyPosts)
                         }
+
+                        // Preservar el orden cronológico de guardado según snapshot
+                        val orderedPosts = snapshot.documents.mapNotNull { doc ->
+                            resultPosts.find { it.id == doc.id }
+                        }
+
+                        trySend(orderedPosts)
+                    } catch (e: Exception) {
+                        android.util.Log.e(TAG, "❌ Error procesando saved_posts: ${e.message}", e)
+                        trySend(emptyList())
                     }
+                }
             }
 
         awaitClose {
             savedListener.remove()
-            postsListener?.remove()
         }
     }
 
@@ -142,7 +193,20 @@ class FeedInteractionDelegate @Inject constructor(
             updateSavedStatusLocal(postId, false)
             postDao.updateSavedStatus(postId, false)
         } else {
-            savedRef.set(mapOf("savedAt" to FieldValue.serverTimestamp())).await()
+            // Generar el snapshot desnormalizado para acceso ultrarrápido O(1)
+            val localPostEntity = postDao.getPostById(postId)
+            val snapshotMap = if (localPostEntity != null) {
+                localPostEntity.toDomainModel().toSavedSnapshotMap()
+            } else {
+                try {
+                    val remoteDoc = firestore.collection("posts").document(postId).get().await()
+                    val remotePost = remoteDoc.toObject(CommunityPostDto::class.java)?.copy(id = remoteDoc.id)?.toDomain()
+                    remotePost?.toSavedSnapshotMap() ?: mapOf("postId" to postId, "savedAt" to FieldValue.serverTimestamp())
+                } catch (e: Exception) {
+                    mapOf("postId" to postId, "savedAt" to FieldValue.serverTimestamp())
+                }
+            }
+            savedRef.set(snapshotMap).await()
             savedPostsMemoryCache.setSaved(postId, true)
             updateSavedStatusLocal(postId, true)
             postDao.updateSavedStatus(postId, true)
@@ -297,4 +361,177 @@ class FeedInteractionDelegate @Inject constructor(
             )
         )
     }
+
+    private data class OriginalVoteState(
+        val vote: Int,
+        val truthCount: Int,
+        val falseCount: Int,
+        val score: Int
+    )
+
+    private val optimisticVoteBackups = ConcurrentHashMap<String, OriginalVoteState>()
+
+    fun isNetworkAvailable(): Boolean {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
+        val network = cm.activeNetwork ?: return false
+        val capabilities = cm.getNetworkCapabilities(network) ?: return false
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    }
+
+    suspend fun handleOfflineVote(userId: String, postId: String, voteValue: Int, authorId: String) {
+        savePendingVote(userId, postId, voteValue, authorId)
+        val request = OneTimeWorkRequestBuilder<VoteSyncWorker>()
+            .setConstraints(
+                Constraints.Builder()
+                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .build()
+            )
+            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
+            .build()
+        workManager.enqueueUniqueWork(
+            "vote_sync",
+            ExistingWorkPolicy.KEEP,
+            request
+        )
+    }
+
+    suspend fun applyOptimisticVote(postId: String, voteValue: Int) {
+        val existingPost = postDao.getPostById(postId) ?: return
+        val origVote = existingPost.myVoteValue ?: 0
+        val origTruth = existingPost.truthCount
+        val origFalse = existingPost.falseCount
+        val origScore = existingPost.votesScore
+
+        optimisticVoteBackups[postId] = OriginalVoteState(origVote, origTruth, origFalse, origScore)
+
+        val nextVote = if (origVote == voteValue) 0 else voteValue
+        val tDelta = (if (nextVote == 1) 1 else 0) - (if (origVote == 1) 1 else 0)
+        val fDelta = (if (nextVote == -1) 1 else 0) - (if (origVote == -1) 1 else 0)
+
+        val optTruth = (origTruth + tDelta).coerceAtLeast(0)
+        val optFalse = (origFalse + fDelta).coerceAtLeast(0)
+        val optScore = origScore + (nextVote - origVote)
+
+        postDao.updateVoteState(postId, nextVote, optTruth, optFalse, optScore)
+        updateVoteStatusLocal(
+            postId,
+            VoteOverlay(
+                truthCount = optTruth,
+                falseCount = optFalse,
+                myVote = nextVote
+            )
+        )
+    }
+
+    suspend fun revertOptimisticVote(postId: String) {
+        val backup = optimisticVoteBackups.remove(postId)
+        if (backup != null) {
+            postDao.updateVoteState(postId, backup.vote, backup.truthCount, backup.falseCount, backup.score)
+            updateVoteStatusLocal(
+                postId,
+                VoteOverlay(
+                    truthCount = backup.truthCount,
+                    falseCount = backup.falseCount,
+                    myVote = backup.vote
+                )
+            )
+        }
+    }
+
+    suspend fun syncLocalVoteAfterSuccess(postId: String, voteValue: Int, counts: Triple<Int, Int, Int>) {
+        val backup = optimisticVoteBackups.remove(postId)
+        val (truth, false_, score) = counts
+        val local = postDao.getPostById(postId)
+        val originalVote = backup?.vote ?: 0
+        val currentVote = local?.myVoteValue ?: (if (originalVote == voteValue) 0 else voteValue)
+        if (local != null) {
+            postDao.updateVoteState(postId, currentVote, truth, false_, score)
+        }
+        updateVoteStatusLocal(
+            postId,
+            VoteOverlay(
+                truthCount = truth,
+                falseCount = false_,
+                myVote = currentVote
+            )
+        )
+    }
+
+    suspend fun recalculateAuthorTrustScore(authorId: String): Result<Unit> = runCatching {
+        val postsSnapshot = firestore.collection("posts")
+            .whereEqualTo("authorId", authorId)
+            .get().await()
+
+        if (postsSnapshot.isEmpty) return@runCatching
+
+        val now = Date().time
+        val postsToUpdate = mutableListOf<String>()
+        var totalWeightedScore = 0f
+        var totalWeight = 0f
+        var verifiedCount = 0
+
+        for (doc in postsSnapshot.documents) {
+            val post = doc.toObject(CommunityPostDto::class.java) ?: continue
+            postsToUpdate.add(doc.id)
+
+            val truthCount = post.truthCount
+            val falseCount = post.falseCount
+            val totalVotes = truthCount + falseCount
+
+            if (totalVotes < 3) continue
+
+            var postScore = (truthCount.toFloat() / totalVotes.toFloat()) * 5f
+            val status = runCatching { VerificationStatus.valueOf(post.verificationStatus) }.getOrNull()
+            if (status == VerificationStatus.EXPIRED || status == VerificationStatus.DISPUTED) {
+                postScore -= 0.5f
+            }
+
+            if (truthCount.toFloat() / totalVotes.toFloat() >= 0.8f) {
+                postScore += 0.3f
+                verifiedCount++
+            }
+
+            postScore = postScore.coerceIn(0f, 5f)
+
+            val daysSincePost = ((now - (post.timestamp?.time ?: now)) / (1000 * 60 * 60 * 24)).toFloat()
+            val weight = 1f / (1f + max(0f, daysSincePost) * 0.05f)
+
+            totalWeightedScore += (postScore * weight)
+            totalWeight += weight
+        }
+
+        val finalTrustScore = if (totalWeight > 0f) totalWeightedScore / totalWeight else 0f
+        val trustLevel = when {
+            finalTrustScore >= 4.5f -> "PLATINUM"
+            finalTrustScore >= 3.5f -> "GOLD"
+            finalTrustScore >= 2.5f -> "SILVER"
+            finalTrustScore >= 1.5f -> "BRONZE"
+            else -> "NEW"
+        }
+
+        firestore.runBatch { batch ->
+            val userRef = firestore.collection("users").document(authorId)
+            batch.set(
+                userRef,
+                mapOf(
+                    "trustScore" to finalTrustScore,
+                    "trustLevel" to trustLevel,
+                    "verifiedPostsCount" to verifiedCount
+                ),
+                SetOptions.merge()
+            )
+
+            for (postId in postsToUpdate) {
+                val postRef = firestore.collection("posts").document(postId)
+                batch.update(
+                    postRef,
+                    mapOf(
+                        "authorTrustScore" to finalTrustScore,
+                        "authorTrustLevel" to trustLevel
+                    )
+                )
+            }
+        }.await()
+    }
 }
+

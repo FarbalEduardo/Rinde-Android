@@ -26,11 +26,44 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.farbalapps.rinde.R
 import com.farbalapps.rinde.ui.navigation.HomeRoute
-
 import androidx.navigation.NavDestination.Companion.hasRoute
-
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
+
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.path
+
+val RindeChartIcon: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "RindeChart",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f
+    ).apply {
+        path(fill = SolidColor(androidx.compose.ui.graphics.Color.White)) {
+            // Left bar
+            moveTo(4f, 10f)
+            lineTo(8f, 10f)
+            lineTo(8f, 20f)
+            lineTo(4f, 20f)
+            close()
+            // Center bar (tallest)
+            moveTo(10f, 4f)
+            lineTo(14f, 4f)
+            lineTo(14f, 20f)
+            lineTo(10f, 20f)
+            close()
+            // Right bar
+            moveTo(16f, 13f)
+            lineTo(20f, 13f)
+            lineTo(20f, 20f)
+            lineTo(16f, 20f)
+            close()
+        }
+    }.build()
+}
 
 @Composable
 fun BottomNavigationBar(
@@ -38,9 +71,9 @@ fun BottomNavigationBar(
     unreadNotificationsCount: Int = 0
 ) {
     val items = listOf(
+        Pair(HomeRoute.Dashboard, Pair(stringResource(id = R.string.dashboard_title), RindeChartIcon)),
         Pair(HomeRoute.Community, Pair(stringResource(id = R.string.home_tab_community), Icons.Default.Public)),
         Pair(HomeRoute.List, Pair(stringResource(id = R.string.home_tab_home), Icons.Default.ShoppingCart)),
-        Pair(HomeRoute.Assistant, Pair(stringResource(id = R.string.assistant_title), Icons.Default.Restaurant)),
         Pair(HomeRoute.Goals, Pair(stringResource(id = R.string.home_tab_goals), Icons.Default.Flag)),
         Pair(HomeRoute.Profile, Pair(stringResource(id = R.string.home_tab_profile), Icons.Default.AccountCircle))
     )
@@ -72,8 +105,10 @@ fun BottomNavigationBar(
                                     saveState = true
                                 }
                                 launchSingleTop = true
-                                restoreState = true
+                                restoreState = (route != HomeRoute.Dashboard)
                             }
+                        } else {
+                            navController.popBackStack(route, inclusive = false)
                         }
                     }
                 )

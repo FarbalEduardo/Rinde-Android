@@ -161,6 +161,21 @@ class FeedLifecycleDelegate @Inject constructor(
         }
     }
 
+    suspend fun getPostByIdOnce(postId: String): CommunityPost? = withContext(Dispatchers.IO) {
+        val entity = postDao.getPostById(postId)
+        if (entity != null) {
+            enrichPost(entity.toDomainModel())
+        } else {
+            try {
+                val snapshot = firestore.collection("posts").document(postId).get().await()
+                val dto = snapshot.toObject(CommunityPostDto::class.java)?.copy(id = snapshot.id)
+                dto?.toDomain()?.let { enrichPost(it) }
+            } catch (_: Exception) {
+                null
+            }
+        }
+    }
+
     fun getUserPosts(userId: String): Flow<List<CommunityPost>> {
         return postDao.getPostsByAuthorId(userId).map { entities ->
             val result = mutableListOf<CommunityPost>()

@@ -306,6 +306,7 @@ class ListViewModel @Inject constructor(
     ) {
         viewModelScope.launch {
             try {
+                val editing = _uiState.value.editingItem
                 val itemToUpdate = DomainShoppingItem(
                     id = id,
                     name = name,
@@ -313,11 +314,15 @@ class ListViewModel @Inject constructor(
                     quantity = quantity,
                     unit = unit,
                     emoji = emoji,
-                    listGroup = _uiState.value.editingItem?.listGroup ?: "All",
-                    userId = _uiState.value.editingItem?.userId ?: "",
+                    listGroup = editing?.listGroup ?: "All",
+                    userId = editing?.userId ?: "",
+                    isCompleted = editing?.isCompleted ?: false,
                     price = price,
                     currency = currency
                 )
+                if (emoji.isEmpty() && name.isNotBlank()) {
+                    saveCustomProductHistoryUseCase(name, category)
+                }
                 updateListItemUseCase(itemToUpdate)
                 stopEditing()
             } catch (e: Exception) {

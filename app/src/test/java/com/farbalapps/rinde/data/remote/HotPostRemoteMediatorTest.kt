@@ -24,9 +24,6 @@ class HotPostRemoteMediatorTest {
         firestore = mockk()
         postDao = mockk()
         syncMetadataDao = mockk()
-        mockkStatic(android.util.Log::class)
-        every { android.util.Log.d(any(), any()) } returns 0
-        every { android.util.Log.e(any(), any(), any()) } returns 0
     }
 
     @Test

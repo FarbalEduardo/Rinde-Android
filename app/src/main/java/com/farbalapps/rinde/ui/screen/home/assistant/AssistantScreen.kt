@@ -43,6 +43,8 @@ import com.farbalapps.rinde.domain.model.ChatConversation
 import com.farbalapps.rinde.domain.model.ChatMessage
 import com.farbalapps.rinde.domain.model.RecipeCard
 import com.farbalapps.rinde.ui.theme.RindePrimary
+import com.farbalapps.rinde.ui.theme.RindeTheme
+import androidx.compose.ui.tooling.preview.Preview
 import kotlinx.coroutines.flow.collectLatest
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -55,10 +57,7 @@ fun AssistantScreen(
     viewModel: AssistantViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val listState = rememberLazyListState()
     val snackbarHostState = remember { SnackbarHostState() }
-
-    var showListDropdown by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.uiEvent.collectLatest { event ->
@@ -70,6 +69,51 @@ fun AssistantScreen(
         }
     }
 
+    AssistantContent(
+        uiState = uiState,
+        innerPadding = innerPadding,
+        snackbarHostState = snackbarHostState,
+        onHistoryClick = { viewModel.toggleHistorySheet(true) },
+        onNewChatClick = { viewModel.startNewConversation() },
+        onSelectList = { viewModel.selectList(it) },
+        onToggleIngredient = { viewModel.toggleIngredientSelection(it) },
+        onInputTextChanged = { viewModel.onInputTextChanged(it) },
+        onSendMessage = { viewModel.sendMessage() }
+    )
+
+    // Modal BottomSheet para el Historial de Conversaciones (Máx 10)
+    if (uiState.showHistorySheet) {
+        ModalBottomSheet(
+            onDismissRequest = { viewModel.toggleHistorySheet(false) },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ) {
+            ChatHistorySheetContent(
+                conversations = uiState.historyConversations,
+                onSelectConversation = { viewModel.loadConversation(it) },
+                onDeleteConversation = { viewModel.deleteConversation(it) },
+                onNewConversation = { viewModel.startNewConversation() }
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AssistantContent(
+    uiState: ChefChatUiState,
+    onHistoryClick: () -> Unit,
+    onNewChatClick: () -> Unit,
+    onSelectList: (String) -> Unit,
+    onToggleIngredient: (String) -> Unit,
+    onInputTextChanged: (String) -> Unit,
+    onSendMessage: () -> Unit,
+    modifier: Modifier = Modifier,
+    innerPadding: PaddingValues = PaddingValues(0.dp),
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
+) {
+    val listState = rememberLazyListState()
+    var showListDropdown by remember { mutableStateOf(false) }
+
     // Scroll automático al último mensaje cuando aumenta la cantidad
     LaunchedEffect(uiState.messages.size) {
         if (uiState.messages.isNotEmpty()) {
@@ -78,7 +122,7 @@ fun AssistantScreen(
     }
 
     Scaffold(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .padding(innerPadding),
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -119,7 +163,7 @@ fun AssistantScreen(
                 },
                 actions = {
                     // Historial de Sesiones (Máx 10)
-                    IconButton(onClick = { viewModel.toggleHistorySheet(true) }) {
+                    IconButton(onClick = onHistoryClick) {
                         Icon(
                             imageVector = Icons.Default.History,
                             contentDescription = androidx.compose.ui.res.stringResource(com.farbalapps.rinde.R.string.assistant_history_desc),
@@ -127,7 +171,7 @@ fun AssistantScreen(
                         )
                     }
                     // Nueva Conversación
-                    IconButton(onClick = { viewModel.startNewConversation() }) {
+                    IconButton(onClick = onNewChatClick) {
                         Icon(
                             imageVector = Icons.Default.Add,
                             contentDescription = androidx.compose.ui.res.stringResource(com.farbalapps.rinde.R.string.assistant_new_chat_desc),
@@ -176,30 +220,15 @@ fun AssistantScreen(
                 uiState = uiState,
                 showListDropdown = showListDropdown,
                 onShowListDropdownChange = { showListDropdown = it },
-                onSelectList = { viewModel.selectList(it) },
-                onToggleIngredient = { viewModel.toggleIngredientSelection(it) }
+                onSelectList = onSelectList,
+                onToggleIngredient = onToggleIngredient
             )
 
             // Dock de Entrada (máx 150 caracteres)
             ChefChatInputDock(
                 inputText = uiState.inputText,
-                onInputTextChanged = { viewModel.onInputTextChanged(it) },
-                onSendMessage = { viewModel.sendMessage() }
-            )
-        }
-    }
-
-    // Modal BottomSheet para el Historial de Conversaciones (Máx 10)
-    if (uiState.showHistorySheet) {
-        ModalBottomSheet(
-            onDismissRequest = { viewModel.toggleHistorySheet(false) },
-            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-        ) {
-            ChatHistorySheetContent(
-                conversations = uiState.historyConversations,
-                onSelectConversation = { viewModel.loadConversation(it) },
-                onDeleteConversation = { viewModel.deleteConversation(it) },
-                onNewConversation = { viewModel.startNewConversation() }
+                onInputTextChanged = onInputTextChanged,
+                onSendMessage = onSendMessage
             )
         }
     }
@@ -770,3 +799,30 @@ private fun ChatHistorySheetContent(
         Spacer(modifier = Modifier.height(24.dp))
     }
 }
+
+@Preview(name = "Assistant Screen Light", showBackground = true)
+@Composable
+fun AssistantContentPreview() {
+    RindeTheme {
+        AssistantContent(
+            uiState = ChefChatUiState(
+                messages = listOf(
+                    ChatMessage(
+                        id = "1",
+                        role = "assistant",
+                        text = "¡Hola! ¿Qué deseas cocinar hoy con tus ingredientes disponibles?"
+                    )
+                ),
+                availableLists = listOf("Mi Lista Actual", "Despensa"),
+                selectedListName = "Mi Lista Actual"
+            ),
+            onHistoryClick = {},
+            onNewChatClick = {},
+            onSelectList = {},
+            onToggleIngredient = {},
+            onInputTextChanged = {},
+            onSendMessage = {}
+        )
+    }
+}
+

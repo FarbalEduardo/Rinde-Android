@@ -31,6 +31,8 @@ fun SettingsScreen(
     onLogout: () -> Unit,
     onNavigateToSaved: () -> Unit,
     onNavigateToBlocked: () -> Unit,
+    onNavigateToAbout: () -> Unit = {},
+    onNavigateToVerifyAccount: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     var showLogoutDialog by remember { mutableStateOf(false) }
@@ -128,6 +130,8 @@ fun SettingsScreen(
             onTogglePrivacy = { viewModel.togglePrivacy(it) },
             onNavigateToSaved = onNavigateToSaved,
             onNavigateToBlocked = onNavigateToBlocked,
+            onNavigateToAbout = onNavigateToAbout,
+            onNavigateToVerifyAccount = onNavigateToVerifyAccount,
             onShowTheme = { showThemeSheet = true },
             onShowLanguage = { showLanguageSheet = true },
             onShowLogout = { showLogoutDialog = true }
@@ -144,6 +148,8 @@ fun SettingsContent(
     onTogglePrivacy: (Boolean) -> Unit,
     onNavigateToSaved: () -> Unit,
     onNavigateToBlocked: () -> Unit,
+    onNavigateToAbout: () -> Unit = {},
+    onNavigateToVerifyAccount: () -> Unit = {},
     onShowTheme: () -> Unit,
     onShowLanguage: () -> Unit,
     onShowLogout: () -> Unit
@@ -168,7 +174,7 @@ fun SettingsContent(
             .padding(padding)
     ) {
         usageSection(onNavigateToSaved)
-        privacySection(isPrivate, onTogglePrivacy, onNavigateToBlocked)
+        privacySection(isPrivate, onTogglePrivacy, onNavigateToBlocked, onNavigateToVerifyAccount)
         appSection(
             currentTheme = currentTheme,
             currentLanguage = currentLanguage,
@@ -180,7 +186,7 @@ fun SettingsContent(
             onShowTheme = onShowTheme,
             onShowLanguage = onShowLanguage
         )
-        moreSection(onShowLogout)
+        moreSection(onNavigateToAbout, onShowLogout)
     }
 }
 
@@ -200,7 +206,8 @@ private fun androidx.compose.foundation.lazy.LazyListScope.usageSection(
 private fun androidx.compose.foundation.lazy.LazyListScope.privacySection(
     isPrivate: Boolean,
     onTogglePrivacy: (Boolean) -> Unit,
-    onNavigateToBlocked: () -> Unit
+    onNavigateToBlocked: () -> Unit,
+    onNavigateToVerifyAccount: () -> Unit
 ) {
     item { SettingsSectionHeader(stringResource(R.string.settings_section_privacy)) }
     item {
@@ -228,7 +235,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.privacySection(
         SettingsListItem(
             icon = Icons.Default.VerifiedUser,
             label = stringResource(R.string.settings_item_verify_account),
-            onClick = { /* TODO */ }
+            onClick = onNavigateToVerifyAccount
         )
     }
 }
@@ -264,6 +271,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.appSection(
 }
 
 private fun androidx.compose.foundation.lazy.LazyListScope.moreSection(
+    onNavigateToAbout: () -> Unit,
     onShowLogout: () -> Unit
 ) {
     item { SettingsSectionHeader(stringResource(R.string.settings_section_more)) }
@@ -271,7 +279,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.moreSection(
         SettingsListItem(
             icon = Icons.Default.Info,
             label = stringResource(R.string.settings_item_about),
-            onClick = { /* TODO */ }
+            onClick = onNavigateToAbout
         )
     }
 
