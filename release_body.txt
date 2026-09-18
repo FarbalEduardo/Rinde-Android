@@ -1,13 +1,44 @@
-# Notas de Lanzamiento - Rinde v1.2.0
+# 🚀 Notas de Lanzamiento — Rinde v1.5.0-beta
 
-Esta actualización introduce mejoras significativas en la experiencia del usuario final mediante una navegación más intuitiva y orientada a la colaboración, además de robustecer la infraestructura de pruebas unitarias y estabilidad del código base.
+Esta versión marca un hito fundamental en la madurez y robustez técnica de **Rinde**, elevando la arquitectura a estándares **Production-Ready / Senior Enterprise**. Se logra un aislamiento estricto de Clean Architecture, una refactorización modular completa de la capa de interfaz de usuario con Jetpack Compose y Material Design 3, y una suite de pruebas con trazabilidad directa a los requerimientos de negocio (SDD).
 
-## 🚀 Nuevas Características
+---
 
-* **Navegación Prioritaria Basada en Comunidad**: La sección global de reportes de precios y contribuciones comunitarias (`CommunityScreen`) se establece ahora como el punto de acceso inicial predeterminado al abrir la aplicación. La **Lista de Mandado** ha sido reubicada de forma fluida a la segunda posición de la barra de navegación.
-* **Control de Navegación de Retroceso Optimizado**: Integración de una lógica de interceptación de retroceso mediante Compose `BackHandler` en la pantalla de inicio principal (Comunidad), lo que permite un cierre controlado y nativo del ciclo de vida de la aplicación.
+## 🏛️ Aislamiento Estricto de Clean Architecture
 
-## 🔧 Optimizaciones y Correcciones Técnicas (Bajo el Capó)
+* **Dominio Kotlin 100% Puro**: Erradicación total de imports de `android.net.Uri` en las entidades y casos de uso de dominio (`CommentRepository`, `CreatePostUseCase`, `AddCommentUseCase`, `AddReplyUseCase`). Toda la lógica de negocio opera ahora con contratos primitivos y universales de Kotlin (`String?`, `List<String>`), encapsulando el parseo de SDK en la frontera con la capa de datos (`CommentRepositoryImpl`).
+* **Desacoplamiento de ViewModels y DAOs**: Eliminación de la inyección directa de `PostDao` y `SyncMetadataDao` en `CommunityViewModel`. Se introdujeron los casos de uso especializados `CleanOldCacheUseCase` (política de retención de caché local) y `UpdateFeedSeenTimestampUseCase` (gestión de estado de lectura del feed).
+* **Infraestructura de Logging Testeable**: Reemplazo de llamadas acopladas a `android.util.Log` por la abstracción `AppLogger` (`util/logger/`), implementada por `AndroidAppLogger` y provista mediante Hilt `LoggingModule` con ciclo de vida `@Singleton`.
 
-* **Sincronización del Flujo de Navegación**: Reestructuración y alineación de los componentes de navegación `HomeNavHost` y `BottomNavigationBar` para garantizar una transición libre de parpadeos e ideal para el rendimiento del renderizado en Jetpack Compose.
-* **Saneamiento del Entorno de Pruebas**: Corrección de inconsistencias de compilación preexistentes en la suite de pruebas unitarias de `ProfileViewModelTest`. Se actualizaron las inyecciones mock de los casos de uso `GetSavedPostsUseCase` y `ClearUploadStatusUseCase`, y se sincronizaron las llamadas asíncronas con el tipo de retorno encapsulado `Result<Unit>` para asegurar la estabilidad del pipeline de integración local.
+---
+
+## 🎨 Descomposición Modular de UI (Jetpack Compose & Material 3)
+
+* **Descomposición de `CommunityScreen`**: Reducción drástica del monolito de **1 178 líneas a ~305 líneas**, aplicando State Hoisting y separación estricta Stateful/Stateless:
+  * `CommunityTopBar`: Búsqueda integrada M3, notificaciones y tabs.
+  * `CommunityFeedList`: Lista paginada reactiva Paging 3 y Pull-to-refresh.
+  * `NewPostsBanner`: Banner contextual con animación expand/shrink.
+  * `EmptyFeedState` y `FeedErrorState`: Estados visuales enriquecidos con animaciones continuas.
+* **Descomposición de `PostDetailScreen`**: Reducción del monolito de **1 276 líneas a ~375 líneas**:
+  * `PostDetailHeader`: Carrusel interactivo y bloque de precios semi-bold.
+  * `PostDetailMetaSection`: Información de comercio, cupón con copiado en un toque y autor verificado.
+  * `PostDetailVotingSection`: Votación comunitaria de veracidad y avisos offline.
+  * `PostDetailCommentSection`: Hilos de comentarios y respuestas anidadas.
+  * `PostDetailSkeleton`: Carga fluida con Shimmer.
+* **Cumplimiento de Tokens M3**: Eliminación de colores hexadecimales directos; adopción integral de `MaterialTheme.colorScheme` y `@PreviewLightDark` en todos los componentes stateless.
+
+---
+
+## 🧪 Calidad SDD y Trazabilidad de Historias de Usuario
+
+* **Mapeo de Pruebas Unitarias a Requerimientos**:
+  * **[HU-01] Feed y Publicación**: `ToggleVoteUseCaseTest`, `CreatePostUseCaseTest`, `CleanOldCacheUseCaseTest`.
+  * **[HU-02] Búsqueda**: `SearchPostsUseCaseTest` (validación de debouncing, trim y categorías).
+  * **[HU-03] Comentarios y Respuestas**: `AddCommentUseCaseTest`, `AddReplyUseCaseTest`.
+  * **[HU-04] Guardados**: `ToggleSavePostUseCaseTest`.
+  * **[HU-05] Detalle de Ofertas**: `GetCommentsUseCaseTest`.
+* **Pipeline de Integración Local Automatizado (`run_pipeline.ps1`)**:
+  * `Mobile Developer Audit`: **PASSED** (0 fugas de capa).
+  * `Design Expert Audit`: **PASSED** (M3 compliance y estabilidad Compose).
+  * `Quality PM Audit`: **PASSED** (cobertura total de UseCases).
+  * `Security Expert Audit`: **PASSED** (análisis SAST y dependencias).
