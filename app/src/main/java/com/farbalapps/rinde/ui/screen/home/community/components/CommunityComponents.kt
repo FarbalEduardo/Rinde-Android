@@ -73,13 +73,13 @@ fun WishlistAddCard(modifier: Modifier = Modifier) {
         ) {
             Icon(
                 imageVector = Icons.Default.Add,
-                contentDescription = "Añadir a Wishlist",
+                contentDescription = androidx.compose.ui.res.stringResource(com.farbalapps.rinde.R.string.wishlist_add_desc),
                 tint = RindePrimary,
                 modifier = Modifier.size(28.dp)
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "Añadir",
+                text = androidx.compose.ui.res.stringResource(com.farbalapps.rinde.R.string.wishlist_add_title),
                 style = MaterialTheme.typography.labelMedium,
                 color = RindePrimary,
                 fontWeight = FontWeight.Bold
@@ -96,9 +96,9 @@ fun CommunityTabRow(
     modifier: Modifier = Modifier
 ) {
     val tabs = listOf(
-        CommunityTab.DISCOVER to "✨ Descubrir",
-        CommunityTab.HOT to "🔥 Lo más Hot",
-        CommunityTab.SAVED to "🔖 Guardados"
+        CommunityTab.DISCOVER to androidx.compose.ui.res.stringResource(com.farbalapps.rinde.R.string.community_tab_discover),
+        CommunityTab.HOT to androidx.compose.ui.res.stringResource(com.farbalapps.rinde.R.string.community_tab_hot),
+        CommunityTab.SAVED to androidx.compose.ui.res.stringResource(com.farbalapps.rinde.R.string.community_tab_saved)
     )
 
     PrimaryTabRow(

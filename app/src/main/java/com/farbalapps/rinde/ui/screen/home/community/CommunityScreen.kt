@@ -1,91 +1,78 @@
 package com.farbalapps.rinde.ui.screen.home.community
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.ExperimentalFoundationApi
+import android.content.Intent
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Explore
-import androidx.compose.material.icons.filled.BookmarkBorder
-import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.filled.Whatshot
-import androidx.compose.material.icons.filled.LocalOffer
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Stars
-import androidx.compose.material.icons.filled.LocalFireDepartment
-import androidx.compose.material.icons.automirrored.filled.TrendingUp
-import androidx.compose.material.icons.filled.ThumbUp
-import androidx.compose.material.icons.filled.StarOutline
-import androidx.compose.material.icons.filled.Savings
-import androidx.compose.material.icons.filled.Sell
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.outlined.Notifications
-import com.farbalapps.rinde.ui.screen.home.community.components.NotificationsBottomSheet
-import com.farbalapps.rinde.ui.screen.home.community.components.SearchContent
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
-
-import androidx.compose.material3.*
-
-import androidx.compose.material3.SearchBar
-import androidx.compose.material3.SearchBarDefaults
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.border
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.farbalapps.rinde.R
-import com.farbalapps.rinde.domain.model.CommunityPost
-import androidx.paging.compose.collectAsLazyPagingItems
-import androidx.paging.compose.LazyPagingItems
-import androidx.paging.compose.itemKey
-import com.farbalapps.rinde.ui.screen.home.community.components.CommunityTabRow
-import com.farbalapps.rinde.ui.screen.home.community.components.PostCard
-import com.farbalapps.rinde.ui.screen.home.community.components.PostCardSkeleton
-import com.farbalapps.rinde.ui.screen.home.community.components.CommentsBottomSheet
-import com.farbalapps.rinde.ui.theme.RindePrimary
-import com.farbalapps.rinde.ui.theme.RindeTheme
-import kotlin.math.roundToInt
-import androidx.compose.foundation.clickable
 import androidx.compose.ui.zIndex
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.compose.animation.core.*
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.paging.PagingData
+import androidx.paging.compose.LazyPagingItems
+import androidx.paging.compose.collectAsLazyPagingItems
+import com.farbalapps.rinde.R
+import com.farbalapps.rinde.domain.model.CommunityPost
+import com.farbalapps.rinde.domain.model.VerificationStatus
+import com.farbalapps.rinde.domain.repository.VoteOverlay
+import com.farbalapps.rinde.ui.screen.home.community.components.CommunityFeedList
+import com.farbalapps.rinde.ui.screen.home.community.components.CommunityTopBar
+import com.farbalapps.rinde.ui.screen.home.community.components.NotificationsBottomSheet
+import com.farbalapps.rinde.ui.theme.RindeTheme
+import kotlinx.coroutines.flow.flowOf
+import kotlin.math.roundToInt
+/** Re-export de EmptyFeedState para retrocompatibilidad con pantallas existentes */
+@Composable
+fun EmptyFeedState(tab: CommunityTab, modifier: Modifier = Modifier) {
+    com.farbalapps.rinde.ui.screen.home.community.components.EmptyFeedState(tab, modifier)
+}
 
-@OptIn(ExperimentalMaterial3Api::class)
+/** Re-export de FeedErrorState para retrocompatibilidad con pantallas existentes */
+@Composable
+fun FeedErrorState(errorMessage: String, onRetry: () -> Unit, modifier: Modifier = Modifier) {
+    com.farbalapps.rinde.ui.screen.home.community.components.FeedErrorState(errorMessage, onRetry, modifier)
+}
+
+/**
+ * Pantalla principal de Comunidad (Stateful).
+ * Inyecta ViewModels, observa ciclos de vida y delega el renderizado al composable puro [CommunityContent].
+ *
+ * [HU-01] Feed de ofertas, votos y navegación a creación de post.
+ */
 @Composable
 fun CommunityScreen(
     onNavigateToCreatePost: () -> Unit = {},
@@ -94,10 +81,9 @@ fun CommunityScreen(
     onEditPost: (String) -> Unit = {},
     viewModel: CommunityViewModel = hiltViewModel(),
     searchViewModel: SearchViewModel = hiltViewModel(),
-    commentsViewModel: CommentsViewModel = hiltViewModel(),
+    notificationsViewModel: NotificationsViewModel = hiltViewModel(),
     innerPadding: PaddingValues = PaddingValues(0.dp)
 ) {
-
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val postStatusOverlay by viewModel.postStatusOverlay.collectAsStateWithLifecycle()
     val savedOverlay by viewModel.savedOverlay.collectAsStateWithLifecycle()
@@ -105,7 +91,9 @@ fun CommunityScreen(
     val discoverItems = viewModel.pagedFeed.collectAsLazyPagingItems()
     val hotItems = viewModel.hotPagedFeed.collectAsLazyPagingItems()
 
-    // Observar ciclo de vida para verificar nuevas publicaciones al reanudar la app
+    val searchUiState by searchViewModel.uiState.collectAsStateWithLifecycle()
+    val notificationsUiState by notificationsViewModel.uiState.collectAsStateWithLifecycle()
+
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -117,7 +105,7 @@ fun CommunityScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val context = LocalContext.current
 
     CommunityContent(
         currentTab = uiState.currentTab,
@@ -132,406 +120,44 @@ fun CommunityScreen(
         postStatusOverlay = postStatusOverlay,
         savedOverlay = savedOverlay,
         voteOverlay = voteOverlay,
+        searchUiState = searchUiState,
+        unreadNotificationsCount = notificationsUiState.unreadCount,
+        notificationsViewModel = notificationsViewModel,
         onRefresh = { viewModel.refresh() },
         onTabSelected = { viewModel.setTab(it) },
-        onNavigateToCreatePost = onNavigateToCreatePost,
-        onLikeClick = { viewModel.toggleVote(it, 1) },
         onSaveClick = { viewModel.toggleSave(it) },
         onShowNewPosts = { viewModel.showPendingPosts() },
         onPostClick = { postId -> onNavigateToPostDetail(postId, false, false) },
-        onCommentClick = { postId ->
-            onNavigateToPostDetail(postId, true, false)
-        },
-        onVoteHot = { postId -> viewModel.toggleVote(postId, 1) },
-        onVoteCold = { postId -> viewModel.toggleVote(postId, -1) },
+        onCommentClick = { postId -> onNavigateToPostDetail(postId, true, false) },
         onDeletePost = { postId, photos -> viewModel.deletePost(postId, photos) },
         onEditPost = onEditPost,
         onMarkExpired = { viewModel.markAsExpired(it) },
         onReportExpired = { postId, title, authorId -> viewModel.reportAsExpired(postId, title, authorId) },
         onMarkAvailable = { viewModel.markAsAvailable(it) },
         onSharePost = { post ->
-            val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+            val shareText = context.getString(R.string.community_share_subject, post.title, post.id)
+            val chooserTitle = context.getString(R.string.community_share_chooser_title)
+            val shareIntent = Intent(Intent.ACTION_SEND).apply {
                 type = "text/plain"
-                putExtra(android.content.Intent.EXTRA_TEXT, "¡Mira esta oferta en Rinde!\n${post.title}\nhttps://rinde.app/post/${post.id}")
+                putExtra(Intent.EXTRA_TEXT, shareText)
             }
-            context.startActivity(android.content.Intent.createChooser(shareIntent, "Compartir publicación"))
+            context.startActivity(Intent.createChooser(shareIntent, chooserTitle))
         },
+        onNavigateToUserProfile = onNavigateToUserProfile,
+        onQueryChange = { searchViewModel.onQueryChange(it) },
+        onSearchTriggered = { searchViewModel.onSearchTriggered(it) },
+        onCategorySelect = { searchViewModel.onCategorySelect(it) },
+        onRemoveRecentSearch = { searchViewModel.removeRecentSearch(it) },
+        onClearRecentSearches = { searchViewModel.clearRecentSearches() },
         onNavigateToPostDetail = onNavigateToPostDetail,
         innerPadding = innerPadding
     )
-
 }
 
-@Composable
-fun EmptyFeedState(
-    tab: CommunityTab,
-    modifier: Modifier = Modifier
-) {
-    val (title, subtitle) = when (tab) {
-        CommunityTab.DISCOVER -> Pair(
-            "Aún no hay publicaciones",
-            "Las nuevas ofertas publicadas por la comunidad aparecerán en esta sección."
-        )
-        CommunityTab.HOT -> Pair(
-            "Aún no hay publicaciones Hot",
-            "Las publicaciones con más votos y mejor valoración de la comunidad aparecerán aquí."
-        )
-        CommunityTab.SAVED -> Pair(
-            "No tienes publicaciones guardadas",
-            "Guarda las ofertas que te interesen para acceder a ellas fácilmente en cualquier momento."
-        )
-    }
-
-    val primaryColor = RindePrimary
-
-    val infiniteTransition = rememberInfiniteTransition(label = "communityEmptyTransition")
-
-    val pulseScale by infiniteTransition.animateFloat(
-        initialValue = 0.94f,
-        targetValue = 1.06f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2800, easing = EaseInOutQuad),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulseScale"
-    )
-
-    val glowAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.15f,
-        targetValue = 0.38f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2800, easing = EaseInOutSine),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "glowAlpha"
-    )
-
-    val floatingOffset by infiniteTransition.animateFloat(
-        initialValue = -10f,
-        targetValue = 10f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2400, easing = EaseInOutSine),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "floatingOffset"
-    )
-
-    val swingAngle by infiniteTransition.animateFloat(
-        initialValue = -6f,
-        targetValue = 6f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(3200, easing = EaseInOutSine),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "swingAngle"
-    )
-
-    androidx.compose.animation.AnimatedVisibility(
-        visible = true,
-        enter = androidx.compose.animation.fadeIn(animationSpec = tween(500)) + 
-                slideInVertically(initialOffsetY = { it / 2 }),
-        modifier = modifier
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 40.dp, bottom = 40.dp, start = 24.dp, end = 24.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                // Contenedor Ilustrativo de 220dp con ícono central grande + 3 íconos flotantes
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .size(220.dp)
-                        .padding(bottom = 8.dp)
-                ) {
-                    // Resplandor radial de fondo
-                    Box(
-                        modifier = Modifier
-                            .size(170.dp)
-                            .graphicsLayer {
-                                scaleX = pulseScale
-                                scaleY = pulseScale
-                            }
-                            .clip(CircleShape)
-                            .background(
-                                androidx.compose.ui.graphics.Brush.radialGradient(
-                                    colors = listOf(
-                                        primaryColor.copy(alpha = glowAlpha),
-                                        primaryColor.copy(alpha = 0.05f),
-                                        androidx.compose.ui.graphics.Color.Transparent
-                                    )
-                                )
-                            )
-                    )
-
-                    // 3 Íconos flotantes decorativos contextuales
-                    when (tab) {
-                        CommunityTab.DISCOVER -> {
-                            // Flotante 1 (Top Start)
-                            Icon(
-                                imageVector = Icons.Default.LocalOffer,
-                                contentDescription = null,
-                                tint = primaryColor.copy(alpha = 0.28f),
-                                modifier = Modifier
-                                    .size(46.dp)
-                                    .align(Alignment.TopStart)
-                                    .offset(x = 10.dp, y = (24 + floatingOffset).dp)
-                                    .rotate(-18f)
-                            )
-                            // Flotante 2 (Top End)
-                            Icon(
-                                imageVector = Icons.Default.AutoAwesome,
-                                contentDescription = null,
-                                tint = primaryColor.copy(alpha = 0.32f),
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .align(Alignment.TopEnd)
-                                    .offset(x = (-14).dp, y = (18 + floatingOffset).dp)
-                                    .rotate(14f)
-                            )
-                            // Flotante 3 (Bottom End)
-                            Icon(
-                                imageVector = Icons.Default.Stars,
-                                contentDescription = null,
-                                tint = primaryColor.copy(alpha = 0.24f),
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .align(Alignment.BottomEnd)
-                                    .offset(x = (-20).dp, y = (-20 - floatingOffset).dp)
-                                    .rotate(-10f)
-                            )
-                        }
-                        CommunityTab.HOT -> {
-                            // Flotante 1 (Top Start)
-                            Icon(
-                                imageVector = Icons.Default.LocalFireDepartment,
-                                contentDescription = null,
-                                tint = primaryColor.copy(alpha = 0.30f),
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .align(Alignment.TopStart)
-                                    .offset(x = 10.dp, y = (20 + floatingOffset).dp)
-                                    .rotate(-15f)
-                            )
-                            // Flotante 2 (Top End)
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.TrendingUp,
-                                contentDescription = null,
-                                tint = primaryColor.copy(alpha = 0.35f),
-                                modifier = Modifier
-                                    .size(44.dp)
-                                    .align(Alignment.TopEnd)
-                                    .offset(x = (-16).dp, y = (22 + floatingOffset).dp)
-                                    .rotate(15f)
-                            )
-                            // Flotante 3 (Bottom Start)
-                            Icon(
-                                imageVector = Icons.Default.ThumbUp,
-                                contentDescription = null,
-                                tint = primaryColor.copy(alpha = 0.25f),
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .align(Alignment.BottomStart)
-                                    .offset(x = 16.dp, y = (-18 - floatingOffset).dp)
-                                    .rotate(-12f)
-                            )
-                        }
-                        CommunityTab.SAVED -> {
-                            // Flotante 1 (Top Start)
-                            Icon(
-                                imageVector = Icons.Default.BookmarkBorder,
-                                contentDescription = null,
-                                tint = primaryColor.copy(alpha = 0.28f),
-                                modifier = Modifier
-                                    .size(46.dp)
-                                    .align(Alignment.TopStart)
-                                    .offset(x = 12.dp, y = (22 + floatingOffset).dp)
-                                    .rotate(-14f)
-                            )
-                            // Flotante 2 (Top End)
-                            Icon(
-                                imageVector = Icons.Default.StarOutline,
-                                contentDescription = null,
-                                tint = primaryColor.copy(alpha = 0.32f),
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .align(Alignment.TopEnd)
-                                    .offset(x = (-14).dp, y = (16 + floatingOffset).dp)
-                                    .rotate(16f)
-                            )
-                            // Flotante 3 (Bottom End)
-                            Icon(
-                                imageVector = Icons.Default.Savings,
-                                contentDescription = null,
-                                tint = primaryColor.copy(alpha = 0.25f),
-                                modifier = Modifier
-                                    .size(42.dp)
-                                    .align(Alignment.BottomEnd)
-                                    .offset(x = (-22).dp, y = (-18 - floatingOffset).dp)
-                                    .rotate(-10f)
-                            )
-                        }
-                    }
-
-                    // Contenedor Principal con el Ícono Central Grande (130dp)
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier
-                            .graphicsLayer {
-                                rotationZ = swingAngle
-                                scaleX = pulseScale
-                                scaleY = pulseScale
-                            }
-                            .size(130.dp)
-                            .shadow(
-                                elevation = 16.dp,
-                                shape = CircleShape,
-                                spotColor = primaryColor.copy(alpha = 0.40f)
-                            )
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surface)
-                            .border(
-                                width = 2.dp,
-                                color = primaryColor.copy(alpha = 0.35f),
-                                shape = CircleShape
-                            )
-                    ) {
-                        val mainIcon = when (tab) {
-                            CommunityTab.DISCOVER -> Icons.Default.Explore
-                            CommunityTab.HOT -> Icons.Default.Whatshot
-                            CommunityTab.SAVED -> Icons.Default.Bookmark
-                        }
-                        Icon(
-                            imageVector = mainIcon,
-                            contentDescription = null,
-                            tint = primaryColor,
-                            modifier = Modifier.size(64.dp)
-                        )
-                    }
-                }
-
-                // Textos informativos
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    textAlign = TextAlign.Center
-                )
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f),
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(horizontal = 24.dp)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun FeedErrorState(
-    errorMessage: String,
-    onRetry: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val cleanErrorMessage = remember(errorMessage) {
-        val errorLower = errorMessage.lowercase()
-        if (errorLower.contains("failed_precondition") ||
-            errorLower.contains("index") ||
-            errorLower.contains("firestore") ||
-            errorLower.contains("firebase") ||
-            errorLower.contains("query")) {
-            "Ocurrió un problema temporal con el servidor de base de datos. Por favor, vuelve a intentarlo más tarde."
-        } else {
-            errorMessage
-        }
-    }
-
-    androidx.compose.animation.AnimatedVisibility(
-        visible = true,
-        enter = androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(500)) +
-                androidx.compose.animation.slideInVertically(initialOffsetY = { it / 2 }),
-        modifier = modifier
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 80.dp, bottom = 40.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // Icon with pulse animation (same pattern as EmptyFeedState)
-                val infiniteTransition = rememberInfiniteTransition(label = "error_pulse")
-                val scale by infiniteTransition.animateFloat(
-                    initialValue = 0.95f,
-                    targetValue = 1.05f,
-                    animationSpec = infiniteRepeatable(
-                        animation = tween(1500, easing = androidx.compose.animation.core.FastOutSlowInEasing),
-                        repeatMode = RepeatMode.Reverse
-                    ),
-                    label = "error_scale"
-                )
-
-                Surface(
-                    modifier = Modifier.size(80.dp),
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f),
-                    tonalElevation = 2.dp
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Default.Warning,
-                            contentDescription = null,
-                            modifier = Modifier
-                                .size(40.dp)
-                                .graphicsLayer {
-                                    scaleX = scale
-                                    scaleY = scale
-                                },
-                            tint = MaterialTheme.colorScheme.error
-                        )
-                    }
-                }
-
-                Text(
-                    text = "No se pudieron cargar las publicaciones",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = cleanErrorMessage,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(horizontal = 40.dp)
-                )
-                TextButton(
-                    onClick = onRetry
-                ) {
-                    Text(
-                        text = "Reintentar",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-            }
-        }
-    }
-}
-
+/**
+ * Contenido puro y desacoplado de la pantalla de Comunidad (Stateless).
+ * 100% testeable con previews sin requerir Hilt ni contextos Android complejos.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CommunityContent(
@@ -542,34 +168,36 @@ fun CommunityContent(
     isRefreshing: Boolean,
     isLoading: Boolean,
     isSavedLoading: Boolean,
-    newPostsCount: Int = 0,
-    currentUserId: String = "",
-    postStatusOverlay: Map<String, com.farbalapps.rinde.domain.model.VerificationStatus> = emptyMap(),
-    savedOverlay: Map<String, Boolean> = emptyMap(),
-    voteOverlay: Map<String, com.farbalapps.rinde.domain.repository.VoteOverlay> = emptyMap(),
+    newPostsCount: Int,
+    currentUserId: String,
+    postStatusOverlay: Map<String, VerificationStatus>,
+    savedOverlay: Map<String, Boolean>,
+    voteOverlay: Map<String, VoteOverlay>,
+    searchUiState: SearchUiState,
+    unreadNotificationsCount: Int,
+    notificationsViewModel: NotificationsViewModel?,
     onRefresh: () -> Unit,
     onTabSelected: (CommunityTab) -> Unit,
-    onNavigateToCreatePost: () -> Unit,
-    onLikeClick: (String) -> Unit,
     onSaveClick: (String) -> Unit,
-    onPostClick: (String) -> Unit = {},
+    onShowNewPosts: () -> Unit,
+    onPostClick: (String) -> Unit,
     onCommentClick: (String) -> Unit,
-    onVoteHot: (String) -> Unit,
-    onVoteCold: (String) -> Unit,
-    onShowNewPosts: () -> Unit = {},
-    onDeletePost: (String, List<String>) -> Unit = { _, _ -> },
-    onEditPost: (String) -> Unit = {},
-    onMarkExpired: (String) -> Unit = {},
-    onReportExpired: (String, String, String) -> Unit = { _, _, _ -> },
-    onMarkAvailable: (String) -> Unit = {},
-    onSharePost: (CommunityPost) -> Unit = {},
-    onNavigateToPostDetail: (String, Boolean, Boolean) -> Unit = { _, _, _ -> },
-    searchViewModel: SearchViewModel = hiltViewModel(),
-    notificationsViewModel: NotificationsViewModel = hiltViewModel(),
-    innerPadding: PaddingValues
+    onDeletePost: (String, List<String>) -> Unit,
+    onEditPost: (String) -> Unit,
+    onMarkExpired: (String) -> Unit,
+    onReportExpired: (String, String, String) -> Unit,
+    onMarkAvailable: (String) -> Unit,
+    onSharePost: (CommunityPost) -> Unit,
+    onNavigateToUserProfile: (String) -> Unit,
+    onQueryChange: (String) -> Unit,
+    onSearchTriggered: (String) -> Unit,
+    onCategorySelect: (String) -> Unit,
+    onRemoveRecentSearch: (String) -> Unit,
+    onClearRecentSearches: () -> Unit,
+    onNavigateToPostDetail: (String, Boolean, Boolean) -> Unit,
+    innerPadding: PaddingValues,
+    modifier: Modifier = Modifier
 ) {
-
-    val notificationsUiState by notificationsViewModel.uiState.collectAsStateWithLifecycle()
     var showNotificationsSheet by remember { mutableStateOf(false) }
 
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
@@ -591,546 +219,96 @@ fun CommunityContent(
         }
     }
 
-    // Lógica de visibilidad del FAB
-    var lastScrollOffset by remember { mutableIntStateOf(0) }
-    var lastScrollIndex by remember { mutableIntStateOf(0) }
-    var isFabVisible by remember { mutableStateOf(true) }
-
-    LaunchedEffect(lazyListState.firstVisibleItemScrollOffset, lazyListState.firstVisibleItemIndex) {
-        val currentIndex = lazyListState.firstVisibleItemIndex
-        val currentOffset = lazyListState.firstVisibleItemScrollOffset
-
-        if (currentIndex > lastScrollIndex || (currentIndex == lastScrollIndex && currentOffset > lastScrollOffset)) {
-            if (currentOffset > 10) isFabVisible = false
-        } else if (currentIndex < lastScrollIndex || (currentIndex == lastScrollIndex && currentOffset < lastScrollOffset)) {
-            isFabVisible = true
-        }
-
-        lastScrollIndex = currentIndex
-        lastScrollOffset = currentOffset
-    }
-
-    val paddingMedium = dimensionResource(id = R.dimen.padding_medium)
-    val spacerHuge = dimensionResource(id = R.dimen.spacer_huge)
-    val density = androidx.compose.ui.platform.LocalDensity.current
+    val density = LocalDensity.current
     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-
-    // Medimos la altura total del header para saber cuánto ocultar
     var headerTotalHeightPx by remember { mutableFloatStateOf(0f) }
-    
+
     SideEffect {
         if (headerTotalHeightPx > 0f && scrollBehavior.state.heightOffsetLimit != -headerTotalHeightPx) {
             scrollBehavior.state.heightOffsetLimit = -headerTotalHeightPx
         }
     }
 
-    // Derivar isRefreshing real de Paging 3
-    val isDiscoverRefreshing = currentTab == CommunityTab.DISCOVER && 
-            discoverItems.loadState.refresh is androidx.paging.LoadState.Loading
-    val isHotRefreshing = currentTab == CommunityTab.HOT && 
-            hotItems.loadState.refresh is androidx.paging.LoadState.Loading
-    
-    val effectiveIsRefreshing = when (currentTab) {
-        CommunityTab.DISCOVER -> isRefreshing || isDiscoverRefreshing
-        CommunityTab.HOT -> isRefreshing || isHotRefreshing
-        CommunityTab.SAVED -> isRefreshing
+    val dynamicTopPadding = with(density) {
+        (statusBarHeight + (headerTotalHeightPx + scrollBehavior.state.heightOffset).toDp())
+            .coerceAtLeast(statusBarHeight)
     }
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .nestedScroll(scrollBehavior.nestedScrollConnection)
     ) {
-        val paddingValues = PaddingValues(0.dp)
-        // Calcular el top padding dinámico para la lista
-        val dynamicTopPadding = with(density) {
-            (statusBarHeight + (headerTotalHeightPx + scrollBehavior.state.heightOffset).toDp())
-                .coerceAtLeast(statusBarHeight)
-        }
+        // 1. Contenido de la lista
+        CommunityFeedList(
+            currentTab = currentTab,
+            discoverItems = discoverItems,
+            hotItems = hotItems,
+            savedPosts = savedPosts,
+            isRefreshing = isRefreshing,
+            isSavedLoading = isSavedLoading,
+            lazyListState = lazyListState,
+            currentUserId = currentUserId,
+            postStatusOverlay = postStatusOverlay,
+            savedOverlay = savedOverlay,
+            voteOverlay = voteOverlay,
+            dynamicTopPadding = dynamicTopPadding,
+            innerPadding = innerPadding,
+            onRefresh = onRefresh,
+            onSaveClick = onSaveClick,
+            onPostClick = onPostClick,
+            onCommentClick = onCommentClick,
+            onDeletePost = onDeletePost,
+            onEditPost = onEditPost,
+            onMarkExpired = onMarkExpired,
+            onReportExpired = onReportExpired,
+            onMarkAvailable = onMarkAvailable,
+            onSharePost = onSharePost,
+            onNavigateToUserProfile = onNavigateToUserProfile
+        )
 
-        val pullToRefreshState = rememberPullToRefreshState()
-
-        Box(modifier = Modifier.fillMaxSize()) {
-            // 1. Contenido de la lista (capa inferior)
-            PullToRefreshBox(
-                isRefreshing = effectiveIsRefreshing,
-                onRefresh = onRefresh,
-                state = pullToRefreshState,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(bottom = innerPadding.calculateBottomPadding()),
-                contentAlignment = Alignment.TopCenter,
-                indicator = {
-                    androidx.compose.material3.pulltorefresh.PullToRefreshDefaults.Indicator(
-                        state = pullToRefreshState,
-                        isRefreshing = effectiveIsRefreshing,
-                        modifier = Modifier
-                            .align(Alignment.TopCenter)
-                            .padding(top = dynamicTopPadding + 16.dp)
-                    )
-                }
-            ) {
-                LazyColumn(
-                    state = lazyListState,
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(
-                        top = dynamicTopPadding,
-                        bottom = paddingMedium + 80.dp
-                    )
-                ) {
-                    when (currentTab) {
-                        CommunityTab.DISCOVER -> {
-                            val loadState = discoverItems.loadState
-                            val isDiscoverLoading = loadState.refresh is androidx.paging.LoadState.Loading ||
-                                    loadState.mediator?.refresh is androidx.paging.LoadState.Loading ||
-                                    loadState.source.refresh is androidx.paging.LoadState.Loading
-                            val isDiscoverError = loadState.refresh is androidx.paging.LoadState.Error || 
-                                    loadState.mediator?.refresh is androidx.paging.LoadState.Error
-                            val endOfPaginationReached = (loadState.refresh as? androidx.paging.LoadState.NotLoading)?.endOfPaginationReached == true
-
-                            if (isDiscoverError && discoverItems.itemCount == 0) {
-                                val error = (loadState.refresh as? androidx.paging.LoadState.Error)?.error
-                                    ?: (loadState.mediator?.refresh as? androidx.paging.LoadState.Error)?.error
-                                item {
-                                    FeedErrorState(
-                                        errorMessage = error?.localizedMessage ?: "Error desconocido",
-                                        onRetry = { discoverItems.retry() }
-                                    )
-                                }
-                            } else if (discoverItems.itemCount == 0 && (isDiscoverLoading || !endOfPaginationReached)) {
-                                items(5) {
-                                    PostCardSkeleton(modifier = Modifier.padding(horizontal = paddingMedium / 2, vertical = 2.dp))
-                                }
-                            } else if (discoverItems.itemCount == 0) {
-                                item {
-                                    EmptyFeedState(tab = CommunityTab.DISCOVER)
-                                }
-                            } else {
-                                items(
-                                    count = discoverItems.itemCount,
-                                    key = discoverItems.itemKey { it.id }
-                                ) { index ->
-                                    val post = discoverItems[index]
-                                    if (post != null) {
-                                        val overriddenStatus = postStatusOverlay[post.id] ?: post.verificationStatus
-                                        val overriddenSaved = savedOverlay[post.id] ?: post.isSavedByMe
-                                        val voteOver = voteOverlay[post.id]
-                                        val finalTruth = if (voteOver != null && post.myVoteValue != voteOver.myVote) (voteOver.truthCount ?: post.truthCount) else post.truthCount
-                                        val finalFalse = if (voteOver != null && post.myVoteValue != voteOver.myVote) (voteOver.falseCount ?: post.falseCount) else post.falseCount
-                                        val finalMyVote = if (voteOver != null && post.myVoteValue != voteOver.myVote) voteOver.myVote else post.myVoteValue
-                                        val finalScore = finalTruth - finalFalse
-                                        PostCard(
-                                            post = post.copy(
-                                                verificationStatus = overriddenStatus,
-                                                isSavedByMe = overriddenSaved,
-                                                truthCount = finalTruth,
-                                                falseCount = finalFalse,
-                                                myVoteValue = finalMyVote,
-                                                votesScore = finalScore
-                                            ),
-                                            isAuthorVerified = post.isAuthorVerified,
-                                            currentUserId = currentUserId,
-                                            onSaveClick = { onSaveClick(post.id) },
-                                            onPostClick = { onPostClick(post.id) },
-                                            onCommentClick = { onCommentClick(post.id) },
-                                            onDeletePost = { onDeletePost(post.id, post.photos) },
-                                            onEditPost = { onEditPost(post.id) },
-                                            onMarkExpired = { onMarkExpired(post.id) },
-                                            onReportExpired = { onReportExpired(post.id, post.title, post.authorId) },
-                                            onMarkAvailable = { onMarkAvailable(post.id) },
-                                            onSharePost = { onSharePost(post) },
-                                            modifier = Modifier.padding(
-                                                horizontal = paddingMedium / 2,
-                                                vertical = 2.dp
-                                            )
-                                        )
-                                    }
-                                }
-
-                                // Render append state indicators
-                                when {
-                                    loadState.append is androidx.paging.LoadState.Loading -> {
-                                        items(2) {
-                                            PostCardSkeleton(
-                                                modifier = Modifier.padding(
-                                                    horizontal = paddingMedium / 2,
-                                                    vertical = 2.dp
-                                                )
-                                            )
-                                        }
-                                    }
-                                    loadState.append is androidx.paging.LoadState.Error -> {
-                                        item {
-                                            Box(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .padding(vertical = 16.dp),
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                                    Text(
-                                                        text = "No se pudieron cargar más ofertas.",
-                                                        style = MaterialTheme.typography.bodyMedium,
-                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                    )
-                                                    TextButton(onClick = { discoverItems.retry() }) {
-                                                        Text("Reintentar")
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        CommunityTab.HOT -> {
-                            val loadState = hotItems.loadState
-                            val isHotLoading = loadState.refresh is androidx.paging.LoadState.Loading
-                            val isHotError = loadState.refresh is androidx.paging.LoadState.Error || 
-                                    loadState.mediator?.refresh is androidx.paging.LoadState.Error
-                            val endOfPaginationReached = (loadState.refresh as? androidx.paging.LoadState.NotLoading)?.endOfPaginationReached == true
-
-                            if (isHotError && hotItems.itemCount == 0) {
-                                val error = (loadState.refresh as? androidx.paging.LoadState.Error)?.error
-                                    ?: (loadState.mediator?.refresh as? androidx.paging.LoadState.Error)?.error
-                                item {
-                                    FeedErrorState(
-                                        errorMessage = error?.localizedMessage ?: "Error desconocido",
-                                        onRetry = { hotItems.retry() }
-                                    )
-                                }
-                            } else if (hotItems.itemCount == 0 && isHotLoading) {
-                                items(5) {
-                                    PostCardSkeleton(modifier = Modifier.padding(horizontal = paddingMedium / 2, vertical = 2.dp))
-                                }
-                            } else if (hotItems.itemCount == 0) {
-                                item {
-                                    EmptyFeedState(tab = CommunityTab.HOT)
-                                }
-                            } else {
-                                items(
-                                    count = hotItems.itemCount,
-                                    key = hotItems.itemKey { it.id }
-                                ) { index ->
-                                    val post = hotItems[index]
-                                    if (post != null) {
-                                        val overriddenStatus = postStatusOverlay[post.id] ?: post.verificationStatus
-                                        if (overriddenStatus == com.farbalapps.rinde.domain.model.VerificationStatus.EXPIRED) {
-                                            return@items
-                                        }
-                                        val overriddenSaved = savedOverlay[post.id] ?: post.isSavedByMe
-                                        val voteOver = voteOverlay[post.id]
-                                        val finalTruth = if (voteOver != null && post.myVoteValue != voteOver.myVote) (voteOver.truthCount ?: post.truthCount) else post.truthCount
-                                        val finalFalse = if (voteOver != null && post.myVoteValue != voteOver.myVote) (voteOver.falseCount ?: post.falseCount) else post.falseCount
-                                        val finalMyVote = if (voteOver != null && post.myVoteValue != voteOver.myVote) voteOver.myVote else post.myVoteValue
-                                        val finalScore = finalTruth - finalFalse
-                                        PostCard(
-                                            post = post.copy(
-                                                verificationStatus = overriddenStatus,
-                                                isSavedByMe = overriddenSaved,
-                                                truthCount = finalTruth,
-                                                falseCount = finalFalse,
-                                                myVoteValue = finalMyVote,
-                                                votesScore = finalScore
-                                            ),
-                                            isAuthorVerified = post.isAuthorVerified,
-                                            currentUserId = currentUserId,
-                                            onSaveClick = { onSaveClick(post.id) },
-                                            onPostClick = { onPostClick(post.id) },
-                                            onCommentClick = { onCommentClick(post.id) },
-                                            onDeletePost = { onDeletePost(post.id, post.photos) },
-                                            onEditPost = { onEditPost(post.id) },
-                                            onMarkExpired = { onMarkExpired(post.id) },
-                                            onReportExpired = { onReportExpired(post.id, post.title, post.authorId) },
-                                            onMarkAvailable = { onMarkAvailable(post.id) },
-                                            onSharePost = { onSharePost(post) },
-                                            modifier = Modifier.padding(
-                                                horizontal = paddingMedium / 2,
-                                                vertical = 2.dp
-                                            )
-                                        )
-                                    }
-                                }
-
-                                // Render append state indicators
-                                when {
-                                    loadState.append is androidx.paging.LoadState.Loading -> {
-                                        items(2) {
-                                            PostCardSkeleton(
-                                                modifier = Modifier.padding(
-                                                    horizontal = paddingMedium / 2,
-                                                    vertical = 2.dp
-                                                )
-                                            )
-                                        }
-                                    }
-                                    loadState.append is androidx.paging.LoadState.Error -> {
-                                        item {
-                                            Box(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .padding(vertical = 16.dp),
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                                    Text(
-                                                        text = "No se pudieron cargar más ofertas.",
-                                                        style = MaterialTheme.typography.bodyMedium,
-                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                    )
-                                                    TextButton(onClick = { hotItems.retry() }) {
-                                                        Text("Reintentar")
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        CommunityTab.SAVED -> {
-                            if (isSavedLoading) {
-                                items(5) {
-                                    PostCardSkeleton(modifier = Modifier.padding(horizontal = paddingMedium, vertical = 2.dp))
-                                }
-                            } else if (savedPosts.isEmpty()) {
-                                item {
-                                    EmptyFeedState(tab = CommunityTab.SAVED)
-                                }
-                            } else {
-                                items(savedPosts, key = { it.id }) { post ->
-                                    val overriddenStatus = postStatusOverlay[post.id] ?: post.verificationStatus
-                                    val overriddenSaved = savedOverlay[post.id] ?: post.isSavedByMe
-                                    val voteOver = voteOverlay[post.id]
-                                    val finalTruth = if (voteOver != null && post.myVoteValue != voteOver.myVote) (voteOver.truthCount ?: post.truthCount) else post.truthCount
-                                    val finalFalse = if (voteOver != null && post.myVoteValue != voteOver.myVote) (voteOver.falseCount ?: post.falseCount) else post.falseCount
-                                    val finalMyVote = if (voteOver != null && post.myVoteValue != voteOver.myVote) voteOver.myVote else post.myVoteValue
-                                    val finalScore = finalTruth - finalFalse
-                                    PostCard(
-                                        post = post.copy(
-                                            verificationStatus = overriddenStatus,
-                                            isSavedByMe = overriddenSaved,
-                                            truthCount = finalTruth,
-                                            falseCount = finalFalse,
-                                            myVoteValue = finalMyVote,
-                                            votesScore = finalScore
-                                        ),
-                                        isAuthorVerified = post.isAuthorVerified,
-                                        currentUserId = currentUserId,
-                                        onSaveClick = { onSaveClick(post.id) },
-                                        onPostClick = { onPostClick(post.id) },
-                                        onCommentClick = { onCommentClick(post.id) },
-                                        onDeletePost = { onDeletePost(post.id, post.photos) },
-                                        onEditPost = { onEditPost(post.id) },
-                                        onMarkExpired = { onMarkExpired(post.id) },
-                                        onReportExpired = { onReportExpired(post.id, post.title, post.authorId) },
-                                        onMarkAvailable = { onMarkAvailable(post.id) },
-                                        onSharePost = { onSharePost(post) },
-                                        modifier = Modifier.padding(
-                                            horizontal = paddingMedium / 2,
-                                            vertical = 2.dp
-                                        )
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    item {
-                        Spacer(modifier = Modifier.height(dimensionResource(id = R.dimen.padding_xxlarge)))
-                    }
-                }
-            }
-
-            // 2. Header (SearchBar + Notifications Bell + Tabs) — zIndex(1) para estar encima de la lista
-            Surface(
-                modifier = Modifier
-                    .zIndex(1f)
-                    .fillMaxWidth()
-                    .onGloballyPositioned { headerTotalHeightPx = it.size.height.toFloat() }
-                    .offset { IntOffset(0, scrollBehavior.state.heightOffset.roundToInt()) }
-                    .statusBarsPadding()
-                    .clipToBounds(),
-                color = MaterialTheme.colorScheme.background,
-                tonalElevation = 0.dp
-            ) {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    var searchActive by remember { mutableStateOf(false) }
-                    val searchUiState by searchViewModel.uiState.collectAsStateWithLifecycle()
-                    val searchBarHorizontalPadding by animateDpAsState(
-                        targetValue = if (searchActive) 0.dp else 16.dp,
-                        label = "searchBarHorizontalPadding"
-                    )
-                    val searchBarHeight by animateDpAsState(
-                        targetValue = if (searchActive) 56.dp else 48.dp,
-                        label = "searchBarHeight"
-                    )
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(
-                                horizontal = searchBarHorizontalPadding,
-                                vertical = if (searchActive) 0.dp else 2.dp
-                            ),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        SearchBar(
-                            query = searchUiState.query,
-                            onQueryChange = { searchViewModel.onQueryChange(it) },
-                            onSearch = { searchViewModel.onSearchTriggered(it) },
-                            active = searchActive,
-                            onActiveChange = { active ->
-                                searchActive = active
-                                if (!active) {
-                                    searchViewModel.onQueryChange("")
-                                }
-                            },
-                            placeholder = { 
-                                Text(
-                                    text = "Buscar ofertas o tiendas...",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                ) 
-                            },
-                            leadingIcon = { 
-                                Icon(
-                                    Icons.Default.Search, 
-                                    contentDescription = null, 
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(18.dp) 
-                                ) 
-                            },
-                            trailingIcon = { 
-                                if (searchActive) {
-                                    IconButton(onClick = {
-                                        searchActive = false
-                                        searchViewModel.onQueryChange("")
-                                    }) {
-                                        Icon(
-                                            Icons.Default.Close, 
-                                            contentDescription = "Cerrar búsqueda", 
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                    }
-                                }
-                                // TODO: Implementar menú de 3 puntos (MoreVert) con las siguientes funciones futuras:
-                                //   1. "Ordenar por: Más recientes / Más votados / Más comentados"
-                                //      → Cambiar el criterio de ordenación del feed con opciones de sort.
-                                //   2. "Filtrar por categoría"
-                                //      → Filtrar el feed mostrando sólo publicaciones de una categoría específica.
-                                //   3. "Ocultar ofertas ya vistas"
-                                //      → Marcar posts como vistos y no volver a mostrarlos en el feed principal.
-                                //   4. "Configuración del feed"
-                                //      → Pantalla de preferencias: tipo de publicaciones, zonas de caza preferidas.
-                            },
-                            colors = SearchBarDefaults.colors(
-                                containerColor = if (searchActive) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.surfaceVariant,
-                                inputFieldColors = TextFieldDefaults.colors(
-                                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-                                    focusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
-                                    unfocusedContainerColor = androidx.compose.ui.graphics.Color.Transparent
-                                )
-                            ),
-                            modifier = Modifier
-                                .weight(1f)
-                                .heightIn(min = searchBarHeight, max = if (searchActive) androidx.compose.ui.unit.Dp.Unspecified else 48.dp)
-                        ) {
-                            SearchContent(
-                                uiState = searchUiState,
-                                onQueryChange = { searchViewModel.onQueryChange(it) },
-                                onCategorySelect = { searchViewModel.onCategorySelect(it) },
-                                onSearchTriggered = { searchViewModel.onSearchTriggered(it) },
-                                onRemoveRecentSearch = { searchViewModel.removeRecentSearch(it) },
-                                onClearRecentSearches = { searchViewModel.clearRecentSearches() },
-                                onPostClick = { postId ->
-                                    searchActive = false
-                                    onPostClick(postId)
-                                },
-                                onSaveClick = { postId -> onSaveClick(postId) },
-                                onCommentClick = { postId ->
-                                    searchActive = false
-                                    onCommentClick(postId)
-                                },
-                                currentUserId = currentUserId
-                            )
-                        }
-
-                        androidx.compose.animation.AnimatedVisibility(
-                            visible = !searchActive,
-                            enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.scaleIn(),
-                            exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.scaleOut()
-                        ) {
-                            BadgedBox(
-                                badge = {
-                                    if (notificationsUiState.unreadCount > 0) {
-                                        Badge {
-                                            Text(if (notificationsUiState.unreadCount > 99) "99+" else notificationsUiState.unreadCount.toString())
-                                        }
-                                    }
-                                },
-                                modifier = Modifier.padding(start = 4.dp)
-                            ) {
-                                IconButton(onClick = { showNotificationsSheet = true }) {
-                                    Icon(
-                                        imageVector = Icons.Outlined.Notifications,
-                                        contentDescription = "Notificaciones",
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    
-                    if (!searchActive) {
-                        CommunityTabRow(
-                            selectedTab = currentTab,
-                            onTabSelected = onTabSelected,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-
-                        // Banner animado de nuevas ofertas
-                        AnimatedVisibility(
-                            visible = newPostsCount >= 1,
-                            enter = slideInVertically(initialOffsetY = { -it }),
-                            exit = slideOutVertically(targetOffsetY = { -it })
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(MaterialTheme.colorScheme.primaryContainer)
-                                    .clickable { onShowNewPosts() }
-                                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "Hay $newPostsCount nuevas ofertas",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-                            }
-                        }
-                    }
-                }
-
-            }
-
-            // 3. Status Bar Guard — zIndex(2) siempre encima de todo
-            // Bloquea visualmente la zona de la barra de estado/notch
-            Box(
-                modifier = Modifier
-                    .zIndex(2f)
-                    .fillMaxWidth()
-                    .windowInsetsTopHeight(WindowInsets.statusBars)
-                    .background(MaterialTheme.colorScheme.background)
+        // 2. Header (SearchBar + Notifications + Tabs)
+        Surface(
+            modifier = Modifier
+                .zIndex(1f)
+                .fillMaxWidth()
+                .onGloballyPositioned { headerTotalHeightPx = it.size.height.toFloat() }
+                .offset { IntOffset(0, scrollBehavior.state.heightOffset.roundToInt()) }
+                .statusBarsPadding()
+                .clipToBounds(),
+            color = MaterialTheme.colorScheme.background,
+            tonalElevation = 0.dp
+        ) {
+            CommunityTopBar(
+                currentTab = currentTab,
+                searchUiState = searchUiState,
+                unreadNotificationsCount = unreadNotificationsCount,
+                newPostsCount = newPostsCount,
+                currentUserId = currentUserId,
+                onTabSelected = onTabSelected,
+                onQueryChange = onQueryChange,
+                onSearchTriggered = onSearchTriggered,
+                onCategorySelect = onCategorySelect,
+                onRemoveRecentSearch = onRemoveRecentSearch,
+                onClearRecentSearches = onClearRecentSearches,
+                onNotificationsClick = { showNotificationsSheet = true },
+                onShowNewPosts = onShowNewPosts,
+                onPostClick = onPostClick,
+                onSaveClick = onSaveClick,
+                onCommentClick = onCommentClick
             )
         }
 
-        if (showNotificationsSheet) {
+        // 3. Status Bar Guard
+        Box(
+            modifier = Modifier
+                .zIndex(2f)
+                .fillMaxWidth()
+                .windowInsetsTopHeight(WindowInsets.statusBars)
+                .background(MaterialTheme.colorScheme.background)
+        )
+
+        if (showNotificationsSheet && notificationsViewModel != null) {
             NotificationsBottomSheet(
                 viewModel = notificationsViewModel,
                 onNotificationClick = { postId, scrollToComments, isExpiredNotice ->
@@ -1142,14 +320,12 @@ fun CommunityContent(
     }
 }
 
-
-
-@Preview(showBackground = true)
+@PreviewLightDark
 @Composable
-fun CommunityScreenPreview() {
+private fun CommunityContentPreview() {
     RindeTheme {
-        val emptyDiscoverItems = kotlinx.coroutines.flow.flowOf(androidx.paging.PagingData.empty<CommunityPost>()).collectAsLazyPagingItems()
-        val emptyHotItems = kotlinx.coroutines.flow.flowOf(androidx.paging.PagingData.empty<CommunityPost>()).collectAsLazyPagingItems()
+        val emptyDiscoverItems = flowOf(PagingData.empty<CommunityPost>()).collectAsLazyPagingItems()
+        val emptyHotItems = flowOf(PagingData.empty<CommunityPost>()).collectAsLazyPagingItems()
         CommunityContent(
             currentTab = CommunityTab.DISCOVER,
             discoverItems = emptyDiscoverItems,
@@ -1158,16 +334,33 @@ fun CommunityScreenPreview() {
             isRefreshing = false,
             isLoading = false,
             isSavedLoading = false,
-            newPostsCount = 0,
+            newPostsCount = 3,
+            currentUserId = "user_preview",
+            postStatusOverlay = emptyMap(),
+            savedOverlay = emptyMap(),
+            voteOverlay = emptyMap(),
+            searchUiState = SearchUiState(),
+            unreadNotificationsCount = 2,
+            notificationsViewModel = null,
             onRefresh = {},
             onTabSelected = {},
-            onNavigateToCreatePost = {},
-            onLikeClick = {},
             onSaveClick = {},
-            onCommentClick = {},
-            onVoteHot = {},
-            onVoteCold = {},
             onShowNewPosts = {},
+            onPostClick = {},
+            onCommentClick = {},
+            onDeletePost = { _, _ -> },
+            onEditPost = {},
+            onMarkExpired = {},
+            onReportExpired = { _, _, _ -> },
+            onMarkAvailable = {},
+            onSharePost = {},
+            onNavigateToUserProfile = {},
+            onQueryChange = {},
+            onSearchTriggered = {},
+            onCategorySelect = {},
+            onRemoveRecentSearch = {},
+            onClearRecentSearches = {},
+            onNavigateToPostDetail = { _, _, _ -> },
             innerPadding = PaddingValues(0.dp)
         )
     }

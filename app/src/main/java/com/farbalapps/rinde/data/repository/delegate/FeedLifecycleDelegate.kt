@@ -161,6 +161,21 @@ class FeedLifecycleDelegate @Inject constructor(
         }
     }
 
+    suspend fun getPostByIdOnce(postId: String): CommunityPost? = withContext(Dispatchers.IO) {
+        val entity = postDao.getPostById(postId)
+        if (entity != null) {
+            enrichPost(entity.toDomainModel())
+        } else {
+            try {
+                val snapshot = firestore.collection("posts").document(postId).get().await()
+                val dto = snapshot.toObject(CommunityPostDto::class.java)?.copy(id = snapshot.id)
+                dto?.toDomain()?.let { enrichPost(it) }
+            } catch (_: Exception) {
+                null
+            }
+        }
+    }
+
     fun getUserPosts(userId: String): Flow<List<CommunityPost>> {
         return postDao.getPostsByAuthorId(userId).map { entities ->
             val result = mutableListOf<CommunityPost>()
@@ -403,5 +418,45 @@ class FeedLifecycleDelegate @Inject constructor(
                     "isRead" to false
                 ))
         }
+    }
+
+    // ── Gestión de caché y timestamps de lectura ─────────────────────────────
+
+    /**
+     * Implementa [FeedRepository.deleteOldCachedPosts].
+     * Delega la operación SQL al [PostDao] manteniendo la capa de dominio limpia.
+     */
+    suspend fun deleteOldCachedPosts(thresholdMs: Long): Result<Unit> = runCatching {
+        withContext(Dispatchers.IO) {
+            postDao.deleteOldPosts(thresholdMs)
+        }
+    }
+
+    /**
+     * Implementa [FeedRepository.updateFeedSeenTimestamp].
+     * Persiste el momento actual en [SyncMetadataDao] bajo la clave FEED_KEY.
+     */
+    suspend fun updateFeedSeenTimestamp() = withContext(Dispatchers.IO) {
+        val now = System.currentTimeMillis()
+        val existing = syncMetadataDao.getMetadata(FEED_KEY)
+        if (existing != null) {
+            syncMetadataDao.upsert(existing.copy(lastSeenTimestamp = now))
+        } else {
+            syncMetadataDao.upsert(
+                SyncMetadataEntity(
+                    key = FEED_KEY,
+                    lastSyncTimestamp = now,
+                    lastSeenTimestamp = now
+                )
+            )
+        }
+    }
+
+    /**
+     * Implementa [FeedRepository.getLastFeedSeenTimestamp].
+     * Devuelve el lastSeenTimestamp almacenado, o null si no existe registro previo.
+     */
+    suspend fun getLastFeedSeenTimestamp(): Long? = withContext(Dispatchers.IO) {
+        syncMetadataDao.getMetadata(FEED_KEY)?.lastSeenTimestamp
     }
 }

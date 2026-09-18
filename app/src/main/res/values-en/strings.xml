@@ -224,11 +224,155 @@
     <string name="create_post_hint_link">Product link (URL)</string>
     <string name="create_post_hint_store">Store name (ex: Walmart, Target)</string>
 
-    <!-- Voting & Trust -->
     <string name="vote_hot">Hot</string>
     <string name="vote_cold">Cold</string>
     <string name="offer_expired_overlay">Offer possibly expired or fake</string>
     <string name="badge_verified">Verified user</string>
     <string name="settings_item_verify_account">Verify my account</string>
     <string name="privacy_restriction_msg">Your profile is private. You can only vote for offer veracity.</string>
+
+    <!-- Theme & Language Options -->
+    <string name="theme_system">System (Automatic)</string>
+    <string name="theme_light">Light Mode</string>
+    <string name="theme_dark">Dark Mode</string>
+    <string name="language_es">Spanish</string>
+    <string name="language_en">English</string>
+
+    <!-- Chef AI / Assistant Screen -->
+    <string name="assistant_title">Chef</string>
+    <string name="assistant_subtitle">Recipes &amp; Cooking</string>
+    <string name="assistant_history_desc">Recipe history</string>
+    <string name="assistant_new_chat_desc">New conversation</string>
+    <string name="assistant_empty_history">You have no saved conversations yet.</string>
+    <string name="assistant_delete_conversation">Delete</string>
+    <string name="assistant_btn_new">New</string>
+    <string name="assistant_messages_count">%1$d messages • %2$s</string>
+    <string name="assistant_pantry_fallback">Pantry</string>
+
+    <!-- Community Screen & Feed -->
+    <string name="community_tab_discover">✨ Discover</string>
+    <string name="community_tab_hot">🔥 What\'s Hot</string>
+    <string name="community_tab_saved">🔖 Saved</string>
+    <string name="community_empty_discover_title">No posts yet</string>
+    <string name="community_empty_discover_desc">New community offers will appear in this section.</string>
+    <string name="community_empty_hot_title">No Hot posts yet</string>
+    <string name="community_empty_hot_desc">Posts with the most votes and highest ratings will appear here.</string>
+    <string name="community_empty_saved_title">You have no saved posts</string>
+    <string name="community_empty_saved_desc">Save offers you are interested in to easily access them anytime.</string>
+    <string name="community_error_load_failed">Could not load posts</string>
+    <string name="community_error_append_failed">Could not load more offers.</string>
+    <string name="community_btn_retry">Retry</string>
+    <string name="community_share_subject">Check out this offer on Rinde!\n%1$s\nhttps://rinde.app/post/%2$s</string>
+    <string name="community_share_chooser_title">Share post</string>
+    <string name="community_new_offers_banner">There are %d new offers</string>
+    <string name="community_notif_title">Notifications</string>
+    <string name="community_search_hint">Search offers or stores...</string>
+    <string name="community_close_search">Close search</string>
+    <string name="wishlist_add_title">Add</string>
+    <string name="wishlist_add_desc">Add to Wishlist</string>
+
+    <!-- Goals Screen & Details -->
+    <string name="goals_limit_reached">Goals limit reached (maximum 2).</string>
+    <string name="goals_completed_toast">🎉 Congratulations! You completed your goal: %s</string>
+    <string name="goals_dialog_limit_title">Limit reached</string>
+    <string name="goals_dialog_limit_text">You can only have up to 2 active goals simultaneously. Complete or archive an existing goal to create a new one.</string>
+    <string name="goals_dialog_limit_ok">Got it</string>
+    <string name="goals_empty_hero_title">Start saving for your dreams</string>
+    <string name="goals_empty_hero_desc">Create custom savings goals and track your weekly progress.</string>
+    <string name="goals_btn_create_first">Create your first goal</string>
+    <string name="goals_btn_view_archived">View saved goals</string>
+    <string name="goals_privacy_show">Show balances</string>
+    <string name="goals_privacy_hide">Hide balances</string>
+    <string name="goals_privacy_masked">$ ***.**</string>
+    <string name="goals_privacy_masked_pair">$ ***.** / $ ***.**</string>
+    <string name="goals_progress_summary">You have reached %d%% of your goals</string>
+    <string name="goals_dialog_new_title">New Savings Goal</string>
+    <string name="goals_dialog_edit_title">Edit Savings Goal</string>
+    <string name="goals_label_start_date">Start Date</string>
+    <string name="goals_label_target_date">Target Date</string>
+    <string name="goals_card_completed_badge">🎉 Goal completed! (Tap to archive)</string>
+    <string name="goals_action_archive">Archive goal</string>
+    <string name="goals_action_deposit">Add deposit</string>
+
+    <!-- Search & Common -->
+    <string name="search_recent_title">Recent searches</string>
+    <string name="search_clear_all">Clear all</string>
+    <string name="empty_list_save_error">List is empty and cannot be saved.</string>
+
+    <!-- Profile Extended Options -->
+    <string name="settings_section_preferences">Shopping Preferences</string>
+    <string name="settings_item_currency">Default currency</string>
+    <string name="settings_item_bunker">Bunker Mode (Offline)</string>
+    <string name="settings_item_bunker_desc">Preload data and optimize offline scanning</string>
+    <string name="settings_item_storage">Storage &amp; Cache</string>
+    <string name="settings_item_storage_desc">Free up space used by cached images</string>
+    <string name="settings_storage_cleared">Cache cleared successfully</string>
+    <string name="settings_item_share">Invite friends to Rinde</string>
+    <string name="settings_share_text">Download Rinde! The community app to find the best deals and smart price comparisons. https://rinde.app</string>
+    <string name="settings_item_rate">Rate the app</string>
+    <string name="settings_section_account_danger">Account Management</string>
+    <string name="settings_btn_delete_account">Delete my account</string>
+    <string name="settings_delete_account_desc">Permanently delete your profile and data</string>
+    <string name="settings_delete_account_dialog_title">Delete account permanently?</string>
+    <string name="settings_delete_account_dialog_desc">This action cannot be undone. Your profile, history and Rinde data will be deleted.</string>
+    <string name="settings_delete_account_confirm">Delete permanently</string>
+
+    <!-- Legal & Support -->
+    <string name="settings_item_privacy">Privacy Policy</string>
+    <string name="settings_item_terms">Terms of Use</string>
+    <string name="legal_screen_title">Legal &amp; Privacy</string>
+    <string name="legal_tab_privacy">Privacy</string>
+    <string name="legal_tab_terms">Terms of Use</string>
+
+    <!-- Rinde Dashboard Screen -->
+    <string name="dashboard_title">Rinde</string>
+    <string name="dashboard_subtitle">Your financial overview</string>
+    <string name="dashboard_financial_health">FINANCIAL HEALTH</string>
+    <string name="dashboard_available_real">Real available this month</string>
+    <string name="dashboard_health_good">Doing great</string>
+    <string name="dashboard_health_warning">Watch spending</string>
+    <string name="dashboard_health_critical">Tight budget</string>
+    <string name="dashboard_income_title">Income</string>
+    <string name="dashboard_my_list_title">My List</string>
+    <string name="dashboard_goals_committed_title">savings goals</string>
+    <string name="dashboard_extra_expenses_title">Home expenses</string>
+    <string name="dashboard_expenses_percent">Expenses %1$d%%</string>
+    <string name="dashboard_free_percent">Free %1$d%%</string>
+    <string name="dashboard_add_extra_expense">+ Add expense</string>
+    <string name="dashboard_empty_income_title">Set up your income</string>
+    <string name="dashboard_empty_income_desc">Enter your salary or earnings (monthly, biweekly, weekly or daily) to accurately track how much you have left.</string>
+    <string name="dashboard_btn_setup_income">Add my income</string>
+    <string name="dashboard_btn_edit_income">Edit</string>
+    <string name="dashboard_income_sheet_title">Set Up Income</string>
+    <string name="dashboard_income_sheet_desc">Choose your pay frequency. Rinde will automatically calculate the monthly equivalent.</string>
+    <string name="dashboard_income_amount_label">Income amount</string>
+    <string name="dashboard_freq_monthly">Monthly</string>
+    <string name="dashboard_freq_biweekly">Biweekly</string>
+    <string name="dashboard_freq_weekly">Weekly</string>
+    <string name="dashboard_freq_daily">Daily</string>
+    <string name="dashboard_freq_monthly_sub">Once a month</string>
+    <string name="dashboard_freq_biweekly_sub">Twice a month</string>
+    <string name="dashboard_freq_weekly_sub">Weekly (~4.3x)</string>
+    <string name="dashboard_freq_daily_sub">Daily (~30 days)</string>
+    <string name="dashboard_monthly_equiv_note">Monthly equivalent: %1$s</string>
+    <string name="dashboard_extra_sheet_title">New Home Expense</string>
+    <string name="dashboard_extra_sheet_desc">Add recurring expenses like electricity, water, rent, internet or extra groceries.</string>
+    <string name="dashboard_extra_label_input">Description (e.g. Electricity, Water, Rent)</string>
+    <string name="dashboard_extra_amount_input">Amount</string>
+    <string name="dashboard_extra_btn_save">Save expense</string>
+    <string name="dashboard_goals_title">GOAL PACE</string>
+    <string name="dashboard_goals_empty_title">No active goals yet</string>
+    <string name="dashboard_goals_empty_desc">Create savings goals to set aside money and secure your financial future.</string>
+    <string name="dashboard_btn_go_to_goals">Go to Goals</string>
+    <string name="dashboard_goals_on_track">On track</string>
+    <string name="dashboard_goals_needs_boost">Needs boost</string>
+    <string name="dashboard_btn_add_savings">Add →</string>
+    <string name="dashboard_savings_title">SAVINGS THANKS TO RINDE</string>
+    <string name="dashboard_savings_since">Since you joined Rinde</string>
+    <string name="dashboard_savings_view_details">View details →</string>
+    <string name="dashboard_extra_edit_sheet_title">Edit Home Expense</string>
+    <string name="dashboard_extra_edit_sheet_desc">Modify the description or amount for this home expense.</string>
+    <string name="dashboard_extra_btn_update">Update expense</string>
+    <string name="dashboard_extra_btn_delete">Delete expense</string>
 </resources>
+

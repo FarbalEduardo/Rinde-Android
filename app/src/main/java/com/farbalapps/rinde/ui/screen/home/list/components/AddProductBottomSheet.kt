@@ -1,6 +1,7 @@
 package com.farbalapps.rinde.ui.screen.home.list.components
  
 import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -21,6 +22,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -109,11 +112,21 @@ fun AddProductBottomSheet(
         }
     }
 
+    val isKeyboardVisible = WindowInsets.isImeVisible
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         containerColor = MaterialTheme.colorScheme.surface,
-        dragHandle = { BottomSheetDefaults.DragHandle() }
+        dragHandle = {
+            AnimatedVisibility(
+                visible = !isKeyboardVisible,
+                enter = fadeIn(animationSpec = tween(250)) + expandVertically(animationSpec = tween(250)),
+                exit = fadeOut(animationSpec = tween(200)) + shrinkVertically(animationSpec = tween(200))
+            ) {
+                BottomSheetDefaults.DragHandle()
+            }
+        }
     ) {
         Column(
             modifier = Modifier
@@ -128,10 +141,16 @@ fun AddProductBottomSheet(
                     .weight(1f, fill = false)
                     .verticalScroll(rememberScrollState())
             ) {
-                BottomSheetHeader(
-                    titleRes = if (initialItem != null) R.string.edit_item_title else R.string.add_items_title,
-                    onDismiss = onDismiss
-                )
+                AnimatedVisibility(
+                    visible = !isKeyboardVisible,
+                    enter = fadeIn(animationSpec = tween(250)) + expandVertically(animationSpec = tween(250)),
+                    exit = fadeOut(animationSpec = tween(200)) + shrinkVertically(animationSpec = tween(200))
+                ) {
+                    BottomSheetHeader(
+                        titleRes = if (initialItem != null) R.string.edit_item_title else R.string.add_items_title,
+                        onDismiss = onDismiss
+                    )
+                }
 
                 val isEditing = initialItem != null
 
@@ -156,9 +175,9 @@ fun AddProductBottomSheet(
 
                 // Product Category Selection (Fruits, Vegetables, etc)
                 AnimatedVisibility(
-                    visible = selectedTab == 0 && !isEditing,
-                    enter = fadeIn() + expandVertically(),
-                    exit = fadeOut() + shrinkVertically()
+                    visible = (!isEditing && selectedTab == 0) || selectedTab == 1,
+                    enter = fadeIn(animationSpec = tween(250)) + expandVertically(animationSpec = tween(250)),
+                    exit = fadeOut(animationSpec = tween(200)) + shrinkVertically(animationSpec = tween(200))
                 ) {
                     CategorySelectionRow(
                         categories = productCategories,
@@ -170,43 +189,52 @@ fun AddProductBottomSheet(
                     )
                 }
 
-                if (selectedTab == 0) {
-                    if (isEditing) {
-                        selectedItem?.let { item ->
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 24.dp, vertical = 12.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CatalogItemCard(
-                                    item = item,
-                                    isSelected = true,
-                                    onClick = { },
-                                    modifier = Modifier.size(90.dp)
-                                )
+                AnimatedContent(
+                    targetState = selectedTab,
+                    transitionSpec = {
+                        (fadeIn(animationSpec = tween(250)) + slideInHorizontally(initialOffsetX = { if (targetState > initialState) it / 2 else -it / 2 }))
+                            .togetherWith(fadeOut(animationSpec = tween(200)) + slideOutHorizontally(targetOffsetX = { if (targetState > initialState) -it / 2 else it / 2 }))
+                    },
+                    label = "TabContentTransition"
+                ) { tabIndex ->
+                    if (tabIndex == 0) {
+                        if (isEditing) {
+                            selectedItem?.let { item ->
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 24.dp, vertical = 12.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CatalogItemCard(
+                                        item = item,
+                                        isSelected = true,
+                                        onClick = { },
+                                        modifier = Modifier.size(90.dp)
+                                    )
+                                }
                             }
+                        } else {
+                            CatalogTabContent(
+                                searchQuery = searchQuery,
+                                onSearchQueryChange = { searchQuery = it },
+                                catalogItems = catalogItems,
+                                selectedProductCategory = selectedProductCategory,
+                                selectedItem = selectedItem,
+                                onItemClick = { item ->
+                                    selectedItem = if (selectedItem?.id == item.id) null else item
+                                }
+                            )
                         }
                     } else {
-                        CatalogTabContent(
-                            searchQuery = searchQuery,
-                            onSearchQueryChange = { searchQuery = it },
-                            catalogItems = catalogItems,
-                            selectedProductCategory = selectedProductCategory,
-                            selectedItem = selectedItem,
-                            onItemClick = { item ->
-                                selectedItem = if (selectedItem?.id == item.id) null else item
-                            }
+                        CustomTabContent(
+                            customName = customName,
+                            onCustomNameChange = { customName = it },
+                            customHistory = if (isEditing) emptyList() else customHistory,
+                            onHistoryItemClick = { customName = it },
+                            onDeleteHistoryItem = onDeleteCustomHistory
                         )
                     }
-                } else {
-                    CustomTabContent(
-                        customName = customName,
-                        onCustomNameChange = { customName = it },
-                        customHistory = if (isEditing) emptyList() else customHistory,
-                        onHistoryItemClick = { customName = it },
-                        onDeleteHistoryItem = onDeleteCustomHistory
-                    )
                 }
             }
 
@@ -227,9 +255,19 @@ fun AddProductBottomSheet(
                 units = units,
                 onUnitSelected = { selectedUnit = it },
                 onActionClick = {
-                    initialItem?.let {
-                        onProductUpdated(it.id, it.name, it.category, quantity, selectedUnit, it.emoji, parsedPrice, currency)
-                        onShowMessage(msgUpdated.format(it.name))
+                    initialItem?.let { item ->
+                        val (updatedName, updatedCategory, updatedEmoji) = if (selectedTab == 1) {
+                            val nameToUse = if (customName.isNotBlank()) customName else item.name
+                            val catToUse = if (selectedProductCategory == defaultCategory) defaultCustomCategory else selectedProductCategory
+                            Triple(nameToUse, catToUse, "")
+                        } else {
+                            val nameToUse = selectedItem?.nombre ?: item.name
+                            val catToUse = selectedItem?.categoria ?: item.category
+                            val emojiToUse = selectedItem?.emoji ?: item.emoji
+                            Triple(nameToUse, catToUse, emojiToUse)
+                        }
+                        onProductUpdated(item.id, updatedName, updatedCategory, quantity, selectedUnit, updatedEmoji, parsedPrice, currency)
+                        onShowMessage(msgUpdated.format(updatedName))
                         onDismiss()
                     } ?: run {
                         if (selectedTab == 0) {
@@ -349,7 +387,7 @@ private fun CatalogTabContent(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.heightIn(max = 210.dp)
         ) {
-            items(filteredItems) { item ->
+            items(filteredItems, key = { it.id }) { item ->
                 CatalogItemCard(
                     item = item,
                     isSelected = selectedItem?.id == item.id,

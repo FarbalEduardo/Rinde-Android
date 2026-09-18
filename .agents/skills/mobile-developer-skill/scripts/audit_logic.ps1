@@ -31,13 +31,14 @@ if (Test-Path $specFile) {
 }
 
 # 3. Clean Architecture: Data Models Leak
-$domainFiles = Get-ChildItem -Path "app/src/main/java/*/domain" -Recurse -Filter "*.kt" -ErrorAction SilentlyContinue
+$domainFiles = Get-ChildItem -Path "app/src/main/java" -Recurse -Filter "*.kt" -ErrorAction SilentlyContinue | Where-Object { $_.FullName -like "*\domain\*" }
 foreach ($file in $domainFiles) {
     $dataImports = Select-String -Path $file.FullName -Pattern "^import .*\.data\..*"
     foreach ($match in $dataImports) {
         $issues += @{ type = "CleanArchViolation"; file = $file.Name; message = "Domain layer leaking data layer model. Lines: $($match.LineNumber)" }
     }
 }
+
 
 # 4. Firebase Sync: Missing .await() Check
 $repoFiles = Get-ChildItem -Path "app/src/main/java" -Filter "*Repository.kt" -Recurse -ErrorAction SilentlyContinue

@@ -23,6 +23,7 @@ fun SavedListsBottomSheet(
     savedLists: List<SavedShoppingList>,
     onDismiss: () -> Unit,
     onSelectList: (SavedShoppingList) -> Unit,
+    onRenameList: (SavedShoppingList) -> Unit = {},
     onDeleteList: (SavedShoppingList) -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
@@ -103,6 +104,7 @@ fun SavedListsBottomSheet(
                         SavedListItemCard(
                             savedList = list,
                             onClick = { onSelectList(list) },
+                            onRename = { onRenameList(list) },
                             onDelete = { listToDelete = list }
                         )
                     }
@@ -199,6 +201,7 @@ private fun DeleteSavedListDialog(
 private fun SavedListItemCard(
     savedList: SavedShoppingList,
     onClick: () -> Unit,
+    onRename: () -> Unit,
     onDelete: () -> Unit
 ) {
     val dateFormatted = remember(savedList.savedAt) {
@@ -261,6 +264,13 @@ private fun SavedListItemCard(
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onRename) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Renombrar lista",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
                 IconButton(onClick = onDelete) {
                     Icon(
                         imageVector = Icons.Default.DeleteOutline,

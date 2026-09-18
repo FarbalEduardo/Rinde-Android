@@ -3,8 +3,6 @@ package com.farbalapps.rinde.ui.screen.home.community
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.farbalapps.rinde.data.local.dao.PostDao
-import com.farbalapps.rinde.data.local.entity.toDomainModel
 import com.farbalapps.rinde.domain.model.CommunityPost
 import com.farbalapps.rinde.domain.model.OfferType
 import com.farbalapps.rinde.domain.repository.FeedRepository
@@ -61,7 +59,6 @@ data class EditPostUiState(
 @HiltViewModel
 class EditPostViewModel @Inject constructor(
     private val feedRepository: FeedRepository,
-    private val postDao: PostDao,
     private val locationService: LocationService
 ) : ViewModel() {
 
@@ -75,9 +72,8 @@ class EditPostViewModel @Inject constructor(
     fun loadPost(postId: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingPost = true, postId = postId) }
-            val entity = postDao.getPostById(postId)
-            if (entity != null) {
-                val post = entity.toDomainModel()
+            val post = feedRepository.getPostByIdOnce(postId)
+            if (post != null) {
                 _uiState.update { state ->
                     state.copy(
                         originalPost = post,

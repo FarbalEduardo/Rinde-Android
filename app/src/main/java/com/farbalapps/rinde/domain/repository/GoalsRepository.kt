@@ -46,6 +46,11 @@ interface GoalsRepository {
     suspend fun archiveGoal(goalId: String)
 
     /**
+     * Reactiva o desarchiva una meta de ahorro para devolverla a metas activas.
+     */
+    suspend fun unarchiveGoal(goalId: String)
+
+    /**
      * Registra un depósito monetario sobre una meta y actualiza su estado.
      */
     suspend fun depositToGoal(goalId: String, amount: Double, note: String)
@@ -74,4 +79,9 @@ interface GoalsRepository {
      * Reordena la lista de metas y sincroniza con Firestore.
      */
     suspend fun reorderGoals(goals: List<SavingsGoal>)
+
+    /**
+     * Sube de forma síncrona todas las metas y transacciones pendientes antes de cerrar sesión.
+     */
+    suspend fun forceSyncBeforeLogout(userId: String)
 }

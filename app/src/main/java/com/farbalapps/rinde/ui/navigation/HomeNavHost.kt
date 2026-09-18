@@ -1,6 +1,7 @@
 package com.farbalapps.rinde.ui.navigation
 
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -26,8 +27,21 @@ import com.farbalapps.rinde.ui.screen.profile.SettingsScreen
 import com.farbalapps.rinde.ui.screen.profile.edit.EditProfileScreen
 import com.farbalapps.rinde.ui.screen.profile.extras.SavedPostsScreen
 import com.farbalapps.rinde.ui.screen.profile.extras.BlockedUsersScreen
+import com.farbalapps.rinde.ui.screen.profile.posts.UserPostsScreen
+import com.farbalapps.rinde.ui.screen.profile.about.AboutScreen
 
 import androidx.navigation.toRoute
+import androidx.navigation.NavGraph.Companion.findStartDestination
+
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 
 @Composable
 fun HomeNavHost(
@@ -42,15 +56,66 @@ fun HomeNavHost(
 ) {
     NavHost(
         navController = navController,
-        startDestination = HomeRoute.Community,
-        modifier = modifier
+        startDestination = HomeRoute.Dashboard,
+        modifier = modifier,
+        enterTransition = { EnterTransition.None },
+        exitTransition = { ExitTransition.None },
+        popEnterTransition = { EnterTransition.None },
+        popExitTransition = { ExitTransition.None }
     ) {
+        addDashboardScreen(navController, innerPadding)
         addListScreen(innerPadding, listViewModel)
-        addCommunityScreen(navController, innerPadding)
         addGoalsScreen(navController, innerPadding, addGoalTrigger)
-        addAssistantScreen(innerPadding)
         addProfileScreens(navController, innerPadding, onLogout)
+        addCommunityScreen(navController, innerPadding)
         addPostScreens(navController)
+    }
+}
+
+private fun androidx.navigation.NavGraphBuilder.addDashboardScreen(
+    navController: NavHostController,
+    innerPadding: PaddingValues
+) {
+    composable<HomeRoute.Dashboard> {
+        com.farbalapps.rinde.ui.screen.home.dashboard.DashboardScreen(
+            innerPadding = innerPadding,
+            onGoalClick = { goalId -> navController.navigate(HomeRoute.GoalDetail(goalId)) },
+            onNavigateToGoals = {
+                navController.navigate(HomeRoute.Goals) {
+                    popUpTo(navController.graph.findStartDestination().id) {
+                        saveState = true
+                    }
+                    launchSingleTop = true
+                    restoreState = true
+                }
+            },
+            onNavigateToProfile = { navController.navigate(HomeRoute.Profile) },
+            onCardClick = { navController.navigate(HomeRoute.FinancialDetail) }
+        )
+    }
+
+    composable<HomeRoute.FinancialDetail> {
+        com.farbalapps.rinde.ui.screen.home.dashboard.detail.FinancialDetailScreen(
+            onBack = { navController.popBackStack() },
+            onNavigateToGoals = {
+                navController.navigate(HomeRoute.Goals) {
+                    popUpTo(navController.graph.findStartDestination().id) {
+                        saveState = true
+                    }
+                    launchSingleTop = true
+                    restoreState = true
+                }
+            },
+            onNavigateToList = {
+                navController.navigate(HomeRoute.List) {
+                    popUpTo(navController.graph.findStartDestination().id) {
+                        saveState = true
+                    }
+                    launchSingleTop = true
+                    restoreState = true
+                }
+            }
+        )
     }
 }
 
@@ -97,7 +162,12 @@ private fun androidx.navigation.NavGraphBuilder.addGoalsScreen(
             onGoalClick = { goalId -> navController.navigate(HomeRoute.GoalDetail(goalId)) }
         )
     }
-    composable<HomeRoute.GoalDetail> {
+    composable<HomeRoute.GoalDetail>(
+        enterTransition = { slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(300)) + fadeIn() },
+        exitTransition = { slideOutHorizontally(targetOffsetX = { -it / 3 }, animationSpec = tween(300)) + fadeOut() },
+        popEnterTransition = { slideInHorizontally(initialOffsetX = { -it / 3 }, animationSpec = tween(300)) + fadeIn() },
+        popExitTransition = { slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(300)) + fadeOut() }
+    ) {
         GoalDetailScreen(onBack = { navController.popBackStack() })
     }
 }
@@ -117,36 +187,108 @@ private fun androidx.navigation.NavGraphBuilder.addProfileScreens(
         ProfileScreen(
             innerPadding = innerPadding,
             onEditProfile = { navController.navigate(HomeRoute.EditProfile) },
-            onNavigateToSettings = { navController.navigate(HomeRoute.Settings) },
+            onNavigateToPosts = { userId, userName -> navController.navigate(HomeRoute.UserPosts(userId, userName)) },
+            onNavigateToSaved = { navController.navigate(HomeRoute.SavedPosts) },
+            onNavigateToBlocked = { navController.navigate(HomeRoute.BlockedUsers) },
+            onNavigateToAbout = { navController.navigate(HomeRoute.About) },
+            onNavigateToLegal = { initialTab -> navController.navigate(HomeRoute.Legal(initialTab)) },
+            onLogout = onLogout
+        )
+    }
+    composable<HomeRoute.UserPosts>(
+        enterTransition = { slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(300)) + fadeIn() },
+        exitTransition = { slideOutHorizontally(targetOffsetX = { -it / 3 }, animationSpec = tween(300)) + fadeOut() },
+        popEnterTransition = { slideInHorizontally(initialOffsetX = { -it / 3 }, animationSpec = tween(300)) + fadeIn() },
+        popExitTransition = { slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(300)) + fadeOut() }
+    ) { backStackEntry ->
+        val args = backStackEntry.toRoute<HomeRoute.UserPosts>()
+        UserPostsScreen(
+            userId = args.userId,
+            userName = args.userName,
+            onBack = { navController.popBackStack() },
             onNavigateToPostDetail = { postId -> navController.navigate(HomeRoute.PostDetail(postId)) },
             onEditPost = { postId -> navController.navigate(HomeRoute.EditPost(postId)) }
         )
     }
-    composable<HomeRoute.Settings> {
+    composable<HomeRoute.Settings>(
+        enterTransition = { slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(300)) + fadeIn() },
+        exitTransition = { slideOutHorizontally(targetOffsetX = { -it / 3 }, animationSpec = tween(300)) + fadeOut() },
+        popEnterTransition = { slideInHorizontally(initialOffsetX = { -it / 3 }, animationSpec = tween(300)) + fadeIn() },
+        popExitTransition = { slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(300)) + fadeOut() }
+    ) {
         SettingsScreen(
             onBack = { navController.popBackStack() },
             onLogout = onLogout,
             onNavigateToSaved = { navController.navigate(HomeRoute.SavedPosts) },
-            onNavigateToBlocked = { navController.navigate(HomeRoute.BlockedUsers) }
+            onNavigateToBlocked = { navController.navigate(HomeRoute.BlockedUsers) },
+            onNavigateToAbout = { navController.navigate(HomeRoute.About) }
         )
     }
-    composable<HomeRoute.EditProfile> {
-        EditProfileScreen(onBack = { navController.popBackStack() })
+    composable<HomeRoute.About>(
+        enterTransition = { slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(300)) + fadeIn() },
+        exitTransition = { slideOutHorizontally(targetOffsetX = { -it / 3 }, animationSpec = tween(300)) + fadeOut() },
+        popEnterTransition = { slideInHorizontally(initialOffsetX = { -it / 3 }, animationSpec = tween(300)) + fadeIn() },
+        popExitTransition = { slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(300)) + fadeOut() }
+    ) {
+        AboutScreen(onBack = { navController.popBackStack() })
     }
-    composable<HomeRoute.SavedPosts> {
-        SavedPostsScreen(onBack = { navController.popBackStack() })
+    composable<HomeRoute.Legal>(
+        enterTransition = { slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(300)) + fadeIn() },
+        exitTransition = { slideOutHorizontally(targetOffsetX = { -it / 3 }, animationSpec = tween(300)) + fadeOut() },
+        popEnterTransition = { slideInHorizontally(initialOffsetX = { -it / 3 }, animationSpec = tween(300)) + fadeIn() },
+        popExitTransition = { slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(300)) + fadeOut() }
+    ) { backStackEntry ->
+        val legalRoute = backStackEntry.toRoute<HomeRoute.Legal>()
+        com.farbalapps.rinde.ui.screen.profile.legal.LegalScreen(
+            initialTab = legalRoute.initialTab,
+            onBack = { navController.popBackStack() }
+        )
     }
-    composable<HomeRoute.BlockedUsers> {
+    composable<HomeRoute.EditProfile>(
+        enterTransition = { slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(300)) + fadeIn() },
+        exitTransition = { slideOutHorizontally(targetOffsetX = { -it / 3 }, animationSpec = tween(300)) + fadeOut() },
+        popEnterTransition = { slideInHorizontally(initialOffsetX = { -it / 3 }, animationSpec = tween(300)) + fadeIn() },
+        popExitTransition = { slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(300)) + fadeOut() }
+    ) {
+        EditProfileScreen(
+            onBack = { navController.popBackStack() },
+            onAccountDeleted = onLogout
+        )
+    }
+    composable<HomeRoute.SavedPosts>(
+        enterTransition = { slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(300)) + fadeIn() },
+        exitTransition = { slideOutHorizontally(targetOffsetX = { -it / 3 }, animationSpec = tween(300)) + fadeOut() },
+        popEnterTransition = { slideInHorizontally(initialOffsetX = { -it / 3 }, animationSpec = tween(300)) + fadeIn() },
+        popExitTransition = { slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(300)) + fadeOut() }
+    ) {
+        SavedPostsScreen(
+            onBack = { navController.popBackStack() },
+            onPostClick = { postId -> navController.navigate(HomeRoute.PostDetail(postId)) }
+        )
+    }
+    composable<HomeRoute.BlockedUsers>(
+        enterTransition = { slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(300)) + fadeIn() },
+        exitTransition = { slideOutHorizontally(targetOffsetX = { -it / 3 }, animationSpec = tween(300)) + fadeOut() },
+        popEnterTransition = { slideInHorizontally(initialOffsetX = { -it / 3 }, animationSpec = tween(300)) + fadeIn() },
+        popExitTransition = { slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(300)) + fadeOut() }
+    ) {
         BlockedUsersScreen(onBack = { navController.popBackStack() })
     }
-    composable<HomeRoute.UserProfile> { backStackEntry ->
+    composable<HomeRoute.UserProfile>(
+        enterTransition = { slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(300)) + fadeIn() },
+        exitTransition = { slideOutHorizontally(targetOffsetX = { -it / 3 }, animationSpec = tween(300)) + fadeOut() },
+        popEnterTransition = { slideInHorizontally(initialOffsetX = { -it / 3 }, animationSpec = tween(300)) + fadeIn() },
+        popExitTransition = { slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(300)) + fadeOut() }
+    ) { backStackEntry ->
         val args = backStackEntry.toRoute<HomeRoute.UserProfile>()
         ProfileScreen(
             innerPadding = innerPadding,
             targetUserId = args.userId,
             onBack = { navController.popBackStack() },
-            onNavigateToPostDetail = { postId -> navController.navigate(HomeRoute.PostDetail(postId)) },
-            onEditPost = { postId -> navController.navigate(HomeRoute.EditPost(postId)) }
+            onNavigateToPosts = { userId, userName -> navController.navigate(HomeRoute.UserPosts(userId, userName)) },
+            onNavigateToSaved = { navController.navigate(HomeRoute.SavedPosts) },
+            onNavigateToBlocked = { navController.navigate(HomeRoute.BlockedUsers) },
+            onNavigateToLegal = { initialTab -> navController.navigate(HomeRoute.Legal(initialTab)) }
         )
     }
 }
@@ -154,10 +296,20 @@ private fun androidx.navigation.NavGraphBuilder.addProfileScreens(
 private fun androidx.navigation.NavGraphBuilder.addPostScreens(
     navController: NavHostController
 ) {
-    composable<HomeRoute.CreatePost> {
+    composable<HomeRoute.CreatePost>(
+        enterTransition = { slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(300)) + fadeIn() },
+        exitTransition = { slideOutHorizontally(targetOffsetX = { -it / 3 }, animationSpec = tween(300)) + fadeOut() },
+        popEnterTransition = { slideInHorizontally(initialOffsetX = { -it / 3 }, animationSpec = tween(300)) + fadeIn() },
+        popExitTransition = { slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(300)) + fadeOut() }
+    ) {
         CreatePostScreen(onBack = { navController.popBackStack() })
     }
-    composable<HomeRoute.PostDetail> { backStackEntry ->
+    composable<HomeRoute.PostDetail>(
+        enterTransition = { slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(300)) + fadeIn() },
+        exitTransition = { slideOutHorizontally(targetOffsetX = { -it / 3 }, animationSpec = tween(300)) + fadeOut() },
+        popEnterTransition = { slideInHorizontally(initialOffsetX = { -it / 3 }, animationSpec = tween(300)) + fadeIn() },
+        popExitTransition = { slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(300)) + fadeOut() }
+    ) { backStackEntry ->
         val args = backStackEntry.toRoute<HomeRoute.PostDetail>()
         PostDetailScreen(
             postId = args.postId,
@@ -168,7 +320,12 @@ private fun androidx.navigation.NavGraphBuilder.addPostScreens(
             onEditPost = { postId -> navController.navigate(HomeRoute.EditPost(postId)) }
         )
     }
-    composable<HomeRoute.EditPost> { backStackEntry ->
+    composable<HomeRoute.EditPost>(
+        enterTransition = { slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(300)) + fadeIn() },
+        exitTransition = { slideOutHorizontally(targetOffsetX = { -it / 3 }, animationSpec = tween(300)) + fadeOut() },
+        popEnterTransition = { slideInHorizontally(initialOffsetX = { -it / 3 }, animationSpec = tween(300)) + fadeIn() },
+        popExitTransition = { slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(300)) + fadeOut() }
+    ) { backStackEntry ->
         val args = backStackEntry.toRoute<HomeRoute.EditPost>()
         EditPostScreen(
             postId = args.postId,

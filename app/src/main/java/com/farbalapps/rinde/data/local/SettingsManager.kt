@@ -11,8 +11,9 @@ import kotlinx.coroutines.flow.map
 
 val Context.settingsDataStore by preferencesDataStore(name = "settings_prefs")
 
-enum class ThemeMode { SYSTEM, LIGHT, DARK }
-enum class AppLanguage { ES, EN }
+typealias ThemeMode = com.farbalapps.rinde.domain.model.ThemeMode
+typealias AppLanguage = com.farbalapps.rinde.domain.model.AppLanguage
+typealias AppCurrency = com.farbalapps.rinde.domain.model.AppCurrency
 
 class SettingsManager @Inject constructor(
     @ApplicationContext private val context: Context
@@ -20,6 +21,8 @@ class SettingsManager @Inject constructor(
     companion object {
         private val THEME_MODE = stringPreferencesKey("theme_mode")
         private val APP_LANGUAGE = stringPreferencesKey("app_language")
+        private val APP_CURRENCY = stringPreferencesKey("app_currency")
+        private val BUNKER_MODE = androidx.datastore.preferences.core.booleanPreferencesKey("bunker_mode")
         private val PRIVACY_MODE = androidx.datastore.preferences.core.booleanPreferencesKey("privacy_mode")
     }
 
@@ -29,8 +32,23 @@ class SettingsManager @Inject constructor(
     }
 
     val appLanguage: Flow<AppLanguage> = context.settingsDataStore.data.map { prefs ->
-        val name = prefs[APP_LANGUAGE] ?: AppLanguage.ES.name
-        AppLanguage.valueOf(name)
+        val savedName = prefs[APP_LANGUAGE]
+        if (savedName != null) {
+            runCatching { AppLanguage.valueOf(savedName) }.getOrDefault(AppLanguage.ES)
+        } else {
+            // Detectar idioma del teléfono por defecto si el usuario nunca lo ha cambiado manualmente
+            val systemLocale = java.util.Locale.getDefault().language.lowercase()
+            if (systemLocale.startsWith("en")) AppLanguage.EN else AppLanguage.ES
+        }
+    }
+
+    val appCurrency: Flow<AppCurrency> = context.settingsDataStore.data.map { prefs ->
+        val name = prefs[APP_CURRENCY] ?: AppCurrency.CLP.name
+        runCatching { AppCurrency.valueOf(name) }.getOrDefault(AppCurrency.CLP)
+    }
+
+    val isBunkerMode: Flow<Boolean> = context.settingsDataStore.data.map { prefs ->
+        prefs[BUNKER_MODE] ?: false
     }
 
     val isPrivacyMode: Flow<Boolean> = context.settingsDataStore.data.map { prefs ->
@@ -51,6 +69,22 @@ class SettingsManager @Inject constructor(
     suspend fun setAppLanguage(language: AppLanguage) {
         context.settingsDataStore.edit { prefs ->
             prefs[APP_LANGUAGE] = language.name
+        }
+        val localeTag = if (language == AppLanguage.EN) "en" else "es"
+        androidx.appcompat.app.AppCompatDelegate.setApplicationLocales(
+            androidx.core.os.LocaleListCompat.forLanguageTags(localeTag)
+        )
+    }
+
+    suspend fun setAppCurrency(currency: AppCurrency) {
+        context.settingsDataStore.edit { prefs ->
+            prefs[APP_CURRENCY] = currency.name
+        }
+    }
+
+    suspend fun setBunkerMode(enabled: Boolean) {
+        context.settingsDataStore.edit { prefs ->
+            prefs[BUNKER_MODE] = enabled
         }
     }
 

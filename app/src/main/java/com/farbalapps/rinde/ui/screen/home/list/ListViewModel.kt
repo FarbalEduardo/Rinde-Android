@@ -79,6 +79,9 @@ class ListViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(ListUiState())
     val uiState: StateFlow<ListUiState> = _uiState.asStateFlow()
 
+    private val _searchQuery = MutableStateFlow("")
+    private val _selectedFilterGroup = MutableStateFlow("All")
+
     private val pendingHighlightIds = mutableSetOf<String>()
 
     init {
@@ -142,16 +145,23 @@ class ListViewModel @Inject constructor(
 
     private fun observeItems() {
         viewModelScope.launch {
-            getListItemsUseCase()
+            combine(
+                getListItemsUseCase(),
+                _searchQuery,
+                _selectedFilterGroup
+            ) { items, query, group ->
+                Triple(items, query, group)
+            }
                 .catch { e ->
                     _uiState.update { it.copy(isLoading = false, errorMessage = e.message) }
                 }
-                .collect { items ->
+                .collect { (items, query, group) ->
                     _uiState.update { currentState ->
-                        val filteredItems = filterItems(items, currentState.selectedFilterGroup, currentState.searchQuery)
+                        val uniqueItems = items.distinctBy { it.id }
+                        val filteredItems = filterItems(uniqueItems, group, query)
                         val active = filteredItems.filter { !it.isCompleted }
                         val completed = filteredItems.filter { it.isCompleted }
-                        val totals = calculateTotals(active, completed, items)
+                        val totals = calculateTotals(active, completed, uniqueItems)
 
                         currentState.copy(
                             activeItems = active,
@@ -160,6 +170,8 @@ class ListViewModel @Inject constructor(
                             completedTotal = totals.completedTotal,
                             budgetCurrency = totals.currency,
                             budgetProgress = totals.progress,
+                            searchQuery = query,
+                            selectedFilterGroup = group,
                             isLoading = false,
                             errorMessage = null
                         )
@@ -205,13 +217,11 @@ class ListViewModel @Inject constructor(
     }
 
     fun onSearchQueryChanged(query: String) {
-        _uiState.update { it.copy(searchQuery = query) }
-        observeItems()
+        _searchQuery.value = query
     }
 
     fun setFilterGroup(group: String) {
-        _uiState.update { it.copy(selectedFilterGroup = group) }
-        observeItems()
+        _selectedFilterGroup.value = group
     }
 
     fun addItem(
@@ -296,6 +306,7 @@ class ListViewModel @Inject constructor(
     ) {
         viewModelScope.launch {
             try {
+                val editing = _uiState.value.editingItem
                 val itemToUpdate = DomainShoppingItem(
                     id = id,
                     name = name,
@@ -303,11 +314,15 @@ class ListViewModel @Inject constructor(
                     quantity = quantity,
                     unit = unit,
                     emoji = emoji,
-                    listGroup = _uiState.value.editingItem?.listGroup ?: "All",
-                    userId = _uiState.value.editingItem?.userId ?: "",
+                    listGroup = editing?.listGroup ?: "All",
+                    userId = editing?.userId ?: "",
+                    isCompleted = editing?.isCompleted ?: false,
                     price = price,
                     currency = currency
                 )
+                if (emoji.isEmpty() && name.isNotBlank()) {
+                    saveCustomProductHistoryUseCase(name, category)
+                }
                 updateListItemUseCase(itemToUpdate)
                 stopEditing()
             } catch (e: Exception) {
@@ -409,14 +424,14 @@ class ListViewModel @Inject constructor(
     }
 
     fun saveCurrentList(name: String, clearAfterSave: Boolean = false) {
-        val allItems = _uiState.value.activeItems + _uiState.value.completedItems
-        if (allItems.isEmpty()) return
+        val completedItems = _uiState.value.completedItems
+        if (completedItems.isEmpty()) return
 
         viewModelScope.launch {
             try {
-                saveCurrentListUseCase(name, allItems)
+                saveCurrentListUseCase(name, completedItems)
                 if (clearAfterSave) {
-                    deleteMultipleItemsUseCase(allItems)
+                    deleteMultipleItemsUseCase(completedItems)
                 }
                 closeSaveListDialog()
             } catch (e: Exception) {
@@ -461,8 +476,12 @@ class ListViewModel @Inject constructor(
         }
     }
 
-    fun startRenamingSavedList(savedList: SavedShoppingList) {
+    fun startRenamingSavedList(savedList: SavedShoppingList?) {
         _uiState.update { it.copy(renamingSavedList = savedList) }
+    }
+
+    fun cancelRenamingSavedList() {
+        _uiState.update { it.copy(renamingSavedList = null) }
     }
 
     fun renameSavedList(newName: String) {

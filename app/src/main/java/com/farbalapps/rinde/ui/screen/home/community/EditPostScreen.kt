@@ -34,6 +34,8 @@ import coil.compose.AsyncImage
 import com.farbalapps.rinde.domain.model.Category
 import com.farbalapps.rinde.domain.model.OfferType
 import com.farbalapps.rinde.ui.theme.RindePrimary
+import com.farbalapps.rinde.ui.theme.RindeTheme
+import androidx.compose.ui.tooling.preview.Preview
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -455,3 +457,43 @@ private fun androidx.compose.foundation.lazy.LazyListScope.CategorySectionItem(
         }
     }
 }
+
+@Preview(name = "Edit Post Light", showBackground = true)
+@Composable
+fun EditPostScreenContentPreview() {
+    RindeTheme {
+        EditPostScreenContent(
+            uiState = EditPostUiState(
+                title = "Cafetera Express Digital",
+                description = "En excelente estado, solo 3 meses de uso.",
+                category = "Tecnología",
+                normalPriceInput = "1499.0",
+                discountPriceInput = "999.0",
+                currency = "MXN",
+                condition = "Usado"
+            ),
+            displayPhotos = emptyList(),
+            onBack = {},
+            onSubmit = {},
+            onPhotoRemoved = {},
+            onAddPhotoClick = {},
+            onOfferTypeChange = {},
+            onWebsiteNameChange = {},
+            onProductLinkChange = {},
+            onStoreNameChange = {},
+            onLocationNameChange = {},
+            onFetchCurrentLocation = {},
+            onTitleChange = {},
+            onDescriptionChange = {},
+            onNormalPriceChange = {},
+            onDiscountPriceChange = {},
+            onCurrencyChange = {},
+            onIsAvailableChange = {},
+            onConditionChange = {},
+            onHasCouponChange = {},
+            onCouponCodeChange = {},
+            onCategoryChange = {}
+        )
+    }
+}
+

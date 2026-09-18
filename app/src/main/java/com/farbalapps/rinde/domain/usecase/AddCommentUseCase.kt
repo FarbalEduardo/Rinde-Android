@@ -1,6 +1,5 @@
 package com.farbalapps.rinde.domain.usecase
 
-import android.net.Uri
 import com.farbalapps.rinde.domain.model.Comment
 import com.farbalapps.rinde.domain.repository.AuthRepository
 import com.farbalapps.rinde.domain.repository.CommentRepository
@@ -13,7 +12,7 @@ class AddCommentUseCase @Inject constructor(
     suspend operator fun invoke(
         postId: String,
         text: String,
-        imageUri: Uri? = null
+        imageUri: String? = null   // URI como String — mapeo a android.net.Uri ocurre en la capa Data
     ): Result<Comment> {
         val user = authRepository.getCurrentUser() 
             ?: return Result.failure(Exception("Usuario no autenticado"))
@@ -30,8 +29,8 @@ class AddCommentUseCase @Inject constructor(
         return commentRepository.addComment(
             postId = postId,
             comment = comment,
-            localImageUri = imageUri
-        ).map { comment } // Devolver el comentario (aunque el ID sea temporal, el repositorio lo actualizará o se recargará del Flow)
+            imageUri = imageUri
+        ).map { comment }
     }
 
 }

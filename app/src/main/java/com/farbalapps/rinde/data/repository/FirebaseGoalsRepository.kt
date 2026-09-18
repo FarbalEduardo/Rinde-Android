@@ -14,7 +14,9 @@ import com.farbalapps.rinde.domain.model.SavingsGoal
 import com.farbalapps.rinde.domain.model.GoalTransaction
 import com.farbalapps.rinde.domain.repository.GoalsRepository
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
@@ -112,12 +114,75 @@ class FirebaseGoalsRepository @Inject constructor(
 
     override suspend fun archiveGoal(goalId: String) = withContext(ioDispatcher) {
         val goalEntity = dao.getGoalById(goalId) ?: throw NoSuchElementException("Meta no encontrada")
-        val updatedGoal = goalEntity.copy(
+        val now = System.currentTimeMillis()
+        var updatedGoal = goalEntity.copy(
             isArchived = true,
             isSynced = false,
-            updatedAt = System.currentTimeMillis()
+            updatedAt = now
         )
         dao.updateGoal(updatedGoal)
+
+        val userId = currentUserId
+        if (userId != null) {
+            try {
+                firestore.collection("users")
+                    .document(userId)
+                    .collection("savings_goals")
+                    .document(goalId)
+                    .set(updatedGoal, SetOptions.merge())
+                    .await()
+                try {
+                    firestore.collection("users")
+                        .document(userId)
+                        .collection("savings_goals")
+                        .document(goalId)
+                        .update(mapOf("archived" to FieldValue.delete()))
+                        .await()
+                } catch (_: Exception) {}
+                updatedGoal = updatedGoal.copy(isSynced = true)
+                dao.updateGoal(updatedGoal)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error directly archiving goal to Firestore", e)
+            }
+        }
+
+        enqueueSync()
+    }
+
+    override suspend fun unarchiveGoal(goalId: String) = withContext(ioDispatcher) {
+        val goalEntity = dao.getGoalById(goalId) ?: throw NoSuchElementException("Meta no encontrada")
+        val now = System.currentTimeMillis()
+        var updatedGoal = goalEntity.copy(
+            isArchived = false,
+            isSynced = false,
+            updatedAt = now
+        )
+        dao.updateGoal(updatedGoal)
+
+        val userId = currentUserId
+        if (userId != null) {
+            try {
+                firestore.collection("users")
+                    .document(userId)
+                    .collection("savings_goals")
+                    .document(goalId)
+                    .set(updatedGoal, SetOptions.merge())
+                    .await()
+                try {
+                    firestore.collection("users")
+                        .document(userId)
+                        .collection("savings_goals")
+                        .document(goalId)
+                        .update(mapOf("archived" to FieldValue.delete()))
+                        .await()
+                } catch (_: Exception) {}
+                updatedGoal = updatedGoal.copy(isSynced = true)
+                dao.updateGoal(updatedGoal)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error directly unarchiving goal to Firestore", e)
+            }
+        }
+
         enqueueSync()
     }
 
@@ -208,6 +273,41 @@ class FirebaseGoalsRepository @Inject constructor(
 
     override suspend fun syncGoals() {
         enqueueSync()
+    }
+
+    override suspend fun forceSyncBeforeLogout(userId: String): Unit = withContext(ioDispatcher) {
+        try {
+            val unsyncedGoals = dao.getUnsyncedGoalsByUser(userId)
+            for (goal in unsyncedGoals) {
+                if (goal.userId == userId) {
+                    firestore.collection("users")
+                        .document(userId)
+                        .collection("savings_goals")
+                        .document(goal.id)
+                        .set(goal, com.google.firebase.firestore.SetOptions.merge())
+                        .await()
+                    dao.updateGoal(goal.copy(isSynced = true))
+                }
+            }
+
+            val unsyncedTx = dao.getUnsyncedTransactionsByUser(userId)
+            for (tx in unsyncedTx) {
+                val goal = dao.getGoalById(tx.goalId)
+                if (goal != null && goal.userId == userId) {
+                    firestore.collection("users")
+                        .document(userId)
+                        .collection("savings_goals")
+                        .document(tx.goalId)
+                        .collection("transactions")
+                        .document(tx.id)
+                        .set(tx, com.google.firebase.firestore.SetOptions.merge())
+                        .await()
+                    dao.insertTransaction(tx.copy(isSynced = true))
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error in forceSyncBeforeLogout", e)
+        }
     }
 
     private fun enqueueSync() {

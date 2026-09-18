@@ -41,15 +41,21 @@ interface GoalsDao {
     @Query("DELETE FROM goal_transactions WHERE goalId IN (SELECT id FROM savings_goals WHERE userId = :userId)")
     suspend fun deleteTransactionsByUserId(userId: String)
 
+    @Query("DELETE FROM savings_goals")
+    suspend fun clearAllGoals()
+
+    @Query("DELETE FROM goal_transactions")
+    suspend fun clearAllTransactions()
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTransaction(transaction: GoalTransactionEntity)
 
     @Query("SELECT * FROM goal_transactions WHERE goalId = :goalId ORDER BY timestamp DESC")
     fun getTransactionsForGoal(goalId: String): Flow<List<GoalTransactionEntity>>
 
-    @Query("SELECT * FROM savings_goals WHERE isSynced = 0")
-    suspend fun getUnsyncedGoals(): List<SavingsGoalEntity>
+    @Query("SELECT * FROM savings_goals WHERE userId = :userId AND isSynced = 0")
+    suspend fun getUnsyncedGoalsByUser(userId: String): List<SavingsGoalEntity>
 
-    @Query("SELECT * FROM goal_transactions WHERE isSynced = 0")
-    suspend fun getUnsyncedTransactions(): List<GoalTransactionEntity>
+    @Query("SELECT * FROM goal_transactions WHERE isSynced = 0 AND goalId IN (SELECT id FROM savings_goals WHERE userId = :userId)")
+    suspend fun getUnsyncedTransactionsByUser(userId: String): List<GoalTransactionEntity>
 }

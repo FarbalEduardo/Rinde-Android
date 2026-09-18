@@ -5,7 +5,9 @@ import com.farbalapps.rinde.data.local.dao.UserVoteDao
 import com.farbalapps.rinde.data.local.entity.toDomainModel
 import com.farbalapps.rinde.data.local.entity.toEntity
 import com.farbalapps.rinde.data.mapper.toDomain
+import com.farbalapps.rinde.data.mapper.toSavedSnapshotMap
 import com.farbalapps.rinde.data.remote.model.CommunityPostDto
+import com.farbalapps.rinde.data.remote.model.SavedPostSnapshotDto
 import com.farbalapps.rinde.domain.model.CommunityPost
 import com.farbalapps.rinde.domain.model.Profile
 import com.google.firebase.firestore.FieldPath
@@ -63,10 +65,19 @@ class ProfileSocialDelegate @Inject constructor(
             .collection("saved_posts").document(postId)
 
         if (save) {
-            savedRef.set(mapOf(
-                "postId" to postId,
-                "savedAt" to FieldValue.serverTimestamp()
-            )).await()
+            val localPostEntity = postDao.getPostById(postId)
+            val snapshotMap = if (localPostEntity != null) {
+                localPostEntity.toDomainModel().toSavedSnapshotMap()
+            } else {
+                try {
+                    val remoteDoc = firestore.collection("posts").document(postId).get().await()
+                    val remotePost = remoteDoc.toObject(CommunityPostDto::class.java)?.copy(id = remoteDoc.id)?.toDomain()
+                    remotePost?.toSavedSnapshotMap() ?: mapOf("postId" to postId, "savedAt" to FieldValue.serverTimestamp())
+                } catch (e: Exception) {
+                    mapOf("postId" to postId, "savedAt" to FieldValue.serverTimestamp())
+                }
+            }
+            savedRef.set(snapshotMap).await()
         } else {
             savedRef.delete().await()
         }
@@ -97,30 +108,52 @@ class ProfileSocialDelegate @Inject constructor(
             .orderBy("savedAt", Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
+                    android.util.Log.e("ProfileSocialDelegate", "Error listening to saved_posts: ${error.message}")
                     trySend(emptyList())
                     return@addSnapshotListener
                 }
 
-                val postIds = snapshot?.documents?.map { it.id } ?: emptyList()
-                if (postIds.isEmpty()) {
+                if (snapshot == null || snapshot.isEmpty) {
                     trySend(emptyList())
                     return@addSnapshotListener
                 }
 
                 launch {
                     try {
-                        val posts = postIds.chunked(30).flatMap { chunk ->
-                            firestore.collection("posts")
-                                .whereIn(FieldPath.documentId(), chunk)
-                                .whereEqualTo("isActive", true)
-                                .get().await()
-                                .documents.mapNotNull { doc ->
-                                    doc.toObject(CommunityPostDto::class.java)
-                                        ?.copy(id = doc.id)
-                                        ?.toDomain()
+                        val legacyDocIds = mutableListOf<String>()
+                        val resultPosts = mutableListOf<CommunityPost>()
+
+                        for (doc in snapshot.documents) {
+                            val title = doc.getString("title")
+                            if (!title.isNullOrBlank()) {
+                                val snapshotDto = doc.toObject(SavedPostSnapshotDto::class.java)
+                                if (snapshotDto != null && snapshotDto.isActive) {
+                                    resultPosts.add(snapshotDto.copy(postId = doc.id).toDomain())
                                 }
+                            } else {
+                                legacyDocIds.add(doc.id)
+                            }
                         }
-                        val ordered = postIds.mapNotNull { id -> posts.find { it.id == id } }
+
+                        if (legacyDocIds.isNotEmpty()) {
+                            val legacyPosts = legacyDocIds.chunked(30).flatMap { chunk ->
+                                firestore.collection("posts")
+                                    .whereIn(FieldPath.documentId(), chunk)
+                                    .whereEqualTo("isActive", true)
+                                    .get().await()
+                                    .documents.mapNotNull { doc ->
+                                        doc.toObject(CommunityPostDto::class.java)
+                                            ?.copy(id = doc.id)
+                                            ?.toDomain()
+                                            ?.copy(isSavedByMe = true)
+                                    }
+                            }
+                            resultPosts.addAll(legacyPosts)
+                        }
+
+                        val ordered = snapshot.documents.mapNotNull { doc ->
+                            resultPosts.find { it.id == doc.id }
+                        }
                         trySend(ordered)
                     } catch (e: Exception) {
                         android.util.Log.e("ProfileSocialDelegate", "❌ Error hydrating saved posts", e)

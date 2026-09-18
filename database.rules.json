@@ -3,27 +3,39 @@
     "comments": {
       "$postId": {
         ".read": "auth != null",
-        ".write": "auth != null",
-        ".indexOn": ["timestamp"]
+        ".indexOn": ["timestamp"],
+        "$commentId": {
+          ".read": "auth != null",
+          ".write": "auth != null && (!data.exists() && newData.child('authorId').val() === auth.uid || data.exists() && data.child('authorId').val() === auth.uid || data.exists() && !newData.child('text').changed() && !newData.child('authorId').changed())"
+        }
       }
     },
     "replies": {
       "$commentId": {
         ".read": "auth != null",
-        ".write": "auth != null",
-        ".indexOn": ["timestamp"]
+        ".indexOn": ["timestamp"],
+        "$replyId": {
+          ".read": "auth != null",
+          ".write": "auth != null && (!data.exists() && newData.child('authorId').val() === auth.uid || data.exists() && data.child('authorId').val() === auth.uid || data.exists() && !newData.child('text').changed() && !newData.child('authorId').changed())"
+        }
       }
     },
     "comment_likes": {
       "$commentId": {
         ".read": "auth != null",
-        ".write": "auth != null"
+        "$userId": {
+          ".read": "auth != null",
+          ".write": "auth != null && auth.uid === $userId"
+        }
       }
     },
     "reply_likes": {
       "$replyId": {
         ".read": "auth != null",
-        ".write": "auth != null"
+        "$userId": {
+          ".read": "auth != null",
+          ".write": "auth != null && auth.uid === $userId"
+        }
       }
     }
   }

@@ -28,14 +28,17 @@ import com.farbalapps.rinde.R
 import com.farbalapps.rinde.ui.screen.home.community.CommunityTab
 import com.farbalapps.rinde.ui.screen.home.community.EmptyFeedState
 import com.farbalapps.rinde.ui.screen.home.community.components.PostCard
+import com.farbalapps.rinde.ui.screen.home.community.components.PostCardSkeleton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SavedPostsScreen(
     onBack: () -> Unit,
+    onPostClick: (String) -> Unit = {},
     viewModel: ProfileExtrasViewModel = hiltViewModel()
 ) {
     val savedPosts by viewModel.savedPosts.collectAsStateWithLifecycle()
+    val isSavedLoading by viewModel.isSavedLoading.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -49,7 +52,19 @@ fun SavedPostsScreen(
             )
         }
     ) { innerPadding ->
-        if (savedPosts.isEmpty()) {
+        if (isSavedLoading) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+                contentPadding = PaddingValues(vertical = 0.dp),
+                verticalArrangement = Arrangement.spacedBy(1.dp)
+            ) {
+                items(5) {
+                    PostCardSkeleton()
+                }
+            }
+        } else if (savedPosts.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -64,9 +79,10 @@ fun SavedPostsScreen(
                 contentPadding = PaddingValues(vertical = 0.dp),
                 verticalArrangement = Arrangement.spacedBy(1.dp)
             ) {
-                items(savedPosts) { post ->
+                items(savedPosts, key = { it.id }) { post ->
                     PostCard(
                         post = post,
+                        onPostClick = { onPostClick(post.id) },
                         onSaveClick = { viewModel.unsavePost(post.id) }
                     )
                 }
@@ -82,6 +98,7 @@ fun BlockedUsersScreen(
     viewModel: ProfileExtrasViewModel = hiltViewModel()
 ) {
     val blockedUsers by viewModel.blockedUsers.collectAsStateWithLifecycle()
+    val isBlockedLoading by viewModel.isBlockedLoading.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -95,7 +112,16 @@ fun BlockedUsersScreen(
             )
         }
     ) { innerPadding ->
-        if (blockedUsers.isEmpty()) {
+        if (isBlockedLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        } else if (blockedUsers.isEmpty()) {
             EmptyState(
                 icon = Icons.Default.Block,
                 text = "No tienes usuarios bloqueados",
@@ -105,7 +131,7 @@ fun BlockedUsersScreen(
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(innerPadding)
             ) {
-                items(blockedUsers) { user ->
+                items(blockedUsers, key = { it.id }) { user ->
                     BlockedUserItem(user = user, onUnblock = { viewModel.unblockUser(user.id) })
                 }
             }

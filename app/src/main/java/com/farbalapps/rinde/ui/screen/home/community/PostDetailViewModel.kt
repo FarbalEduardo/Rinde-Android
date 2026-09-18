@@ -27,6 +27,7 @@ import javax.inject.Inject
 
 import com.farbalapps.rinde.domain.usecase.VoteResult
 
+import com.farbalapps.rinde.util.logger.AppLogger
 import kotlinx.coroutines.flow.combine
 
 enum class VoteUiState { IDLE, SENDING, ERROR, OFFLINE }
@@ -68,7 +69,8 @@ class PostDetailViewModel @Inject constructor(
     private val editCommentUseCase: EditCommentUseCase,
     private val deleteReplyUseCase: DeleteReplyUseCase,
     private val editReplyUseCase: EditReplyUseCase,
-    private val reportCommentUseCase: ReportCommentUseCase
+    private val reportCommentUseCase: ReportCommentUseCase,
+    private val logger: AppLogger
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PostDetailUiState())
@@ -136,7 +138,7 @@ class PostDetailViewModel @Inject constructor(
                     _uiState.update { it.copy(comments = sorted, isLoadingComments = false) }
                 }
             } catch (e: Exception) {
-                android.util.Log.e("PostDetailVM", "Error cargando comentarios: ${e.message}")
+                logger.error(TAG, "Error cargando comentarios: ${e.message}", e)
                 _uiState.update { it.copy(isLoadingComments = false) }
             }
         }
@@ -155,7 +157,7 @@ class PostDetailViewModel @Inject constructor(
                     }
                 }
             } catch (e: Exception) {
-                android.util.Log.e("PostDetailVM", "Error cargando respuestas: ${e.message}")
+                logger.error(TAG, "Error cargando respuestas: ${e.message}", e)
             }
         }
     }
@@ -471,5 +473,9 @@ class PostDetailViewModel @Inject constructor(
 
     fun clearSnackbar() {
         _uiState.update { it.copy(snackbarMessage = null) }
+    }
+
+    companion object {
+        private const val TAG = "PostDetailVM"
     }
 }

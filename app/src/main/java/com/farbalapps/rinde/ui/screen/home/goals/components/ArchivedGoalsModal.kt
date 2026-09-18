@@ -12,14 +12,14 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+import androidx.compose.foundation.clickable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.farbalapps.rinde.domain.model.SavingsGoal
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -29,9 +29,12 @@ import java.util.Locale
 @Composable
 fun ArchivedGoalsModal(
     archivedGoals: List<SavingsGoal>,
+    canReactivate: Boolean = true,
     onDismissRequest: () -> Unit,
-    onDeleteGoal: (String) -> Unit
+    onDeleteGoal: (String) -> Unit,
+    onUnarchiveGoal: (String) -> Unit = {}
 ) {
+    var selectedGoalForDetail by remember { mutableStateOf<SavingsGoal?>(null) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     ModalBottomSheet(
@@ -116,6 +119,7 @@ fun ArchivedGoalsModal(
                     items(archivedGoals, key = { it.id }) { goal ->
                         ArchivedGoalCard(
                             goal = goal,
+                            onClick = { selectedGoalForDetail = goal },
                             onDeleteGoal = { onDeleteGoal(goal.id) }
                         )
                     }
@@ -125,11 +129,28 @@ fun ArchivedGoalsModal(
             Spacer(modifier = Modifier.height(16.dp))
         }
     }
+
+    selectedGoalForDetail?.let { goal ->
+        ArchivedGoalDetailSheet(
+            goal = goal,
+            canReactivate = canReactivate,
+            onDismiss = { selectedGoalForDetail = null },
+            onUnarchiveClick = { target ->
+                onUnarchiveGoal(target.id)
+                selectedGoalForDetail = null
+            },
+            onDeleteClick = { target ->
+                onDeleteGoal(target.id)
+                selectedGoalForDetail = null
+            }
+        )
+    }
 }
 
 @Composable
 private fun ArchivedGoalCard(
     goal: SavingsGoal,
+    onClick: () -> Unit,
     onDeleteGoal: () -> Unit
 ) {
     val themeColor = GoalThemeMapper.mapColor(goal.colorKey)
@@ -138,7 +159,9 @@ private fun ArchivedGoalCard(
     val formattedDate = dateFormat.format(Date(goal.updatedAt))
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)

@@ -12,6 +12,10 @@ import com.farbalapps.rinde.domain.usecase.profile.UpdatePrivacyUseCase
 import com.farbalapps.rinde.domain.usecase.profile.SyncProfileUseCase
 import com.farbalapps.rinde.domain.usecase.profile.ClearUploadStatusUseCase
 import com.farbalapps.rinde.domain.usecase.profile.GetSavedPostsUseCase
+import com.farbalapps.rinde.data.local.AppLanguage
+import com.farbalapps.rinde.data.local.ThemeMode
+import com.farbalapps.rinde.domain.usecase.settings.*
+import com.farbalapps.rinde.util.logger.AppLogger
 import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -38,12 +42,35 @@ class ProfileViewModel @Inject constructor(
     private val syncProfileUseCase: SyncProfileUseCase,
     private val clearUploadStatusUseCase: ClearUploadStatusUseCase,
     private val toggleVoteUseCase: ToggleVoteUseCase,
+    private val getThemeUseCase: GetThemeUseCase,
+    private val setThemeUseCase: SetThemeUseCase,
+    private val getLanguageUseCase: GetLanguageUseCase,
+    private val setLanguageUseCase: SetLanguageUseCase,
+    private val isProfilePrivateUseCase: IsProfilePrivateUseCase,
+    private val togglePrivacyUseCase: TogglePrivacyUseCase,
+    private val settingsManager: com.farbalapps.rinde.data.local.SettingsManager,
     private val firebaseAuth: FirebaseAuth,
-    private val feedRepository: FeedRepository
+    private val feedRepository: FeedRepository,
+    private val logger: AppLogger
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileUiState())
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
+
+    val themeMode: StateFlow<ThemeMode> = getThemeUseCase()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ThemeMode.SYSTEM)
+
+    val appLanguage: StateFlow<AppLanguage> = getLanguageUseCase()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AppLanguage.ES)
+
+    val appCurrency: StateFlow<com.farbalapps.rinde.data.local.AppCurrency> = settingsManager.appCurrency
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), com.farbalapps.rinde.data.local.AppCurrency.CLP)
+
+    val isBunkerMode: StateFlow<Boolean> = settingsManager.isBunkerMode
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    val isProfilePrivate: StateFlow<Boolean> = isProfilePrivateUseCase()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     val postStatusOverlay = feedRepository.globalPostStatus
     val savedStatusOverlay = feedRepository.globalSavedStatus
@@ -77,16 +104,16 @@ class ProfileViewModel @Inject constructor(
         observeProfilePosts(finalUid)
     }
 
-    private fun syncCurrentUser(uid: String) {
+    private fun syncCurrentUser(userId: String) {
         viewModelScope.launch {
-            feedRepository.syncUserVotes(uid)
-            feedRepository.syncUserSavedPosts(uid)
+            feedRepository.syncUserVotes(userId)
+            feedRepository.syncUserSavedPosts(userId)
         }
     }
 
-    private fun observeLocalProfile(uid: String) {
+    private fun observeLocalProfile(userId: String) {
         viewModelScope.launch {
-            getProfileUseCase(uid)
+            getProfileUseCase(userId)
                 .catch { e ->
                     _uiState.update { it.copy(error = "Error local: ${e.message}", isLoading = false) }
                 }
@@ -101,12 +128,12 @@ class ProfileViewModel @Inject constructor(
         }
     }
 
-    private fun syncRemoteProfile(uid: String) {
+    private fun syncRemoteProfile(userId: String) {
         viewModelScope.launch {
             try {
-                syncProfileUseCase(uid)
+                syncProfileUseCase(userId)
             } catch (e: Exception) {
-                android.util.Log.e("ProfileViewModel", "Sync failed for $uid", e)
+                logger.error(TAG, "Sync failed for $userId", e)
                 val currentProfile = _uiState.value.profile
                 if (currentProfile == null || currentProfile.isDummy) {
                     _uiState.update { it.copy(
@@ -118,11 +145,11 @@ class ProfileViewModel @Inject constructor(
         }
     }
 
-    private fun observeProfilePosts(uid: String) {
+    private fun observeProfilePosts(userId: String) {
         viewModelScope.launch {
-            getProfilePostsUseCase(uid)
+            getProfilePostsUseCase(userId)
                 .catch { e ->
-                    android.util.Log.e("ProfileViewModel", "Error fetching posts", e)
+                    logger.error(TAG, "Error fetching posts", e)
                 }
                 .collect { posts ->
                     val (rating, count) = calculateCommunityRating(posts)
@@ -226,7 +253,41 @@ class ProfileViewModel @Inject constructor(
         }
     }
 
+    fun setTheme(mode: ThemeMode) {
+        viewModelScope.launch {
+            setThemeUseCase(mode)
+        }
+    }
+
+    fun setLanguage(language: AppLanguage) {
+        viewModelScope.launch {
+            setLanguageUseCase(language)
+        }
+    }
+
+    fun togglePrivacy(isPrivate: Boolean) {
+        viewModelScope.launch {
+            togglePrivacyUseCase(isPrivate)
+        }
+    }
+
+    fun setCurrency(currency: com.farbalapps.rinde.data.local.AppCurrency) {
+        viewModelScope.launch {
+            settingsManager.setAppCurrency(currency)
+        }
+    }
+
+    fun toggleBunkerMode(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsManager.setBunkerMode(enabled)
+        }
+    }
+
     fun clearSnackbar() {
         _uiState.update { it.copy(snackbarMessage = null) }
+    }
+
+    companion object {
+        private const val TAG = "ProfileViewModel"
     }
 }

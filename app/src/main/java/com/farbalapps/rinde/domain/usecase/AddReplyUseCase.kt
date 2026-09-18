@@ -1,6 +1,5 @@
 package com.farbalapps.rinde.domain.usecase
 
-import android.net.Uri
 import com.farbalapps.rinde.domain.model.Reply
 import com.farbalapps.rinde.domain.repository.AuthRepository
 import com.farbalapps.rinde.domain.repository.CommentRepository
@@ -15,7 +14,7 @@ class AddReplyUseCase @Inject constructor(
         postId: String,
         text: String,
         mentionedUser: String? = null,
-        imageUri: Uri? = null
+        imageUri: String? = null   // URI como String — mapeo a android.net.Uri ocurre en la capa Data
     ): Result<Reply> {
         val user = authRepository.getCurrentUser()
             ?: return Result.failure(Exception("Usuario no autenticado"))
@@ -35,7 +34,7 @@ class AddReplyUseCase @Inject constructor(
         return commentRepository.addReply(
             commentId = commentId,
             reply = reply,
-            localImageUri = imageUri
+            imageUri = imageUri
         ).map { reply }
     }
 

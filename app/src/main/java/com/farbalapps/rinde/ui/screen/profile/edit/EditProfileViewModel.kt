@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
+import com.farbalapps.rinde.domain.repository.AuthRepository
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -21,6 +22,7 @@ data class EditProfileUiState(
     val isPrivate: Boolean = false,
     val isLoading: Boolean = false,
     val isSuccess: Boolean = false,
+    val isAccountDeleted: Boolean = false,
     val error: String? = null
 )
 
@@ -29,6 +31,7 @@ class EditProfileViewModel @Inject constructor(
     private val getProfileUseCase: GetProfileUseCase,
     private val updateProfileUseCase: UpdateProfileUseCase,
     private val updatePrivacyUseCase: UpdatePrivacyUseCase,
+    private val authRepository: AuthRepository,
     private val firebaseAuth: FirebaseAuth
 ) : ViewModel() {
 
@@ -94,6 +97,18 @@ class EditProfileViewModel @Inject constructor(
                 _uiState.update { it.copy(isLoading = false, isSuccess = true) }
             } else {
                 _uiState.update { it.copy(isLoading = false, error = result.exceptionOrNull()?.message) }
+            }
+        }
+    }
+
+    fun deleteAccount() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            val result = authRepository.deleteAccount()
+            if (result.isSuccess) {
+                _uiState.update { it.copy(isLoading = false, isAccountDeleted = true) }
+            } else {
+                _uiState.update { it.copy(isLoading = false, error = result.exceptionOrNull()?.message ?: "Error al eliminar cuenta") }
             }
         }
     }

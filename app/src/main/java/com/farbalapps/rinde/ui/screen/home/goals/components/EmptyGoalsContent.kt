@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.History
 fun EmptyGoalsContent(
     onCreateFirstGoalClick: () -> Unit,
     onShowArchivedGoalsClick: () -> Unit = {},
+    hasArchivedGoals: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     // Animación infinita de pulso de respiración viva (breathing pulse effect)
@@ -87,21 +88,6 @@ fun EmptyGoalsContent(
             .padding(24.dp),
         contentAlignment = Alignment.Center
     ) {
-        IconButton(
-            onClick = onShowArchivedGoalsClick,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .size(44.dp)
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), shape = CircleShape)
-        ) {
-            Icon(
-                imageVector = Icons.Default.History,
-                contentDescription = "Historial de metas archivadas",
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(24.dp)
-            )
-        }
-
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
@@ -122,10 +108,41 @@ fun EmptyGoalsContent(
             // Textos
             EmptyGoalsTextContent()
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(28.dp))
 
             // Botón de Acción Principal
             CreateFirstGoalButton(onClick = onCreateFirstGoalClick)
+
+            if (hasArchivedGoals) {
+                Spacer(modifier = Modifier.height(14.dp))
+
+                Surface(
+                    onClick = onShowArchivedGoalsClick,
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f),
+                    modifier = Modifier.fillMaxWidth(0.85f)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.History,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = androidx.compose.ui.res.stringResource(com.farbalapps.rinde.R.string.goals_btn_view_archived),
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -245,7 +262,7 @@ private fun AnimatedGoalGraphic(
 @Composable
 private fun EmptyGoalsTextContent() {
     Text(
-        text = "Empieza a ahorrar para tus sueños",
+        text = androidx.compose.ui.res.stringResource(com.farbalapps.rinde.R.string.goals_empty_hero_title),
         style = MaterialTheme.typography.headlineSmall,
         fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.onSurface,
@@ -255,7 +272,7 @@ private fun EmptyGoalsTextContent() {
     Spacer(modifier = Modifier.height(8.dp))
 
     Text(
-        text = "Crea apartados personalizados con metas de ahorro y monitorea tu progreso semanal.",
+        text = androidx.compose.ui.res.stringResource(com.farbalapps.rinde.R.string.goals_empty_hero_desc),
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         textAlign = TextAlign.Center,
@@ -290,7 +307,7 @@ private fun CreateFirstGoalButton(onClick: () -> Unit) {
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "Crea tu primera meta",
+                text = androidx.compose.ui.res.stringResource(com.farbalapps.rinde.R.string.goals_btn_create_first),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )

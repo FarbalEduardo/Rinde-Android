@@ -8,7 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.NotificationsNone
@@ -166,7 +166,7 @@ private fun NotificationItemCard(
             MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f)
         )
         NotificationType.NEW_COMMENT -> Triple(
-            Icons.Default.Chat,
+            Icons.AutoMirrored.Filled.Chat,
             MaterialTheme.colorScheme.primary,
             MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
         )

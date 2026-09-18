@@ -84,8 +84,8 @@ class CommentRepositoryImpl @Inject constructor(
         awaitClose { ref.removeEventListener(listener) }
     }
 
-    override suspend fun addComment(postId: String, comment: Comment, localImageUri: android.net.Uri?): Result<Unit> = runCatching {
-        val imageUrl = uploadImageIfNeeded(localImageUri, comment.imageUrl)
+    override suspend fun addComment(postId: String, comment: Comment, imageUri: String?): Result<Unit> = runCatching {
+        val imageUrl = uploadImageIfNeeded(imageUri?.let { android.net.Uri.parse(it) }, comment.imageUrl)
         
         val commentRef = rtdb.getReference("comments").child(postId).push()
         val commentId = commentRef.key ?: throw Exception("Error generando ID de comentario")
@@ -155,8 +155,8 @@ class CommentRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun addReply(commentId: String, reply: Reply, localImageUri: android.net.Uri?): Result<Unit> = runCatching {
-        val imageUrl = uploadImageIfNeeded(localImageUri, reply.imageUrl)
+    override suspend fun addReply(commentId: String, reply: Reply, imageUri: String?): Result<Unit> = runCatching {
+        val imageUrl = uploadImageIfNeeded(imageUri?.let { android.net.Uri.parse(it) }, reply.imageUrl)
         
         val replyRef = rtdb.getReference("replies").child(commentId).push()
         val replyId = replyRef.key ?: throw Exception("Error generando ID de respuesta")

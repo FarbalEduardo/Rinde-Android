@@ -2,8 +2,10 @@ package com.farbalapps.rinde.ui.screen.home.assistant
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.*
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import kotlinx.coroutines.delay
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -12,13 +14,19 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ListAlt
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.ListAlt
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material3.*
@@ -26,18 +34,21 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.farbalapps.rinde.R
+import com.farbalapps.rinde.domain.model.ChatConversation
+import com.farbalapps.rinde.domain.model.ChatMessage
+import com.farbalapps.rinde.domain.model.RecipeCard
 import com.farbalapps.rinde.ui.theme.RindePrimary
 import com.farbalapps.rinde.ui.theme.RindeTheme
+import androidx.compose.ui.tooling.preview.Preview
+import kotlinx.coroutines.flow.collectLatest
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,11 +57,64 @@ fun AssistantScreen(
     viewModel: AssistantViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val listState = rememberLazyListState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
+    LaunchedEffect(Unit) {
+        viewModel.uiEvent.collectLatest { event ->
+            when (event) {
+                is ChefChatUiEvent.ShowSnackbar -> {
+                    snackbarHostState.showSnackbar(event.message)
+                }
+            }
+        }
+    }
+
+    AssistantContent(
+        uiState = uiState,
+        innerPadding = innerPadding,
+        snackbarHostState = snackbarHostState,
+        onHistoryClick = { viewModel.toggleHistorySheet(true) },
+        onNewChatClick = { viewModel.startNewConversation() },
+        onSelectList = { viewModel.selectList(it) },
+        onToggleIngredient = { viewModel.toggleIngredientSelection(it) },
+        onInputTextChanged = { viewModel.onInputTextChanged(it) },
+        onSendMessage = { viewModel.sendMessage() }
+    )
+
+    // Modal BottomSheet para el Historial de Conversaciones (Máx 10)
+    if (uiState.showHistorySheet) {
+        ModalBottomSheet(
+            onDismissRequest = { viewModel.toggleHistorySheet(false) },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ) {
+            ChatHistorySheetContent(
+                conversations = uiState.historyConversations,
+                onSelectConversation = { viewModel.loadConversation(it) },
+                onDeleteConversation = { viewModel.deleteConversation(it) },
+                onNewConversation = { viewModel.startNewConversation() }
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AssistantContent(
+    uiState: ChefChatUiState,
+    onHistoryClick: () -> Unit,
+    onNewChatClick: () -> Unit,
+    onSelectList: (String) -> Unit,
+    onToggleIngredient: (String) -> Unit,
+    onInputTextChanged: (String) -> Unit,
+    onSendMessage: () -> Unit,
+    modifier: Modifier = Modifier,
+    innerPadding: PaddingValues = PaddingValues(0.dp),
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
+) {
+    val listState = rememberLazyListState()
     var showListDropdown by remember { mutableStateOf(false) }
 
-    // Scroll automático al último mensaje únicamente cuando se agrega un nuevo mensaje (evita saltos bruscos al escribir o hacer clic)
+    // Scroll automático al último mensaje cuando aumenta la cantidad
     LaunchedEffect(uiState.messages.size) {
         if (uiState.messages.isNotEmpty()) {
             listState.animateScrollToItem(uiState.messages.size - 1)
@@ -58,9 +122,10 @@ fun AssistantScreen(
     }
 
     Scaffold(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .padding(innerPadding),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -84,12 +149,12 @@ fun AssistantScreen(
                         }
                         Column {
                             Text(
-                                text = "Chef IA",
+                                text = androidx.compose.ui.res.stringResource(com.farbalapps.rinde.R.string.assistant_title),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = "Asistente de recetas y compras",
+                                text = androidx.compose.ui.res.stringResource(com.farbalapps.rinde.R.string.assistant_subtitle),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -97,11 +162,20 @@ fun AssistantScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { viewModel.resetChat() }) {
+                    // Historial de Sesiones (Máx 10)
+                    IconButton(onClick = onHistoryClick) {
                         Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = "Reiniciar conversación",
+                            imageVector = Icons.Default.History,
+                            contentDescription = androidx.compose.ui.res.stringResource(com.farbalapps.rinde.R.string.assistant_history_desc),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    // Nueva Conversación
+                    IconButton(onClick = onNewChatClick) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = androidx.compose.ui.res.stringResource(com.farbalapps.rinde.R.string.assistant_new_chat_desc),
+                            tint = RindePrimary
                         )
                     }
                 },
@@ -120,7 +194,7 @@ fun AssistantScreen(
                 .padding(top = contentPadding.calculateTopPadding())
                 .imePadding()
         ) {
-            // Canvas de Mensajes del Chat
+            // Lista de Mensajes
             LazyColumn(
                 state = listState,
                 modifier = Modifier
@@ -141,32 +215,62 @@ fun AssistantScreen(
                 }
             }
 
-            // Barra Flotante de Contexto (Selector de Listas e Ingredientes) estilo lalo 4
+            // Context Bar (Listas e Ingredientes con contador X/5)
             PantryContextBar(
                 uiState = uiState,
                 showListDropdown = showListDropdown,
                 onShowListDropdownChange = { showListDropdown = it },
-                onSelectList = { viewModel.selectList(it) },
-                onToggleIngredient = { viewModel.toggleIngredientSelection(it) }
+                onSelectList = onSelectList,
+                onToggleIngredient = onToggleIngredient
             )
 
-            // Campo de Texto de Envío
+            // Dock de Entrada (máx 150 caracteres)
             ChefChatInputDock(
                 inputText = uiState.inputText,
-                onInputTextChanged = { viewModel.onInputTextChanged(it) },
-                onSendMessage = { viewModel.sendMessage() },
-                onQuickPromptClick = { viewModel.sendMessage(it) }
+                onInputTextChanged = onInputTextChanged,
+                onSendMessage = onSendMessage
             )
         }
     }
 }
 
-/**
- * Item individual de mensaje en el Chat.
- */
 @Composable
-private fun ChefChatMessageItem(message: ChefChatMessage) {
-    val isUser = message.sender == MessageSender.USER
+private fun ChefChatMessageItem(message: ChatMessage) {
+    val isUser = message.role == "user"
+    val formattedTime = remember(message.timestamp) {
+        SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date(message.timestamp))
+    }
+
+    // Determine if this is a freshly received/initialized message
+    val isRecentMessage = remember(message.id) {
+        (System.currentTimeMillis() - message.timestamp) < 5000L
+    }
+
+    var displayedText by remember(message.id) {
+        mutableStateOf(if (isUser || !isRecentMessage) message.text else "")
+    }
+    var isTypingComplete by remember(message.id) {
+        mutableStateOf(isUser || !isRecentMessage)
+    }
+
+    // Streaming effect (stream text word by word like ChatGPT/Gemini)
+    LaunchedEffect(message.id, message.text) {
+        if (isUser || !isRecentMessage) {
+            displayedText = message.text
+            isTypingComplete = true
+        } else {
+            // Split preserving whitespace and newlines
+            val words = message.text.split(Regex("(?<=\\s)"))
+            val builder = StringBuilder()
+            for (word in words) {
+                builder.append(word)
+                displayedText = builder.toString()
+                delay(40L) // smooth delay per word
+            }
+            displayedText = message.text
+            isTypingComplete = true
+        }
+    }
 
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -180,26 +284,32 @@ private fun ChefChatMessageItem(message: ChefChatMessage) {
             },
             color = if (isUser) RindePrimary else MaterialTheme.colorScheme.surfaceVariant,
             shadowElevation = 1.dp,
-            modifier = Modifier.widthIn(max = 310.dp)
+            modifier = Modifier.widthIn(max = 320.dp)
         ) {
             Column(modifier = Modifier.padding(14.dp)) {
                 Text(
-                    text = message.text,
+                    text = displayedText,
                     style = MaterialTheme.typography.bodyMedium,
                     color = if (isUser) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                // Tarjeta de Receta Recomendada (si existe en la respuesta de Chef IA)
                 message.recipeCard?.let { recipe ->
-                    Spacer(modifier = Modifier.height(10.dp))
-                    RecipeCardItem(recipe = recipe)
+                    AnimatedVisibility(
+                        visible = isTypingComplete,
+                        enter = fadeIn() + expandVertically()
+                    ) {
+                        Column {
+                            Spacer(modifier = Modifier.height(10.dp))
+                            RecipeCardItem(recipe = recipe)
+                        }
+                    }
                 }
             }
         }
 
         Spacer(modifier = Modifier.height(3.dp))
         Text(
-            text = message.timestamp,
+            text = formattedTime,
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
             modifier = Modifier.padding(horizontal = 4.dp)
@@ -207,11 +317,8 @@ private fun ChefChatMessageItem(message: ChefChatMessage) {
     }
 }
 
-/**
- * Tarjeta interactiva de receta en la respuesta de Chef IA.
- */
 @Composable
-private fun RecipeCardItem(recipe: RecipeRecommendation) {
+private fun RecipeCardItem(recipe: RecipeCard) {
     Card(
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
@@ -233,12 +340,14 @@ private fun RecipeCardItem(recipe: RecipeRecommendation) {
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                    Text(
-                        text = recipe.subtitle,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = RindePrimary,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                    if (recipe.subtitle.isNotBlank()) {
+                        Text(
+                            text = recipe.subtitle,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = RindePrimary,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                 }
 
                 Surface(
@@ -262,17 +371,44 @@ private fun RecipeCardItem(recipe: RecipeRecommendation) {
                     text = "Ingredientes: " + recipe.ingredients.joinToString(", "),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
+            }
+
+            if (recipe.steps.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Pasos de Preparación:",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                recipe.steps.forEachIndexed { index, step ->
+                    Text(
+                        text = "${index + 1}. $step",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                }
+            }
+
+            recipe.tips?.let { tip ->
+                if (tip.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "💡 Tip: $tip",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = RindePrimary,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
             }
         }
     }
 }
 
-/**
- * Indicador animado de pensamiento de Chef IA.
- */
 @Composable
 private fun ThinkingIndicatorItem() {
     val infiniteTransition = rememberInfiniteTransition(label = "thinkingPulse")
@@ -289,8 +425,7 @@ private fun ThinkingIndicatorItem() {
     Surface(
         shape = RoundedCornerShape(50),
         color = MaterialTheme.colorScheme.surfaceVariant,
-        modifier = Modifier
-            .padding(vertical = 4.dp)
+        modifier = Modifier.padding(vertical = 4.dp)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -304,7 +439,7 @@ private fun ThinkingIndicatorItem() {
                 modifier = Modifier.size(16.dp)
             )
             Text(
-                text = "Chef IA está pensando...",
+                text = "Chef IA procesando tu receta...",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha)
             )
@@ -312,9 +447,6 @@ private fun ThinkingIndicatorItem() {
     }
 }
 
-/**
- * Barra Flotante de Contexto (Selector de Listas e Ingredientes en Chips) estilo lalo 4.
- */
 @Composable
 private fun PantryContextBar(
     uiState: ChefChatUiState,
@@ -323,6 +455,8 @@ private fun PantryContextBar(
     onSelectList: (String) -> Unit,
     onToggleIngredient: (String) -> Unit
 ) {
+    val selectedCount = uiState.availableIngredients.count { it.isSelected }
+
     Surface(
         color = MaterialTheme.colorScheme.background,
         modifier = Modifier.fillMaxWidth()
@@ -333,7 +467,6 @@ private fun PantryContextBar(
                 .padding(horizontal = 16.dp, vertical = 6.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Fila de Selector de Lista y Acción
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -346,7 +479,7 @@ private fun PantryContextBar(
                         modifier = Modifier.clickable { onShowListDropdownChange(true) }
                     ) {
                         Icon(
-                            imageVector = Icons.Default.ListAlt,
+                            imageVector = Icons.AutoMirrored.Filled.ListAlt,
                             contentDescription = null,
                             tint = RindePrimary,
                             modifier = Modifier.size(18.dp)
@@ -375,11 +508,12 @@ private fun PantryContextBar(
                     }
                 }
 
+                // Ingredient Counter X / 5
                 Text(
-                    text = "Seleccionar ingredientes",
+                    text = "Seleccionados: $selectedCount / 5",
                     style = MaterialTheme.typography.labelSmall,
-                    color = RindePrimary,
-                    fontWeight = FontWeight.SemiBold
+                    color = if (selectedCount == 5) MaterialTheme.colorScheme.error else RindePrimary,
+                    fontWeight = FontWeight.Bold
                 )
             }
 
@@ -396,44 +530,78 @@ private fun PantryContextBar(
                         modifier = Modifier.size(16.dp)
                     )
                     Text(
-                        text = "Esta lista no contiene productos aún.",
+                        text = "Sin productos comprados en esta lista.",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
                 }
             } else {
-                // Tira Horizontal de Chips de Ingredientes Interactivos
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     items(uiState.availableIngredients, key = { it.id }) { chip ->
-                        FilterChip(
-                            selected = chip.isSelected,
-                            onClick = { onToggleIngredient(chip.id) },
-                            label = {
-                                Text(
-                                    text = chip.name,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = if (chip.isSelected) FontWeight.Bold else FontWeight.Normal
-                                )
-                            },
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = if (chip.isSelected) Icons.Default.CheckCircle else Icons.Default.Add,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = RindePrimary.copy(alpha = 0.15f),
-                                selectedLabelColor = MaterialTheme.colorScheme.onSurface,
-                                selectedLeadingIconColor = RindePrimary,
-                                containerColor = MaterialTheme.colorScheme.surface,
-                                labelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                            ),
-                            shape = RoundedCornerShape(50)
-                        )
+                        if (chip.isCookable) {
+                            // ✅ Cookable item: interactive FilterChip
+                            FilterChip(
+                                selected = chip.isSelected,
+                                onClick = { onToggleIngredient(chip.id) },
+                                label = {
+                                    Text(
+                                        text = chip.name,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = if (chip.isSelected) FontWeight.Bold else FontWeight.Normal
+                                    )
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = if (chip.isSelected) Icons.Default.CheckCircle else Icons.Default.Add,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = RindePrimary.copy(alpha = 0.15f),
+                                    selectedLabelColor = MaterialTheme.colorScheme.onSurface,
+                                    selectedLeadingIconColor = RindePrimary,
+                                    containerColor = MaterialTheme.colorScheme.surface,
+                                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                ),
+                                shape = RoundedCornerShape(50)
+                            )
+                        } else {
+                            // 🚫 Non-cookable item: disabled FilterChip (exact same height, shape & vertical alignment)
+                            FilterChip(
+                                selected = false,
+                                onClick = { },
+                                enabled = false,
+                                label = {
+                                    Text(
+                                        text = chip.name,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Normal
+                                    )
+                                },
+                                leadingIcon = {
+                                    Text(
+                                        text = "🚫",
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
+                                    disabledLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
+                                ),
+                                border = FilterChipDefaults.filterChipBorder(
+                                    enabled = false,
+                                    selected = false,
+                                    disabledBorderColor = Color.Transparent
+                                ),
+                                shape = RoundedCornerShape(50)
+                            )
+                        }
                     }
                 }
             }
@@ -441,16 +609,23 @@ private fun PantryContextBar(
     }
 }
 
-/**
- * Campo de Entrada Docked inferior.
- */
 @Composable
 private fun ChefChatInputDock(
     inputText: String,
     onInputTextChanged: (String) -> Unit,
-    onSendMessage: () -> Unit,
-    onQuickPromptClick: (String) -> Unit
+    onSendMessage: () -> Unit
 ) {
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+    val charCount = inputText.length
+    val isLimitReached = charCount >= 150
+
+    val handleSend = {
+        keyboardController?.hide()
+        focusManager.clearFocus()
+        onSendMessage()
+    }
+
     Surface(
         color = MaterialTheme.colorScheme.background,
         modifier = Modifier.fillMaxWidth()
@@ -460,7 +635,6 @@ private fun ChefChatInputDock(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 10.dp)
         ) {
-            // Fila de Entrada de Texto con Botón de Envío Azul
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -471,10 +645,26 @@ private fun ChefChatInputDock(
                     onValueChange = onInputTextChanged,
                     placeholder = {
                         Text(
-                            text = "Pregúntale a Chef IA...",
+                            text = "Escribe una consulta o receta...",
                             style = MaterialTheme.typography.bodyMedium
                         )
                     },
+                    supportingText = {
+                        // Contador 150 caracteres máximo
+                        Text(
+                            text = "$charCount / 150",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (isLimitReached) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        )
+                    },
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                    keyboardActions = KeyboardActions(
+                        onSend = {
+                            if (inputText.isNotBlank() || charCount > 0) {
+                                handleSend()
+                            }
+                        }
+                    ),
                     modifier = Modifier
                         .weight(1f)
                         .heightIn(min = 50.dp),
@@ -483,14 +673,14 @@ private fun ChefChatInputDock(
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedContainerColor = MaterialTheme.colorScheme.surface,
                         unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                        focusedBorderColor = RindePrimary,
+                        focusedBorderColor = if (isLimitReached) MaterialTheme.colorScheme.error else RindePrimary,
                         unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
                     )
                 )
 
                 IconButton(
-                    onClick = onSendMessage,
-                    enabled = inputText.isNotBlank(),
+                    onClick = handleSend,
+                    enabled = inputText.isNotBlank() || charCount > 0,
                     modifier = Modifier
                         .size(46.dp)
                         .clip(CircleShape)
@@ -509,10 +699,130 @@ private fun ChefChatInputDock(
     }
 }
 
-@Preview(showBackground = true)
 @Composable
-fun AssistantScreenPreview() {
-    RindeTheme {
-        AssistantScreen()
+private fun ChatHistorySheetContent(
+    conversations: List<ChatConversation>,
+    onSelectConversation: (ChatConversation) -> Unit,
+    onDeleteConversation: (String) -> Unit,
+    onNewConversation: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                text = "Historial de Recetas (Máx 10)",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+
+            Button(
+                onClick = onNewConversation,
+                shape = RoundedCornerShape(20.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+            ) {
+                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(androidx.compose.ui.res.stringResource(com.farbalapps.rinde.R.string.assistant_btn_new), style = MaterialTheme.typography.labelMedium)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        if (conversations.isEmpty()) {
+            Text(
+                text = androidx.compose.ui.res.stringResource(com.farbalapps.rinde.R.string.assistant_empty_history),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(vertical = 24.dp)
+            )
+        } else {
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                items(conversations, key = { it.id }) { item ->
+                    Card(
+                        onClick = { onSelectConversation(item) },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp)
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = item.title,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                val fallbackSource = androidx.compose.ui.res.stringResource(com.farbalapps.rinde.R.string.assistant_pantry_fallback)
+                                Text(
+                                    text = androidx.compose.ui.res.stringResource(
+                                        com.farbalapps.rinde.R.string.assistant_messages_count,
+                                        item.messages.size,
+                                        item.sourceListName ?: fallbackSource
+                                    ),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+
+                            IconButton(onClick = { onDeleteConversation(item.id) }) {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = androidx.compose.ui.res.stringResource(com.farbalapps.rinde.R.string.assistant_delete_conversation),
+                                    tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(24.dp))
     }
 }
+
+@Preview(name = "Assistant Screen Light", showBackground = true)
+@Composable
+fun AssistantContentPreview() {
+    RindeTheme {
+        AssistantContent(
+            uiState = ChefChatUiState(
+                messages = listOf(
+                    ChatMessage(
+                        id = "1",
+                        role = "assistant",
+                        text = "¡Hola! ¿Qué deseas cocinar hoy con tus ingredientes disponibles?"
+                    )
+                ),
+                availableLists = listOf("Mi Lista Actual", "Despensa"),
+                selectedListName = "Mi Lista Actual"
+            ),
+            onHistoryClick = {},
+            onNewChatClick = {},
+            onSelectList = {},
+            onToggleIngredient = {},
+            onInputTextChanged = {},
+            onSendMessage = {}
+        )
+    }
+}
+

@@ -17,6 +17,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
+/**
+ * [HU-02] Pruebas unitarias para búsqueda de ofertas y productos en la comunidad.
+ * Valida reglas de negocio: debouncing mínimo de 2 caracteres, sanitización trim y filtros por categoría.
+ */
 class SearchPostsUseCaseTest {
 
     private lateinit var searchRepository: SearchRepository
@@ -65,6 +69,9 @@ class SearchPostsUseCaseTest {
         searchPostsUseCase = SearchPostsUseCase(searchRepository)
     }
 
+    /**
+     * [HU-02] Query vacía no debe disparar llamadas a la API/Firestore.
+     */
     @Test
     fun `Caso 1 - Query vacia debe retornar Idle sin llamar al repositorio`() = runBlocking {
         val result = searchPostsUseCase("").first()
@@ -73,6 +80,9 @@ class SearchPostsUseCaseTest {
         verify(exactly = 0) { searchRepository.searchPosts(any(), any()) }
     }
 
+    /**
+     * [HU-02] Query menor a 2 caracteres no debe consultar el repositorio.
+     */
     @Test
     fun `Caso 2 - Query de 1 solo caracter debe retornar Idle sin llamar al repositorio`() = runBlocking {
         val result = searchPostsUseCase("a").first()
@@ -81,6 +91,9 @@ class SearchPostsUseCaseTest {
         verify(exactly = 0) { searchRepository.searchPosts(any(), any()) }
     }
 
+    /**
+     * [HU-02] Query de puros espacios no debe consultar el repositorio.
+     */
     @Test
     fun `Caso 3 - Query con solo espacios en blanco debe retornar Idle sin llamar al repositorio`() = runBlocking {
         val result = searchPostsUseCase("     ").first()
@@ -89,6 +102,9 @@ class SearchPostsUseCaseTest {
         verify(exactly = 0) { searchRepository.searchPosts(any(), any()) }
     }
 
+    /**
+     * [HU-02] Query de 2 o más caracteres válidos debe consultar al repositorio y emitir resultados.
+     */
     @Test
     fun `Caso 4 - Query de 2 caracteres validos debe consultar al repositorio`() = runBlocking {
         val query = "wa"
@@ -101,6 +117,9 @@ class SearchPostsUseCaseTest {
         verify(exactly = 1) { searchRepository.searchPosts(query, "") }
     }
 
+    /**
+     * [HU-02] Los espacios antes o después del texto de búsqueda deben recortarse (trim) automáticamente.
+     */
     @Test
     fun `Caso 5 - Query con espacios iniciales o finales debe limpiarse (trim) antes de buscar`() = runBlocking {
         val rawQuery = "  walmart  "
@@ -113,6 +132,9 @@ class SearchPostsUseCaseTest {
         verify(exactly = 1) { searchRepository.searchPosts(expectedCleanQuery, "") }
     }
 
+    /**
+     * [HU-02] Búsqueda combinada con categoría específica debe filtrar por ambos criterios.
+     */
     @Test
     fun `Caso 6 - Query valida con filtro de categoria debe pasar ambos parametros al repositorio`() = runBlocking {
         val query = "iphone"
@@ -126,6 +148,9 @@ class SearchPostsUseCaseTest {
         verify(exactly = 1) { searchRepository.searchPosts(query, category) }
     }
 
+    /**
+     * [HU-02] Propagación de errores de conexión hacia la UI con mensaje claro.
+     */
     @Test
     fun `Caso 7 - Estado de error desde el repositorio debe fluir correctamente`() = runBlocking {
         val query = "errorQuery"

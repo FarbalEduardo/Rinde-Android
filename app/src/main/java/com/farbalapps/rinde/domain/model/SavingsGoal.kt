@@ -17,17 +17,17 @@ package com.farbalapps.rinde.domain.model
  */
 data class SavingsGoal(
     val id: String,
-    val userId: String,
+    val userId: String = "",
     val title: String,
     val targetAmount: Double,
     val currentAmount: Double,
-    val targetDate: Long?, // Nueva fecha límite de la meta
-    val iconKey: String,
-    val colorKey: String,
-    val isCompleted: Boolean,
+    val targetDate: Long? = null,
+    val iconKey: String = "savings",
+    val colorKey: String = "emerald",
+    val isCompleted: Boolean = false,
     val isArchived: Boolean = false,
     val orderIndex: Int = 0,
-    val createdAt: Long,
-    val updatedAt: Long,
-    val monthlySnapshotAmount: Double
+    val createdAt: Long = 0L,
+    val updatedAt: Long = 0L,
+    val monthlySnapshotAmount: Double = 0.0
 )

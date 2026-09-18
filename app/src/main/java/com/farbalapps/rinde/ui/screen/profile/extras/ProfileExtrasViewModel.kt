@@ -9,6 +9,7 @@ import com.farbalapps.rinde.domain.usecase.profile.GetBlockedUsersUseCase
 import com.farbalapps.rinde.domain.usecase.profile.GetSavedPostsUseCase
 import com.farbalapps.rinde.domain.usecase.profile.UnblockUserUseCase
 import com.farbalapps.rinde.domain.usecase.profile.ToggleSavePostUseCase
+import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -21,22 +22,55 @@ class ProfileExtrasViewModel @Inject constructor(
     private val getBlockedUsersUseCase: GetBlockedUsersUseCase,
     private val unblockUserUseCase: UnblockUserUseCase,
     private val toggleSavePostUseCase: ToggleSavePostUseCase,
-    private val sessionManager: SessionManager
+    private val sessionManager: SessionManager,
+    private val firebaseAuth: FirebaseAuth
 ) : ViewModel() {
 
     private val _userId = sessionManager.userId
     
-    val savedPosts: StateFlow<List<CommunityPost>> = _userId.flatMapLatest { id ->
-        if (id.isNotEmpty()) getSavedPostsUseCase(id) else flowOf(emptyList())
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    private val _isSavedLoading = MutableStateFlow(true)
+    val isSavedLoading: StateFlow<Boolean> = _isSavedLoading.asStateFlow()
 
-    val blockedUsers: StateFlow<List<Profile>> = _userId.flatMapLatest { id ->
-        if (id.isNotEmpty()) getBlockedUsersUseCase(id) else flowOf(emptyList())
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    private val _isBlockedLoading = MutableStateFlow(true)
+    val isBlockedLoading: StateFlow<Boolean> = _isBlockedLoading.asStateFlow()
+
+    val savedPosts: StateFlow<List<CommunityPost>> = _userId
+        .onStart {
+            val currentUid = firebaseAuth.currentUser?.uid.orEmpty()
+            if (currentUid.isNotEmpty()) emit(currentUid)
+        }
+        .flatMapLatest { id ->
+            val uid = id.ifEmpty { firebaseAuth.currentUser?.uid.orEmpty() }
+            if (uid.isNotEmpty()) {
+                getSavedPostsUseCase(uid).onEach {
+                    _isSavedLoading.value = false
+                }
+            } else {
+                _isSavedLoading.value = false
+                flowOf(emptyList())
+            }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val blockedUsers: StateFlow<List<Profile>> = _userId
+        .onStart {
+            val currentUid = firebaseAuth.currentUser?.uid.orEmpty()
+            if (currentUid.isNotEmpty()) emit(currentUid)
+        }
+        .flatMapLatest { id ->
+            val uid = id.ifEmpty { firebaseAuth.currentUser?.uid.orEmpty() }
+            if (uid.isNotEmpty()) {
+                getBlockedUsersUseCase(uid).onEach {
+                    _isBlockedLoading.value = false
+                }
+            } else {
+                _isBlockedLoading.value = false
+                flowOf(emptyList())
+            }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun unblockUser(targetUserId: String) {
         viewModelScope.launch {
-            val id = _userId.first()
+            val id = firebaseAuth.currentUser?.uid ?: _userId.first()
             if (id.isNotEmpty()) {
                 unblockUserUseCase(id, targetUserId)
             }
@@ -45,7 +79,7 @@ class ProfileExtrasViewModel @Inject constructor(
 
     fun unsavePost(postId: String) {
         viewModelScope.launch {
-            val id = _userId.first()
+            val id = firebaseAuth.currentUser?.uid ?: _userId.first()
             if (id.isNotEmpty()) {
                 toggleSavePostUseCase(id, postId, false)
             }

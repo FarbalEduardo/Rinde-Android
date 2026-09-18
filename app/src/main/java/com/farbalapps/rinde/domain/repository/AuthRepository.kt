@@ -13,4 +13,5 @@ interface AuthRepository {
     fun getCurrentUser(): User?
     fun isUserLoggedIn(): Boolean
     fun sendPasswordResetEmail(email: String): Flow<Resource<Unit>>
+    suspend fun deleteAccount(): Result<Unit>
 }

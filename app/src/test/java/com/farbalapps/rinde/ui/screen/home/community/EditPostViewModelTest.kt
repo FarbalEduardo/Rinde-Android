@@ -1,9 +1,6 @@
 package com.farbalapps.rinde.ui.screen.home.community
 
 import android.net.Uri
-import com.farbalapps.rinde.data.local.dao.PostDao
-import com.farbalapps.rinde.data.local.entity.CommunityPostEntity
-import com.farbalapps.rinde.data.local.entity.toDomainModel
 import com.farbalapps.rinde.domain.model.*
 import com.farbalapps.rinde.domain.repository.FeedRepository
 import com.farbalapps.rinde.util.LocationService
@@ -34,7 +31,6 @@ class EditPostViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
 
     private val feedRepository = mockk<FeedRepository>()
-    private val postDao = mockk<PostDao>()
     private val locationService = mockk<LocationService>()
 
     private lateinit var viewModel: EditPostViewModel
@@ -48,14 +44,13 @@ class EditPostViewModelTest {
     private lateinit var newUri2: Uri
     private lateinit var newUri3: Uri
 
-    private val testPostEntity = mockk<CommunityPostEntity>()
     private val testPost = CommunityPost(
         id = "post_001",
         authorId = "user_001",
         authorName = "Test Author",
         authorPhotoUrl = null,
         timestamp = 0L,
-        title = "Test Post",
+        title = "Test Post Title Long",
         descriptionShort = "Short desc",
         descriptionLong = "Long description for testing",
         photos = listOf(remoteUrl1, remoteUrl2, remoteUrl3),
@@ -101,12 +96,10 @@ class EditPostViewModelTest {
         newUri2 = Uri.parse("content://media/external/images/media/102")
         newUri3 = Uri.parse("content://media/external/images/media/103")
 
-        // Inicialmente el postDao devuelve nuestro post de prueba
-        coEvery { postDao.getPostById("post_001") } returns testPostEntity
-        mockkStatic("com.farbalapps.rinde.data.local.entity.CommunityPostEntityKt")
-        every { testPostEntity.toDomainModel() } returns testPost
+        // El repositorio devuelve el post directamente
+        coEvery { feedRepository.getPostByIdOnce("post_001") } returns testPost
 
-        viewModel = EditPostViewModel(feedRepository, postDao, locationService)
+        viewModel = EditPostViewModel(feedRepository, locationService)
     }
 
     @After
@@ -278,7 +271,7 @@ class EditPostViewModelTest {
     fun `E - con 0 remotas acepta hasta 4 fotos nuevas`() {
         // Post sin fotos
         val emptyPhotosPost = testPost.copy(photos = emptyList())
-        every { testPostEntity.toDomainModel() } returns emptyPhotosPost
+        coEvery { feedRepository.getPostByIdOnce("post_001") } returns emptyPhotosPost
         loadPost()
 
         viewModel.onPhotosSelected(listOf(newUri1, newUri2, newUri3))
