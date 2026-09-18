@@ -266,6 +266,8 @@
     <string name="community_share_chooser_title">Share post</string>
     <string name="community_new_offers_banner">There are %d new offers</string>
     <string name="community_notif_title">Notifications</string>
+    <string name="community_search_hint">Search offers or stores...</string>
+    <string name="community_close_search">Close search</string>
     <string name="wishlist_add_title">Add</string>
     <string name="wishlist_add_desc">Add to Wishlist</string>
 

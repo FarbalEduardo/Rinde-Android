@@ -99,5 +99,27 @@ interface FeedRepository {
 
     /** Limpia los MutableStateFlow globales del feed en logout. */
     fun clearSessionState()
+
+    // ── Gestión de caché y timestamps de lectura ──────────────────────────────
+
+    /**
+     * Elimina posts del caché local (Room) con timestamp < [thresholdMs]
+     * que no estén guardados por el usuario ni tengan votesScore alto (Hot).
+     *
+     * @param thresholdMs Timestamp en ms por debajo del cual se eliminan posts.
+     */
+    suspend fun deleteOldCachedPosts(thresholdMs: Long): Result<Unit>
+
+    /**
+     * Persiste el timestamp del momento en que el usuario vio el feed por última vez.
+     * Permite comparar contra nuevas publicaciones en Firestore.
+     */
+    suspend fun updateFeedSeenTimestamp()
+
+    /**
+     * Devuelve el timestamp de la última vez que el usuario vio el feed,
+     * o null si aún no existe un registro previo.
+     */
+    suspend fun getLastFeedSeenTimestamp(): Long?
 }
 

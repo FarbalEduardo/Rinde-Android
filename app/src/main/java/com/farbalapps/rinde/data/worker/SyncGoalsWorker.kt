@@ -8,6 +8,7 @@ import com.farbalapps.rinde.data.local.dao.GoalsDao
 import com.farbalapps.rinde.data.local.entity.SavingsGoalEntity
 import com.farbalapps.rinde.data.local.entity.GoalTransactionEntity
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.tasks.await
@@ -71,6 +72,17 @@ class SyncGoalsWorker @AssistedInject constructor(
             .document(goal.id)
 
         docRef.set(goal, SetOptions.merge()).await()
+        try {
+            docRef.update(
+                mapOf(
+                    "archived" to FieldValue.delete(),
+                    "completed" to FieldValue.delete(),
+                    "synced" to FieldValue.delete()
+                )
+            ).await()
+        } catch (_: Exception) {
+            // Ignorado si no existen campos legacy
+        }
         dao.updateGoal(goal.copy(isSynced = true))
     }
 
@@ -104,17 +116,17 @@ class SyncGoalsWorker @AssistedInject constructor(
             var remoteGoal = doc.toObject(SavingsGoalEntity::class.java)
             if (remoteGoal != null) {
                 // Migración: documentos antiguos almacenaban isArchived como "archived"
-                // (bug de serialización Kotlin/Firestore). Leemos ambos campos para compatibilidad.
+                // (bug de serialización Kotlin/Firestore).
+                // Solo recurrimos a legacy si el documento NO contiene los nombres modernos.
+                val hasModernArchived = doc.contains("isArchived")
+                val hasModernCompleted = doc.contains("isCompleted")
                 val legacyArchived = doc.getBoolean("archived") ?: false
                 val legacyCompleted = doc.getBoolean("completed") ?: false
-                val legacySynced = doc.getBoolean("synced") ?: false
 
-                // Si el documento tiene el campo legacy y el valor actual es false,
-                // es porque se leyó del campo incorrecto. Aplicamos el valor correcto.
-                if (legacyArchived && !remoteGoal.isArchived) {
+                if (!hasModernArchived && legacyArchived) {
                     remoteGoal = remoteGoal.copy(isArchived = true)
                 }
-                if (legacyCompleted && !remoteGoal.isCompleted) {
+                if (!hasModernCompleted && legacyCompleted) {
                     remoteGoal = remoteGoal.copy(isCompleted = true)
                 }
 
@@ -126,18 +138,24 @@ class SyncGoalsWorker @AssistedInject constructor(
                     dao.insertGoal(goalToInsert)
                 }
 
-                // Si había campos legacy, re-subir a Firestore con los nombres correctos
-                if (legacyArchived || legacyCompleted || legacySynced) {
+                // Si había campos legacy, limpiarlos en Firestore para no causar inconsistencias futuras
+                if (doc.contains("archived") || doc.contains("completed") || doc.contains("synced")) {
                     try {
                         firestore.collection("users")
                             .document(userId)
                             .collection("savings_goals")
                             .document(goalToInsert.id)
-                            .set(goalToInsert, SetOptions.merge())
+                            .update(
+                                mapOf(
+                                    "archived" to FieldValue.delete(),
+                                    "completed" to FieldValue.delete(),
+                                    "synced" to FieldValue.delete()
+                                )
+                            )
                             .await()
-                        Log.d(TAG, "Migrated legacy boolean fields for goal: ${goalToInsert.id}")
+                        Log.d(TAG, "Cleaned legacy boolean fields for goal: ${goalToInsert.id}")
                     } catch (e: Exception) {
-                        Log.w(TAG, "Could not migrate goal ${goalToInsert.id}: ${e.message}")
+                        Log.w(TAG, "Could not clean legacy fields for goal ${goalToInsert.id}: ${e.message}")
                     }
                 }
             }

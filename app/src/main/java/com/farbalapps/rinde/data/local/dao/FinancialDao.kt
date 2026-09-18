@@ -41,6 +41,24 @@ interface FinancialDao {
     @Query("DELETE FROM extra_expenses WHERE userId = :userId")
     suspend fun deleteExpensesByUserId(userId: String)
 
+    @Query("SELECT * FROM monthly_financial_records WHERE userId = :userId AND year = :year AND month = :month LIMIT 1")
+    fun getMonthlyRecord(userId: String, year: Int, month: Int): Flow<com.farbalapps.rinde.data.local.entity.MonthlyFinancialRecordEntity?>
+
+    @Query("SELECT * FROM monthly_financial_records WHERE userId = :userId ORDER BY year DESC, month DESC")
+    fun getAllMonthlyRecords(userId: String): Flow<List<com.farbalapps.rinde.data.local.entity.MonthlyFinancialRecordEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertMonthlyRecord(record: com.farbalapps.rinde.data.local.entity.MonthlyFinancialRecordEntity)
+
+    @Query("DELETE FROM monthly_financial_records WHERE id = :id")
+    suspend fun deleteMonthlyRecord(id: String)
+
+    @Query("DELETE FROM monthly_financial_records WHERE userId = :userId")
+    suspend fun deleteMonthlyRecordsByUserId(userId: String)
+
+    @Query("DELETE FROM monthly_financial_records")
+    suspend fun clearAllMonthlyRecords()
+
     @Query("DELETE FROM financial_profiles")
     suspend fun clearAllFinancialProfiles()
 

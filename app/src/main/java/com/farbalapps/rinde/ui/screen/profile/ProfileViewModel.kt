@@ -15,6 +15,7 @@ import com.farbalapps.rinde.domain.usecase.profile.GetSavedPostsUseCase
 import com.farbalapps.rinde.data.local.AppLanguage
 import com.farbalapps.rinde.data.local.ThemeMode
 import com.farbalapps.rinde.domain.usecase.settings.*
+import com.farbalapps.rinde.util.logger.AppLogger
 import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -49,7 +50,8 @@ class ProfileViewModel @Inject constructor(
     private val togglePrivacyUseCase: TogglePrivacyUseCase,
     private val settingsManager: com.farbalapps.rinde.data.local.SettingsManager,
     private val firebaseAuth: FirebaseAuth,
-    private val feedRepository: FeedRepository
+    private val feedRepository: FeedRepository,
+    private val logger: AppLogger
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileUiState())
@@ -131,7 +133,7 @@ class ProfileViewModel @Inject constructor(
             try {
                 syncProfileUseCase(userId)
             } catch (e: Exception) {
-                android.util.Log.e("ProfileViewModel", "Sync failed for $userId", e)
+                logger.error(TAG, "Sync failed for $userId", e)
                 val currentProfile = _uiState.value.profile
                 if (currentProfile == null || currentProfile.isDummy) {
                     _uiState.update { it.copy(
@@ -147,7 +149,7 @@ class ProfileViewModel @Inject constructor(
         viewModelScope.launch {
             getProfilePostsUseCase(userId)
                 .catch { e ->
-                    android.util.Log.e("ProfileViewModel", "Error fetching posts", e)
+                    logger.error(TAG, "Error fetching posts", e)
                 }
                 .collect { posts ->
                     val (rating, count) = calculateCommunityRating(posts)
@@ -283,5 +285,9 @@ class ProfileViewModel @Inject constructor(
 
     fun clearSnackbar() {
         _uiState.update { it.copy(snackbarMessage = null) }
+    }
+
+    companion object {
+        private const val TAG = "ProfileViewModel"
     }
 }

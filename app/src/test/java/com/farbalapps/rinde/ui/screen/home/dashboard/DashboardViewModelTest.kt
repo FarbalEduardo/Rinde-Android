@@ -9,6 +9,7 @@ import com.farbalapps.rinde.domain.model.ShoppingItem
 import com.farbalapps.rinde.domain.repository.DashboardRepository
 import com.farbalapps.rinde.domain.repository.GoalsRepository
 import com.farbalapps.rinde.domain.repository.ListRepository
+import com.farbalapps.rinde.domain.repository.SavedListRepository
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -36,6 +37,7 @@ class DashboardViewModelTest {
     private val dashboardRepository = mockk<DashboardRepository>(relaxed = true)
     private val listRepository = mockk<ListRepository>(relaxed = true)
     private val goalsRepository = mockk<GoalsRepository>(relaxed = true)
+    private val savedListRepository = mockk<SavedListRepository>(relaxed = true)
 
     private val profileFlow = MutableStateFlow<FinancialProfile?>(null)
     private val itemsFlow = MutableStateFlow<List<ShoppingItem>>(emptyList())
@@ -53,7 +55,7 @@ class DashboardViewModelTest {
         every { goalsRepository.getGoals() } returns goalsFlow
         every { dashboardRepository.getExtraExpenses(any(), any()) } returns extraExpensesFlow
 
-        viewModel = DashboardViewModel(dashboardRepository, listRepository, goalsRepository)
+        viewModel = DashboardViewModel(dashboardRepository, listRepository, goalsRepository, savedListRepository)
     }
 
     @After
@@ -89,7 +91,7 @@ class DashboardViewModelTest {
 
             // Update shopping list items ($4,200 total)
             itemsFlow.value = listOf(
-                ShoppingItem(id = "1", name = "Super", category = "Comida", price = 4200.0, quantity = 1.0)
+                ShoppingItem(id = "1", name = "Super", category = "Comida", price = 4200.0, quantity = 1.0, isCompleted = true)
             )
 
             // Update extra expenses ($1,500 total)
@@ -155,6 +157,63 @@ class DashboardViewModelTest {
             }
             val closedState = awaitItem()
             assertFalse(closedState.isExpenseSheetOpen)
+
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `init triggers sync of dashboard, goals and saved lists`() = runTest {
+        testScheduler.advanceUntilIdle()
+        coVerify { dashboardRepository.syncFromFirebase() }
+        coVerify { dashboardRepository.checkAndPerformMonthlyRollover() }
+        coVerify { goalsRepository.syncGoals() }
+        coVerify { savedListRepository.syncSavedLists() }
+    }
+
+    @Test
+    fun `activeGoals excludes archived goals and includes reactivated or completed goals`() = runTest {
+        viewModel.uiState.test {
+            awaitItem() // initial
+
+            val goalActive = SavingsGoal(id = "g1", title = "Vacaciones", targetAmount = 5000.0, currentAmount = 1000.0, isArchived = false, isCompleted = false)
+            val goalArchived = SavingsGoal(id = "g2", title = "Coche", targetAmount = 10000.0, currentAmount = 10000.0, isArchived = true, isCompleted = true)
+            val goalReactivatedCompleted = SavingsGoal(id = "g3", title = "Fondo de emergencia", targetAmount = 20000.0, currentAmount = 20000.0, isArchived = false, isCompleted = true)
+
+            goalsFlow.value = listOf(goalActive, goalArchived, goalReactivatedCompleted)
+            testScheduler.advanceUntilIdle()
+
+            val state = expectMostRecentItem()
+            assertEquals(2, state.activeGoals.size)
+            assertTrue(state.activeGoals.any { it.id == "g1" })
+            assertFalse(state.activeGoals.any { it.id == "g2" })
+            assertTrue(state.activeGoals.any { it.id == "g3" })
+
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `reactive goal archiving and unarchiving updates dashboard activeGoals dynamically`() = runTest {
+        viewModel.uiState.test {
+            awaitItem() // initial
+
+            val goal1 = SavingsGoal(id = "g1", title = "Laptop", targetAmount = 15000.0, currentAmount = 5000.0, isArchived = false)
+            goalsFlow.value = listOf(goal1)
+            testScheduler.advanceUntilIdle()
+            assertEquals(1, expectMostRecentItem().activeGoals.size)
+
+            // Archivar la meta: debe desaparecer del Dashboard
+            goalsFlow.value = listOf(goal1.copy(isArchived = true))
+            testScheduler.advanceUntilIdle()
+            assertEquals(0, expectMostRecentItem().activeGoals.size)
+
+            // Reactivar la meta: debe volver a aparecer en el Dashboard
+            goalsFlow.value = listOf(goal1.copy(isArchived = false))
+            testScheduler.advanceUntilIdle()
+            val reactivatedState = expectMostRecentItem()
+            assertEquals(1, reactivatedState.activeGoals.size)
+            assertEquals("g1", reactivatedState.activeGoals.first().id)
 
             cancelAndIgnoreRemainingEvents()
         }

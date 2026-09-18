@@ -268,6 +268,8 @@
     <string name="community_share_chooser_title">Compartir publicación</string>
     <string name="community_new_offers_banner">Hay %d nuevas ofertas</string>
     <string name="community_notif_title">Notificaciones</string>
+    <string name="community_search_hint">Buscar ofertas o tiendas...</string>
+    <string name="community_close_search">Cerrar búsqueda</string>
     <string name="wishlist_add_title">Añadir</string>
     <string name="wishlist_add_desc">Añadir a Wishlist</string>
 

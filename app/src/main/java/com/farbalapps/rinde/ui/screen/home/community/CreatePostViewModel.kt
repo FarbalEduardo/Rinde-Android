@@ -247,7 +247,8 @@ class CreatePostViewModel @Inject constructor(
                 description = state.description,
                 category = state.category,
                 locationName = state.locationName,
-                photoUris = state.photoUris,
+                // La capa UI tiene Uri; los convertimos a String antes de cruzar la frontera con el Dominio
+                photos = state.photoUris.map { it.toString() },
                 offerType = state.offerType,
                 websiteName = state.websiteName.takeIf { it.isNotBlank() },
                 productLink = state.productLink.takeIf { it.isNotBlank() },

@@ -7,6 +7,7 @@ import com.farbalapps.rinde.domain.model.IncomeFrequency
 import com.farbalapps.rinde.domain.repository.DashboardRepository
 import com.farbalapps.rinde.domain.repository.GoalsRepository
 import com.farbalapps.rinde.domain.repository.ListRepository
+import com.farbalapps.rinde.domain.repository.SavedListRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -23,7 +24,8 @@ import javax.inject.Inject
 class DashboardViewModel @Inject constructor(
     private val dashboardRepository: DashboardRepository,
     private val listRepository: ListRepository,
-    private val goalsRepository: GoalsRepository
+    private val goalsRepository: GoalsRepository,
+    private val savedListRepository: SavedListRepository
 ) : ViewModel() {
 
     private val calendar = Calendar.getInstance()
@@ -43,6 +45,9 @@ class DashboardViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             dashboardRepository.syncFromFirebase()
+            dashboardRepository.checkAndPerformMonthlyRollover()
+            goalsRepository.syncGoals()
+            savedListRepository.syncSavedLists()
         }
     }
 
@@ -55,16 +60,17 @@ class DashboardViewModel @Inject constructor(
 
         val monthlyIncome = profile?.monthlyEquivalent ?: 0.0
 
-        // Mi Lista: suma de items con precio multiplicado por cantidad
-        val listTotal = shoppingItems.sumOf { item ->
+        // Mi Lista: únicamente artículos marcados como comprados (isCompleted = true)
+        val boughtItems = shoppingItems.filter { it.isCompleted }
+        val listTotal = boughtItems.sumOf { item ->
             (item.price ?: 0.0) * item.quantity
         }
 
         // Gastos Extra del Hogar (Luz, Agua, Renta, etc.)
         val extraTotal = extraExpenses.sumOf { it.amount }
 
-        // Metas activas
-        val activeGoals = goals.filter { !it.isCompleted && !it.isArchived }
+        // Metas activas: no archivadas (incluye cumplidas reactivadas)
+        val activeGoals = goals.filter { !it.isArchived }
 
         // Total comprometido/ahorrado en metas este mes
         val monthlyGoalsSavings = activeGoals.sumOf { goal ->

@@ -7,15 +7,17 @@ import androidx.paging.cachedIn
 import com.farbalapps.rinde.domain.model.CommunityPost
 import com.farbalapps.rinde.domain.repository.AuthRepository
 import com.farbalapps.rinde.domain.repository.FeedRepository
+import com.farbalapps.rinde.domain.usecase.CleanOldCacheUseCase
 import com.farbalapps.rinde.domain.usecase.ToggleVoteUseCase
-import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.delay
-import javax.inject.Inject
-
+import com.farbalapps.rinde.domain.usecase.UpdateFeedSeenTimestampUseCase
 import com.farbalapps.rinde.util.LocationService
+import com.farbalapps.rinde.util.logger.AppLogger
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 enum class CommunityTab {
     DISCOVER, HOT, SAVED
@@ -41,8 +43,9 @@ class CommunityViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val toggleVoteUseCase: ToggleVoteUseCase,
     private val locationService: LocationService,
-    private val syncMetadataDao: com.farbalapps.rinde.data.local.dao.SyncMetadataDao,
-    private val postDao: com.farbalapps.rinde.data.local.dao.PostDao
+    private val cleanOldCacheUseCase: CleanOldCacheUseCase,
+    private val updateFeedSeenTimestampUseCase: UpdateFeedSeenTimestampUseCase,
+    private val logger: AppLogger
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CommunityUiState())
@@ -88,19 +91,15 @@ class CommunityViewModel @Inject constructor(
 
         // Limpiar caché de Room (eliminar posts de más de 15 días protegiendo guardados y hot)
         viewModelScope.launch {
-            try {
-                val threshold = System.currentTimeMillis() - (15 * 24 * 60 * 60 * 1000L)
-                postDao.deleteOldPosts(threshold)
-                android.util.Log.d("CommunityViewModel", "🧹 Room cache cleaned: deleted posts older than 15 days (excluding saved/hot)")
-            } catch (e: Exception) {
-                android.util.Log.e("CommunityViewModel", "Failed to clean Room cache: ${e.message}")
-            }
+            cleanOldCacheUseCase()
+                .onSuccess { logger.debug(TAG, "🧹 Room cache cleaned: deleted posts older than 15 days (excluding saved/hot)") }
+                .onFailure { e -> logger.error(TAG, "Failed to clean Room cache", e) }
         }
 
+        // Forzar refresco si no hay datos en caché
         viewModelScope.launch {
-            val hasCachedData = postDao.getPostsOnce(1).isNotEmpty()
-            if (!hasCachedData) {
-                _forceRefreshTrigger.value = 1
+            feedRepository.countNewPostsSince(0L).let { count ->
+                if (count == 0) _forceRefreshTrigger.value = 1
             }
         }
 
@@ -155,34 +154,18 @@ class CommunityViewModel @Inject constructor(
     }
 
     private suspend fun updateLastSeenTimestamp() {
-        val now = System.currentTimeMillis()
-        val meta = syncMetadataDao.getMetadata("feed_global")
-        if (meta != null) {
-            syncMetadataDao.upsert(meta.copy(lastSeenTimestamp = now))
-        } else {
-            syncMetadataDao.upsert(
-                com.farbalapps.rinde.data.local.entity.SyncMetadataEntity(
-                    key = "feed_global",
-                    lastSyncTimestamp = now,
-                    lastSeenTimestamp = now
-                )
-            )
-        }
+        updateFeedSeenTimestampUseCase()
     }
 
     fun checkForNewPostsOnResume() {
         if (_uiState.value.currentTab != CommunityTab.DISCOVER) return
         viewModelScope.launch {
-            val meta = syncMetadataDao.getMetadata("feed_global")
-            // Si es la primera vez (lastSeen = 0), usamos la última hora para evitar falsos negativos
-            val lastSeen = meta?.lastSeenTimestamp ?: meta?.lastSyncTimestamp ?: (System.currentTimeMillis() - 60 * 60 * 1000L)
-            
+            // Si es la primera vez (lastSeen = null), usamos la última hora para evitar falsos negativos
+            val lastSeen = feedRepository.getLastFeedSeenTimestamp()
+                ?: (System.currentTimeMillis() - 60 * 60 * 1000L)
+
             val count = feedRepository.countNewPostsSince(lastSeen)
-            if (count >= 1) {
-                _uiState.update { it.copy(newPostsCount = count) }
-            } else {
-                _uiState.update { it.copy(newPostsCount = 0) }
-            }
+            _uiState.update { it.copy(newPostsCount = if (count >= 1) count else 0) }
         }
     }
 
@@ -313,9 +296,8 @@ class CommunityViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            // 2. Obtener authorId de la lista de posts en memoria o desde Room (para Discover/Hot)
-            val authorId = _uiState.value.posts.find { it.id == postId }?.authorId 
-                ?: postDao.getPostById(postId)?.authorId 
+            // 2. Obtener authorId de la lista de posts en memoria
+            val authorId = _uiState.value.posts.find { it.id == postId }?.authorId
                 ?: return@launch
 
             when (val result = toggleVoteUseCase(postId, voteValue, authorId)) {
@@ -384,5 +366,9 @@ class CommunityViewModel @Inject constructor(
 
     fun clearSnackbar() {
         _uiState.update { it.copy(snackbarMessage = null) }
+    }
+
+    companion object {
+        private const val TAG = "CommunityViewModel"
     }
 }

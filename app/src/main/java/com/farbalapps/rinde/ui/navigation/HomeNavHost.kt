@@ -40,6 +40,9 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+
 @Composable
 fun HomeNavHost(
     navController: NavHostController,
@@ -55,10 +58,10 @@ fun HomeNavHost(
         navController = navController,
         startDestination = HomeRoute.Dashboard,
         modifier = modifier,
-        enterTransition = { fadeIn(animationSpec = tween(280)) },
-        exitTransition = { fadeOut(animationSpec = tween(200)) },
-        popEnterTransition = { fadeIn(animationSpec = tween(280)) },
-        popExitTransition = { fadeOut(animationSpec = tween(200)) }
+        enterTransition = { EnterTransition.None },
+        exitTransition = { ExitTransition.None },
+        popEnterTransition = { EnterTransition.None },
+        popExitTransition = { ExitTransition.None }
     ) {
         addDashboardScreen(navController, innerPadding)
         addListScreen(innerPadding, listViewModel)
@@ -93,7 +96,25 @@ private fun androidx.navigation.NavGraphBuilder.addDashboardScreen(
 
     composable<HomeRoute.FinancialDetail> {
         com.farbalapps.rinde.ui.screen.home.dashboard.detail.FinancialDetailScreen(
-            onBack = { navController.popBackStack() }
+            onBack = { navController.popBackStack() },
+            onNavigateToGoals = {
+                navController.navigate(HomeRoute.Goals) {
+                    popUpTo(navController.graph.findStartDestination().id) {
+                        saveState = true
+                    }
+                    launchSingleTop = true
+                    restoreState = true
+                }
+            },
+            onNavigateToList = {
+                navController.navigate(HomeRoute.List) {
+                    popUpTo(navController.graph.findStartDestination().id) {
+                        saveState = true
+                    }
+                    launchSingleTop = true
+                    restoreState = true
+                }
+            }
         )
     }
 }

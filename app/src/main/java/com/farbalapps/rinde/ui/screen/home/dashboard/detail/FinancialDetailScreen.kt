@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -41,6 +42,8 @@ import java.util.Locale
 @Composable
 fun FinancialDetailScreen(
     onBack: () -> Unit,
+    onNavigateToGoals: () -> Unit = {},
+    onNavigateToList: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: FinancialDetailViewModel = hiltViewModel()
 ) {
@@ -49,6 +52,8 @@ fun FinancialDetailScreen(
     FinancialDetailContent(
         uiState = uiState,
         onBack = onBack,
+        onNavigateToGoals = onNavigateToGoals,
+        onNavigateToList = onNavigateToList,
         onPeriodTypeSelected = { viewModel.setPeriodType(it) },
         onPreviousPeriod = { viewModel.navigatePrevious() },
         onNextPeriod = { viewModel.navigateNext() },
@@ -60,7 +65,11 @@ fun FinancialDetailScreen(
     // Modal selector de un solo día
     if (uiState.showDatePickerModal) {
         val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = uiState.selectedPeriod.startTimestamp
+            initialSelectedDateMillis = uiState.selectedPeriod.startTimestamp.coerceAtMost(System.currentTimeMillis()),
+            selectableDates = object : SelectableDates {
+                override fun isSelectableDate(utcTimeMillis: Long): Boolean =
+                    utcTimeMillis <= System.currentTimeMillis()
+            }
         )
         DatePickerDialog(
             onDismissRequest = { viewModel.closeDatePicker() },
@@ -80,8 +89,12 @@ fun FinancialDetailScreen(
     // Modal selector de rango de fechas para Personalizado
     if (uiState.showDateRangePickerModal) {
         val dateRangePickerState = rememberDateRangePickerState(
-            initialSelectedStartDateMillis = uiState.selectedPeriod.startTimestamp,
-            initialSelectedEndDateMillis = uiState.selectedPeriod.endTimestamp
+            initialSelectedStartDateMillis = uiState.selectedPeriod.startTimestamp.coerceAtMost(System.currentTimeMillis()),
+            initialSelectedEndDateMillis = uiState.selectedPeriod.endTimestamp.coerceAtMost(System.currentTimeMillis()),
+            selectableDates = object : SelectableDates {
+                override fun isSelectableDate(utcTimeMillis: Long): Boolean =
+                    utcTimeMillis <= System.currentTimeMillis()
+            }
         )
         DatePickerDialog(
             onDismissRequest = { viewModel.closeDateRangePicker() },
@@ -204,6 +217,7 @@ private fun PeriodTabChip(
 @Composable
 private fun PeriodNavigatorBar(
     displayName: String,
+    canNavigateNext: Boolean,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
     onOpenCalendar: () -> Unit
@@ -247,8 +261,16 @@ private fun PeriodNavigatorBar(
                 )
             }
 
-            IconButton(onClick = onNext, modifier = Modifier.size(36.dp)) {
-                Icon(Icons.Default.ChevronRight, contentDescription = "Siguiente", tint = MaterialTheme.colorScheme.primary)
+            IconButton(
+                onClick = onNext,
+                enabled = canNavigateNext,
+                modifier = Modifier.size(36.dp)
+            ) {
+                Icon(
+                    Icons.Default.ChevronRight,
+                    contentDescription = "Siguiente",
+                    tint = if (canNavigateNext) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                )
             }
         }
     }
@@ -582,13 +604,17 @@ private fun PeriodExtraExpensesDetailCard(
 
 @Composable
 private fun PeriodShoppingListDetailCard(
-    uiState: FinancialDetailUiState
+    uiState: FinancialDetailUiState,
+    onClick: () -> Unit = {}
 ) {
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -623,7 +649,7 @@ private fun PeriodShoppingListDetailCard(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "${uiState.shoppingItems.size} artículos registrados en tu lista de compras actual (${uiState.selectedPeriod.durationDays} días proporcional).",
+                text = "${uiState.shoppingItems.size} artículos comprados registrados en tu lista (${uiState.selectedPeriod.durationDays} días proporcional).",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -631,7 +657,7 @@ private fun PeriodShoppingListDetailCard(
             if (uiState.shoppingItems.isEmpty()) {
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "No tienes artículos agregados en tu lista de compras.",
+                    text = "No tienes artículos marcados como comprados en tu lista de compras.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -672,19 +698,44 @@ private fun PeriodShoppingListDetailCard(
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(12.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Ir a Lista de compras",
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
         }
     }
 }
 
 @Composable
 private fun PeriodGoalsDetailCard(
-    uiState: FinancialDetailUiState
+    uiState: FinancialDetailUiState,
+    onClick: () -> Unit = {}
 ) {
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -757,31 +808,27 @@ private fun PeriodGoalsDetailCard(
                     }
                 }
             }
-        }
-    }
-}
 
-@Composable
-private fun FormulaBreakdownCard(
-    uiState: FinancialDetailUiState
-) {
-    Surface(
-        shape = RoundedCornerShape(14.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            Text(
-                text = "📐 Balance del Periodo:",
-                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "Ingreso ($${String.format(Locale.getDefault(), "%,.0f", uiState.periodIncome)}) - Gastos Hogar ($${String.format(Locale.getDefault(), "%,.0f", uiState.extraExpensesTotal)}) - Lista ($${String.format(Locale.getDefault(), "%,.0f", uiState.listTotal)}) - Metas ($${String.format(Locale.getDefault(), "%,.0f", uiState.goalsCommittedTotal)}) = $${String.format(Locale.getDefault(), "%,.0f", uiState.availableAmount)} Disponible.",
-                style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Spacer(modifier = Modifier.height(12.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Ir a Metas de ahorro",
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = Color(0xFF26A69A)
+                )
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = null,
+                    tint = Color(0xFF26A69A),
+                    modifier = Modifier.size(16.dp)
+                )
+            }
         }
     }
 }
@@ -791,6 +838,8 @@ private fun FormulaBreakdownCard(
 fun FinancialDetailContent(
     uiState: FinancialDetailUiState,
     onBack: () -> Unit,
+    onNavigateToGoals: () -> Unit = {},
+    onNavigateToList: () -> Unit = {},
     onPeriodTypeSelected: (PeriodType) -> Unit,
     onPreviousPeriod: () -> Unit,
     onNextPeriod: () -> Unit,
@@ -845,6 +894,7 @@ fun FinancialDetailContent(
             // 2. Navegador del periodo seleccionado (< Fecha > 📅)
             PeriodNavigatorBar(
                 displayName = uiState.selectedPeriod.displayName,
+                canNavigateNext = uiState.canNavigateNext,
                 onPrevious = onPreviousPeriod,
                 onNext = onNextPeriod,
                 onOpenCalendar = onOpenCalendar
@@ -876,21 +926,16 @@ fun FinancialDetailContent(
 
             // 6. Detalle: Lista de Compras
             PeriodShoppingListDetailCard(
-                uiState = uiState
+                uiState = uiState,
+                onClick = onNavigateToList
             )
 
             Spacer(modifier = Modifier.height(14.dp))
 
             // 7. Detalle: Ahorro en Metas
             PeriodGoalsDetailCard(
-                uiState = uiState
-            )
-
-            Spacer(modifier = Modifier.height(18.dp))
-
-            // 8. Resumen explicativo de la fórmula
-            FormulaBreakdownCard(
-                uiState = uiState
+                uiState = uiState,
+                onClick = onNavigateToGoals
             )
 
             Spacer(modifier = Modifier.height(32.dp))
@@ -910,6 +955,8 @@ fun FinancialDetailContentPreview() {
                 goalsCommittedTotal = 2000.0
             ),
             onBack = {},
+            onNavigateToGoals = {},
+            onNavigateToList = {},
             onPeriodTypeSelected = {},
             onPreviousPeriod = {},
             onNextPeriod = {},

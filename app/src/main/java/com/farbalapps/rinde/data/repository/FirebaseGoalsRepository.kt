@@ -14,7 +14,9 @@ import com.farbalapps.rinde.domain.model.SavingsGoal
 import com.farbalapps.rinde.domain.model.GoalTransaction
 import com.farbalapps.rinde.domain.repository.GoalsRepository
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
@@ -112,23 +114,75 @@ class FirebaseGoalsRepository @Inject constructor(
 
     override suspend fun archiveGoal(goalId: String) = withContext(ioDispatcher) {
         val goalEntity = dao.getGoalById(goalId) ?: throw NoSuchElementException("Meta no encontrada")
-        val updatedGoal = goalEntity.copy(
+        val now = System.currentTimeMillis()
+        var updatedGoal = goalEntity.copy(
             isArchived = true,
             isSynced = false,
-            updatedAt = System.currentTimeMillis()
+            updatedAt = now
         )
         dao.updateGoal(updatedGoal)
+
+        val userId = currentUserId
+        if (userId != null) {
+            try {
+                firestore.collection("users")
+                    .document(userId)
+                    .collection("savings_goals")
+                    .document(goalId)
+                    .set(updatedGoal, SetOptions.merge())
+                    .await()
+                try {
+                    firestore.collection("users")
+                        .document(userId)
+                        .collection("savings_goals")
+                        .document(goalId)
+                        .update(mapOf("archived" to FieldValue.delete()))
+                        .await()
+                } catch (_: Exception) {}
+                updatedGoal = updatedGoal.copy(isSynced = true)
+                dao.updateGoal(updatedGoal)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error directly archiving goal to Firestore", e)
+            }
+        }
+
         enqueueSync()
     }
 
     override suspend fun unarchiveGoal(goalId: String) = withContext(ioDispatcher) {
         val goalEntity = dao.getGoalById(goalId) ?: throw NoSuchElementException("Meta no encontrada")
-        val updatedGoal = goalEntity.copy(
+        val now = System.currentTimeMillis()
+        var updatedGoal = goalEntity.copy(
             isArchived = false,
             isSynced = false,
-            updatedAt = System.currentTimeMillis()
+            updatedAt = now
         )
         dao.updateGoal(updatedGoal)
+
+        val userId = currentUserId
+        if (userId != null) {
+            try {
+                firestore.collection("users")
+                    .document(userId)
+                    .collection("savings_goals")
+                    .document(goalId)
+                    .set(updatedGoal, SetOptions.merge())
+                    .await()
+                try {
+                    firestore.collection("users")
+                        .document(userId)
+                        .collection("savings_goals")
+                        .document(goalId)
+                        .update(mapOf("archived" to FieldValue.delete()))
+                        .await()
+                } catch (_: Exception) {}
+                updatedGoal = updatedGoal.copy(isSynced = true)
+                dao.updateGoal(updatedGoal)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error directly unarchiving goal to Firestore", e)
+            }
+        }
+
         enqueueSync()
     }
 

@@ -244,12 +244,34 @@ object AppModule {
                 db.execSQL("ALTER TABLE `financial_profiles` ADD COLUMN `customEndDate` INTEGER DEFAULT NULL")
             }
         }
+
+        val MIGRATION_28_29 = object : androidx.room.migration.Migration(28, 29) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `monthly_financial_records` (" +
+                    "`id` TEXT NOT NULL, " +
+                    "`userId` TEXT NOT NULL, " +
+                    "`year` INTEGER NOT NULL, " +
+                    "`month` INTEGER NOT NULL, " +
+                    "`income` REAL NOT NULL, " +
+                    "`extraExpensesTotal` REAL NOT NULL, " +
+                    "`listTotal` REAL NOT NULL, " +
+                    "`goalsCommittedTotal` REAL NOT NULL, " +
+                    "`availableAmount` REAL NOT NULL, " +
+                    "`healthStatus` TEXT NOT NULL, " +
+                    "`isClosed` INTEGER NOT NULL DEFAULT 0, " +
+                    "`updatedAt` INTEGER NOT NULL, " +
+                    "PRIMARY KEY(`id`))"
+                )
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_monthly_financial_records_userId_year_month` ON `monthly_financial_records` (`userId`, `year`, `month`)")
+            }
+        }
         
         return Room.databaseBuilder(
             context,
             RindeDatabase::class.java,
             "rinde_database"
-        ).addMigrations(MIGRATION_6_7, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28)
+        ).addMigrations(MIGRATION_6_7, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29)
          .fallbackToDestructiveMigration(dropAllTables = true)
          .build()
      }

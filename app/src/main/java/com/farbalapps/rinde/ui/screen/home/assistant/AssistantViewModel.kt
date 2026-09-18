@@ -12,6 +12,7 @@ import com.farbalapps.rinde.domain.repository.ChatRepository
 import com.farbalapps.rinde.domain.repository.ListRepository
 import com.farbalapps.rinde.domain.repository.SavedListRepository
 import com.farbalapps.rinde.domain.usecase.FilterCookableItemsUseCase
+import com.farbalapps.rinde.util.logger.AppLogger
 import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -56,7 +57,8 @@ class AssistantViewModel @Inject constructor(
     private val filterCookableItemsUseCase: FilterCookableItemsUseCase,
     private val chatRepository: ChatRepository,
     private val aiRepository: AiRepository,
-    private val auth: FirebaseAuth
+    private val auth: FirebaseAuth,
+    private val logger: AppLogger
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ChefChatUiState())
@@ -262,9 +264,9 @@ class AssistantViewModel @Inject constructor(
                     val errorMsg = error.message.orEmpty()
                     val exceptionName = error.javaClass.simpleName
 
-                    android.util.Log.e(
-                        "ChefAI_ViewModel",
-                        "❌ [CHEF AI UI ERROR] Fallo al enviar mensaje: $exceptionName - $errorMsg",
+                    logger.error(
+                        TAG,
+                        "[CHEF AI] Fallo al enviar mensaje: ${error.javaClass.simpleName} - ${error.message}",
                         error
                     )
 
@@ -368,5 +370,9 @@ class AssistantViewModel @Inject constructor(
 
     fun toggleHistorySheet(show: Boolean) {
         _uiState.update { it.copy(showHistorySheet = show) }
+    }
+
+    companion object {
+        private const val TAG = "AssistantViewModel"
     }
 }

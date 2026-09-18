@@ -177,5 +177,14 @@ class FeedRepositoryImpl @Inject constructor(
 
     override fun clearSessionState() =
         interactionDelegate.clearSessionState()
+
+    override suspend fun deleteOldCachedPosts(thresholdMs: Long): Result<Unit> =
+        lifecycleDelegate.deleteOldCachedPosts(thresholdMs)
+
+    override suspend fun updateFeedSeenTimestamp() =
+        lifecycleDelegate.updateFeedSeenTimestamp()
+
+    override suspend fun getLastFeedSeenTimestamp(): Long? =
+        lifecycleDelegate.getLastFeedSeenTimestamp()
 }
 

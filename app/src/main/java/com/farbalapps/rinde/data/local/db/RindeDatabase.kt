@@ -51,9 +51,10 @@ import com.farbalapps.rinde.data.local.dao.FinancialDao
         SavedListEntity::class,
         ChatConversationEntity::class,
         FinancialProfileEntity::class,
-        ExtraExpenseEntity::class
+        ExtraExpenseEntity::class,
+        com.farbalapps.rinde.data.local.entity.MonthlyFinancialRecordEntity::class
     ],
-    version = 28,
+    version = 29,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

@@ -16,6 +16,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -44,6 +45,8 @@ class FinancialDetailViewModelTest {
         every { listRepository.getItems() } returns itemsFlow
         every { goalsRepository.getGoals() } returns goalsFlow
         every { dashboardRepository.getExtraExpensesBetween(any(), any()) } returns extraExpensesFlow
+        every { dashboardRepository.getExtraExpenses(any(), any()) } returns extraExpensesFlow
+        every { dashboardRepository.getMonthlyRecord(any(), any()) } returns MutableStateFlow(null)
 
         viewModel = FinancialDetailViewModel(dashboardRepository, listRepository, goalsRepository)
     }
@@ -74,13 +77,26 @@ class FinancialDetailViewModelTest {
             val initial = awaitItem() // Initial state is current Month
             val initialMonth = (initial.selectedPeriod as FinancialPeriod.Month).month
 
+            // 1. Intentar avanzar desde el mes actual debe bloquearse (no permite meses futuros)
             viewModel.navigateNext()
             testScheduler.advanceUntilIdle()
+            assertEquals(initialMonth, (viewModel.uiState.value.selectedPeriod as FinancialPeriod.Month).month)
 
-            val nextItem = awaitItem()
-            val nextMonth = (nextItem.selectedPeriod as FinancialPeriod.Month).month
-            val expected = if (initialMonth == 12) 1 else initialMonth + 1
-            assertEquals(expected, nextMonth)
+            // 2. Navegar hacia atrás sí debe permitir ver meses pasados
+            viewModel.navigatePrevious()
+            testScheduler.advanceUntilIdle()
+            val prevItem = expectMostRecentItem()
+            val prevMonth = (prevItem.selectedPeriod as FinancialPeriod.Month).month
+            val expectedPrev = if (initialMonth == 1) 12 else initialMonth - 1
+            assertEquals(expectedPrev, prevMonth)
+
+            // 3. Desde un mes pasado, avanzar hacia adelante regresa al mes actual
+            viewModel.navigateNext()
+            testScheduler.advanceUntilIdle()
+            val backItem = expectMostRecentItem()
+            val backMonth = (backItem.selectedPeriod as FinancialPeriod.Month).month
+            assertEquals(initialMonth, backMonth)
+
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -115,6 +131,76 @@ class FinancialDetailViewModelTest {
             assertEquals(1000.0, item.extraExpensesTotal, 0.01)
             // Available = 15000 - 1000 = 14000
             assertEquals(14000.0, item.availableAmount, 0.01)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun testOnlyBoughtShoppingItemsAreCountedAndDisplayed() = runTest {
+        viewModel.uiState.test {
+            awaitItem() // initial
+
+            itemsFlow.value = listOf(
+                ShoppingItem(id = "1", name = "Manzanas", category = "Fruta", price = 50.0, quantity = 2.0, isCompleted = true),
+                ShoppingItem(id = "2", name = "Carne", category = "Carnicería", price = 200.0, quantity = 1.0, isCompleted = false) // Not bought
+            )
+            testScheduler.advanceUntilIdle()
+
+            val state = expectMostRecentItem()
+            // Only Manzanas (50 * 2 = 100) should count
+            assertEquals(1, state.shoppingItems.size)
+            assertEquals("Manzanas", state.shoppingItems.first().name)
+            assertEquals(100.0, state.listTotal, 0.01)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun testPastMonthDisplaysArchivedMonthlyRecord() = runTest {
+        val historicalRecord = MonthlyFinancialRecord(
+            year = 2026,
+            month = 1,
+            income = 25000.0,
+            listTotal = 3500.0,
+            extraExpensesTotal = 2000.0,
+            goalsCommittedTotal = 4000.0,
+            availableAmount = 15500.0
+        )
+        every { dashboardRepository.getMonthlyRecord(2026, 1) } returns MutableStateFlow(historicalRecord)
+
+        viewModel.uiState.test {
+            awaitItem() // initial
+
+            // Establecer el periodo a un mes pasado conocido
+            viewModel.onDateSelected(java.util.GregorianCalendar(2026, java.util.Calendar.JANUARY, 15).timeInMillis)
+            testScheduler.advanceUntilIdle()
+
+            val state = expectMostRecentItem()
+            assertEquals(25000.0, state.periodIncome, 0.01)
+            assertEquals(3500.0, state.listTotal, 0.01)
+            assertEquals(4000.0, state.goalsCommittedTotal, 0.01)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun testActiveGoalsExcludesArchivedAndIncludesReactivatedOrCompletedGoals() = runTest {
+        viewModel.uiState.test {
+            awaitItem() // initial
+
+            val goalActive = SavingsGoal(id = "g1", title = "Vacaciones", targetAmount = 5000.0, currentAmount = 1000.0, isArchived = false, isCompleted = false)
+            val goalArchived = SavingsGoal(id = "g2", title = "Coche", targetAmount = 10000.0, currentAmount = 10000.0, isArchived = true, isCompleted = true)
+            val goalReactivatedCompleted = SavingsGoal(id = "g3", title = "Fondo de emergencia", targetAmount = 20000.0, currentAmount = 20000.0, isArchived = false, isCompleted = true)
+
+            goalsFlow.value = listOf(goalActive, goalArchived, goalReactivatedCompleted)
+            testScheduler.advanceUntilIdle()
+
+            val state = expectMostRecentItem()
+            assertEquals(2, state.activeGoals.size)
+            assertTrue(state.activeGoals.any { it.id == "g1" })
+            assertFalse(state.activeGoals.any { it.id == "g2" })
+            assertTrue(state.activeGoals.any { it.id == "g3" })
+
             cancelAndIgnoreRemainingEvents()
         }
     }

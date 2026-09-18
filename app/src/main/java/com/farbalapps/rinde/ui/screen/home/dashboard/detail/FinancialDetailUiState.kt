@@ -53,4 +53,22 @@ data class FinancialDetailUiState(
 
     val freePercentage: Int
         get() = (100 - expensePercentage).coerceAtLeast(0)
+
+    val canNavigateNext: Boolean
+        get() {
+            val cal = java.util.Calendar.getInstance()
+            val nowYear = cal.get(java.util.Calendar.YEAR)
+            val nowMonth = cal.get(java.util.Calendar.MONTH) + 1
+            return when (val period = selectedPeriod) {
+                is FinancialPeriod.Month -> period.year < nowYear || (period.year == nowYear && period.month < nowMonth)
+                is FinancialPeriod.Fortnight -> {
+                    val nowDay = cal.get(java.util.Calendar.DAY_OF_MONTH)
+                    if (period.year < nowYear) true
+                    else if (period.year == nowYear && period.month < nowMonth) true
+                    else if (period.year == nowYear && period.month == nowMonth) period.isFirstHalf && nowDay > 15
+                    else false
+                }
+                else -> period.endTimestamp < System.currentTimeMillis()
+            }
+        }
 }

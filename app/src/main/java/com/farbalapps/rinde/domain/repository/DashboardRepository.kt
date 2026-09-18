@@ -61,4 +61,20 @@ interface DashboardRepository {
      * Sincroniza el perfil financiero y los gastos extra del usuario desde Firebase Firestore a Room.
      */
     suspend fun syncFromFirebase()
+
+    /**
+     * Observa el registro consolidado del mes y año solicitados.
+     */
+    fun getMonthlyRecord(year: Int, month: Int): Flow<com.farbalapps.rinde.domain.model.MonthlyFinancialRecord?>
+
+    /**
+     * Guarda o actualiza el registro consolidado de un mes en Room y Firestore.
+     */
+    suspend fun saveMonthlyRecord(record: com.farbalapps.rinde.domain.model.MonthlyFinancialRecord)
+
+    /**
+     * Verifica si se ha cambiado de mes para consolidar y cerrar el mes anterior,
+     * sincronizando el snapshot en Room y Firebase y preparando el mes nuevo.
+     */
+    suspend fun checkAndPerformMonthlyRollover()
 }

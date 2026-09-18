@@ -47,3 +47,36 @@ fun ExtraExpense.toEntity(userId: String): ExtraExpenseEntity = ExtraExpenseEnti
     year = year,
     createdAt = createdAt
 )
+
+fun com.farbalapps.rinde.data.local.entity.MonthlyFinancialRecordEntity.toDomain(): com.farbalapps.rinde.domain.model.MonthlyFinancialRecord =
+    com.farbalapps.rinde.domain.model.MonthlyFinancialRecord(
+        id = id,
+        userId = userId,
+        year = year,
+        month = month,
+        income = income,
+        extraExpensesTotal = extraExpensesTotal,
+        listTotal = listTotal,
+        goalsCommittedTotal = goalsCommittedTotal,
+        availableAmount = availableAmount,
+        healthStatus = healthStatus,
+        isClosed = isClosed,
+        updatedAt = updatedAt
+    )
+
+fun com.farbalapps.rinde.domain.model.MonthlyFinancialRecord.toEntity(userId: String): com.farbalapps.rinde.data.local.entity.MonthlyFinancialRecordEntity =
+    com.farbalapps.rinde.data.local.entity.MonthlyFinancialRecordEntity(
+        id = if (id.isNotBlank()) id else "${userId}_${year}_${month}",
+        userId = userId,
+        year = year,
+        month = month,
+        income = income,
+        extraExpensesTotal = extraExpensesTotal,
+        listTotal = listTotal,
+        goalsCommittedTotal = goalsCommittedTotal,
+        availableAmount = availableAmount,
+        healthStatus = healthStatus,
+        isClosed = isClosed,
+        updatedAt = updatedAt
+    )
+

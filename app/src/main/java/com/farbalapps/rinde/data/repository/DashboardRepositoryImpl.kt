@@ -16,6 +16,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
@@ -201,8 +202,89 @@ class DashboardRepositoryImpl @Inject constructor(
                     dao.upsertExtraExpense(expenseEntity.copy(userId = uid))
                 }
             }
+
+            // Sincronizar registros mensuales históricos
+            val recordsSnap = firestore.collection("users")
+                .document(uid)
+                .collection("monthly_records")
+                .get()
+                .await()
+
+            for (doc in recordsSnap.documents) {
+                val recordEntity = doc.toObject(com.farbalapps.rinde.data.local.entity.MonthlyFinancialRecordEntity::class.java)
+                if (recordEntity != null) {
+                    dao.upsertMonthlyRecord(recordEntity.copy(userId = uid))
+                }
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Error syncing financial data from Firestore", e)
+        }
+    }
+
+    override fun getMonthlyRecord(year: Int, month: Int): Flow<com.farbalapps.rinde.domain.model.MonthlyFinancialRecord?> {
+        return dao.getMonthlyRecord(currentUserId, year, month).map { entity ->
+            entity?.toDomain()
+        }
+    }
+
+    override suspend fun saveMonthlyRecord(record: com.farbalapps.rinde.domain.model.MonthlyFinancialRecord) = withContext(ioDispatcher) {
+        val entity = record.toEntity(currentUserId)
+        dao.upsertMonthlyRecord(entity)
+
+        val uid = auth.currentUser?.uid
+        if (!uid.isNullOrEmpty()) {
+            try {
+                firestore.collection("users")
+                    .document(uid)
+                    .collection("monthly_records")
+                    .document("${record.year}_${record.month}")
+                    .set(entity, SetOptions.merge())
+                    .await()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error syncing monthly record to Firestore", e)
+            }
+        }
+    }
+
+    override suspend fun checkAndPerformMonthlyRollover() = withContext(ioDispatcher) {
+        val cal = java.util.Calendar.getInstance()
+        val currentYear = cal.get(java.util.Calendar.YEAR)
+        val currentMonth = cal.get(java.util.Calendar.MONTH) + 1
+
+        val prevMonth = if (currentMonth == 1) 12 else currentMonth - 1
+        val prevYear = if (currentMonth == 1) currentYear - 1 else currentYear
+
+        // Verificar si el mes anterior ya fue consolidado y cerrado
+        val existingPrevRecord = dao.getMonthlyRecord(currentUserId, prevYear, prevMonth).firstOrNull()
+        if (existingPrevRecord == null || !existingPrevRecord.isClosed) {
+            val expensesList = dao.getExtraExpenses(currentUserId, prevYear, prevMonth).firstOrNull() ?: emptyList()
+            val extraTotal = expensesList.sumOf { it.amount }
+            val profileEntity = dao.getFinancialProfile(currentUserId).firstOrNull()
+            val income = profileEntity?.income ?: 0.0
+            val available = income - extraTotal
+
+            val healthStatus = when {
+                income <= 0.0 -> "GOOD"
+                available < 0.0 -> "CRITICAL"
+                (extraTotal / income) > 0.85 -> "WARNING"
+                else -> "GOOD"
+            }
+
+            val record = com.farbalapps.rinde.domain.model.MonthlyFinancialRecord(
+                id = "${currentUserId}_${prevYear}_${prevMonth}",
+                userId = currentUserId,
+                year = prevYear,
+                month = prevMonth,
+                income = income,
+                extraExpensesTotal = extraTotal,
+                listTotal = existingPrevRecord?.listTotal ?: 0.0,
+                goalsCommittedTotal = existingPrevRecord?.goalsCommittedTotal ?: 0.0,
+                availableAmount = available - (existingPrevRecord?.listTotal ?: 0.0) - (existingPrevRecord?.goalsCommittedTotal ?: 0.0),
+                healthStatus = healthStatus,
+                isClosed = true,
+                updatedAt = System.currentTimeMillis()
+            )
+            saveMonthlyRecord(record)
         }
     }
 }

@@ -1,6 +1,5 @@
 package com.farbalapps.rinde.domain.usecase
 
-import android.net.Uri
 import com.farbalapps.rinde.domain.model.CommunityPost
 import com.farbalapps.rinde.domain.model.PostLocation
 import com.farbalapps.rinde.domain.model.VerificationStatus
@@ -10,12 +9,14 @@ import com.farbalapps.rinde.domain.repository.FeedRepository
 import javax.inject.Inject
 
 /**
- * Use case to create and upload a new community post.
- * Handles content moderation and data orchestration between repositories.
- * 
- * @property feedRepository Repository to handle post uploads.
- * @property authRepository Repository to get current user information.
- * @property moderationExpert Domain service to analyze content for prohibited material.
+ * UseCase para crear y subir una nueva publicación de comunidad.
+ * Orquesta la moderación de contenido y la construcción del modelo antes de delegar al repositorio.
+ *
+ * [HU-01] Permite a un usuario publicar una oferta con fotos, precio y ubicación.
+ *
+ * @property feedRepository Repositorio que gestiona la subida del post.
+ * @property authRepository Repositorio para obtener el usuario actual.
+ * @property moderationExpert Servicio de dominio que analiza el contenido.
  */
 class CreatePostUseCase @Inject constructor(
     private val feedRepository: FeedRepository,
@@ -27,7 +28,7 @@ class CreatePostUseCase @Inject constructor(
         description: String,
         category: String,
         locationName: String,
-        photoUris: List<Uri>,
+        photos: List<String>,   // URIs convertidas a String en la capa UI antes de llamar al UseCase
         offerType: com.farbalapps.rinde.domain.model.OfferType = com.farbalapps.rinde.domain.model.OfferType.UNSPECIFIED,
         websiteName: String? = null,
         productLink: String? = null,
@@ -75,7 +76,7 @@ class CreatePostUseCase @Inject constructor(
             longitude = longitude
         )
 
-        return feedRepository.uploadPost(post, photoUris.map { it.toString() })
+        return feedRepository.uploadPost(post, photos)
     }
 
     private fun buildCommunityPost(
