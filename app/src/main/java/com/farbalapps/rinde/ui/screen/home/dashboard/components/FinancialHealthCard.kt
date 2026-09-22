@@ -125,6 +125,44 @@ fun FinancialHealthCard(
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f)
                 )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Barra de progreso (Gastos vs Libre)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f))
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(animatedProgress)
+                            .fillMaxHeight()
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(MaterialTheme.colorScheme.primary)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Etiquetas de porcentaje: Gastos % vs Libre %
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = stringResource(id = R.string.dashboard_expenses_percent, uiState.expensePercentage),
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                    )
+                    Text(
+                        text = stringResource(id = R.string.dashboard_free_percent, uiState.freePercentage),
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -307,51 +345,13 @@ fun FinancialHealthCard(
 
             Spacer(modifier = Modifier.height(6.dp))
 
-            // Desglose: Comprometido en Metas
+            // Desglose: Metas
             BreakdownRow(
                 icon = Icons.Default.Flag,
                 title = stringResource(id = R.string.dashboard_goals_committed_title),
                 amount = uiState.goalsCommittedTotal,
                 isPositive = false
             )
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            // Barra de progreso (Gastos vs Libre)
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(6.dp)
-                    .clip(RoundedCornerShape(3.dp))
-                    .background(MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f))
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(animatedProgress)
-                        .fillMaxHeight()
-                        .clip(RoundedCornerShape(3.dp))
-                        .background(MaterialTheme.colorScheme.primary)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            // Etiquetas de porcentaje: Gastos % vs Libre %
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = stringResource(id = R.string.dashboard_expenses_percent, uiState.expensePercentage),
-                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-                )
-                Text(
-                    text = stringResource(id = R.string.dashboard_free_percent, uiState.freePercentage),
-                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-                )
-            }
 
             Spacer(modifier = Modifier.height(8.dp))
 

@@ -110,32 +110,33 @@ fun CommunityFeedList(
             when (currentTab) {
                 CommunityTab.DISCOVER -> {
                     val loadState = discoverItems.loadState
-                    val isDiscoverLoading = loadState.refresh is LoadState.Loading ||
-                            loadState.mediator?.refresh is LoadState.Loading ||
-                            loadState.source.refresh is LoadState.Loading
-                    val isDiscoverError = (loadState.refresh is LoadState.Error ||
-                            loadState.mediator?.refresh is LoadState.Error) && discoverItems.itemCount == 0
-                    val endOfPaginationReached = (loadState.refresh as? LoadState.NotLoading)?.endOfPaginationReached == true
-                    val isDiscoverTrulyEmpty = discoverItems.itemCount == 0 &&
-                            !isDiscoverLoading &&
-                            !isDiscoverError &&
-                            endOfPaginationReached &&
-                            loadState.mediator?.refresh !is LoadState.Loading
+                    val isDiscoverLoading = discoverItems.itemCount == 0 && (
+                        loadState.refresh is LoadState.Loading ||
+                        loadState.mediator?.refresh is LoadState.Loading ||
+                        loadState.source.refresh is LoadState.Loading
+                    )
+                    val isDiscoverError = discoverItems.itemCount == 0 && (
+                        loadState.refresh is LoadState.Error ||
+                        loadState.mediator?.refresh is LoadState.Error ||
+                        loadState.source.refresh is LoadState.Error
+                    )
+                    val isDiscoverEmpty = discoverItems.itemCount == 0 && !isDiscoverLoading && !isDiscoverError
 
                     if (isDiscoverError) {
                         val error = (loadState.refresh as? LoadState.Error)?.error
                             ?: (loadState.mediator?.refresh as? LoadState.Error)?.error
+                            ?: (loadState.source.refresh as? LoadState.Error)?.error
                         item {
                             FeedErrorState(
                                 errorMessage = error?.localizedMessage ?: "Error desconocido",
                                 onRetry = { discoverItems.retry() }
                             )
                         }
-                    } else if (discoverItems.itemCount == 0 && !isDiscoverTrulyEmpty) {
+                    } else if (isDiscoverLoading) {
                         items(5) {
                             PostCardSkeleton(modifier = Modifier.padding(horizontal = paddingMedium / 2, vertical = 2.dp))
                         }
-                    } else if (isDiscoverTrulyEmpty) {
+                    } else if (isDiscoverEmpty) {
                         item {
                             EmptyFeedState(tab = CommunityTab.DISCOVER)
                         }
@@ -219,32 +220,33 @@ fun CommunityFeedList(
                 }
                 CommunityTab.HOT -> {
                     val loadState = hotItems.loadState
-                    val isHotLoading = loadState.refresh is LoadState.Loading ||
-                            loadState.mediator?.refresh is LoadState.Loading ||
-                            loadState.source.refresh is LoadState.Loading
-                    val isHotError = (loadState.refresh is LoadState.Error ||
-                            loadState.mediator?.refresh is LoadState.Error) && hotItems.itemCount == 0
-                    val isHotEndOfPagination = (loadState.refresh as? LoadState.NotLoading)?.endOfPaginationReached == true
-                    val isHotTrulyEmpty = hotItems.itemCount == 0 &&
-                            !isHotLoading &&
-                            !isHotError &&
-                            isHotEndOfPagination &&
-                            loadState.mediator?.refresh !is LoadState.Loading
+                    val isHotLoading = hotItems.itemCount == 0 && (
+                        loadState.refresh is LoadState.Loading ||
+                        loadState.mediator?.refresh is LoadState.Loading ||
+                        loadState.source.refresh is LoadState.Loading
+                    )
+                    val isHotError = hotItems.itemCount == 0 && (
+                        loadState.refresh is LoadState.Error ||
+                        loadState.mediator?.refresh is LoadState.Error ||
+                        loadState.source.refresh is LoadState.Error
+                    )
+                    val isHotEmpty = hotItems.itemCount == 0 && !isHotLoading && !isHotError
 
                     if (isHotError) {
                         val error = (loadState.refresh as? LoadState.Error)?.error
                             ?: (loadState.mediator?.refresh as? LoadState.Error)?.error
+                            ?: (loadState.source.refresh as? LoadState.Error)?.error
                         item {
                             FeedErrorState(
                                 errorMessage = error?.localizedMessage ?: "Error desconocido",
                                 onRetry = { hotItems.retry() }
                             )
                         }
-                    } else if (hotItems.itemCount == 0 && !isHotTrulyEmpty) {
+                    } else if (isHotLoading) {
                         items(5) {
                             PostCardSkeleton(modifier = Modifier.padding(horizontal = paddingMedium / 2, vertical = 2.dp))
                         }
-                    } else if (isHotTrulyEmpty) {
+                    } else if (isHotEmpty) {
                         item {
                             EmptyFeedState(tab = CommunityTab.HOT)
                         }

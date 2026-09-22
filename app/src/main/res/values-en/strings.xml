@@ -454,7 +454,7 @@
     <string name="dashboard_health_critical">Tight budget</string>
     <string name="dashboard_income_title">Income</string>
     <string name="dashboard_my_list_title">My List</string>
-    <string name="dashboard_goals_committed_title">savings goals</string>
+    <string name="dashboard_goals_committed_title">Goals</string>
     <string name="dashboard_extra_expenses_title">Home expenses</string>
     <string name="dashboard_expenses_percent">Expenses %1$d%%</string>
     <string name="dashboard_free_percent">Free %1$d%%</string>

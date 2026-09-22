@@ -478,7 +478,7 @@
     <string name="dashboard_health_critical">Presupuesto ajustado</string>
     <string name="dashboard_income_title">Ingresos</string>
     <string name="dashboard_my_list_title">Mi Lista</string>
-    <string name="dashboard_goals_committed_title">Comprometido</string>
+    <string name="dashboard_goals_committed_title">Metas</string>
     <string name="dashboard_extra_expenses_title">Gastos del hogar</string>
     <string name="dashboard_expenses_percent">Gastos %1$d%%</string>
     <string name="dashboard_free_percent">Libre %1$d%%</string>
