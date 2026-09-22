@@ -54,6 +54,23 @@ Esta versión representa un avance significativo en la madurez arquitectónica, 
 * **Alineación Centrada del Disponible Real**:
   * Monto disponible y subtítulo centrados en la tarjeta principal del Dashboard y Detalle Financiero, optimizando el balance y jerarquía visual.
 
+## 👤 Perfil de Usuario y Gestión Avanzada de Cuenta
+* **Gesto Nativo Pull-to-Refresh (M3)**:
+  * Integración de `PullToRefreshBox` en `ProfileScreen` para actualización instantánea de métricas y datos desde Firestore.
+* **Privacidad Estricta de Correo Electrónico**:
+  * Ocultamiento automático del correo electrónico al consultar perfiles ajenos (solo visible en el perfil propio del usuario autenticado).
+* **Protección de Perfiles Ajenos Privados**:
+  * Bloqueo y aviso contextual `ProfilePrivateNoticeCard` al intentar consultar publicaciones de usuarios con perfil marcado como privado.
+* **Depuración de Opciones y Rediseño**:
+  * Eliminación de selector de multilenguaje y opción de limpieza de caché en Composables.
+  * Reconexión de la pantalla de Usuarios Bloqueados en el grupo de Privacidad.
+* **Lógica de Calificación en Dominio Puro**:
+  * Creación de `CalculateCommunityRatingUseCase` evaluando thresholds mínimos y proporción normalizada de estrellas.
+* **Gestión Avanzada de Cuenta**:
+  * Flujo in-app de cambio de contraseña con reautenticación Firebase Auth.
+  * Suspensión suave de cuenta (`isSuspended = true`, `isActive = false` en posts) con ciclo interactivo de reactivación en inicio de sesión.
+  * Eliminación permanente en cascada (Room, Firestore y RTDB) con diálogo de confirmación multi-paso.
+
 ---
 
 ## 🧪 Calidad y Validación Automatizada
