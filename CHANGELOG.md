@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.6.0-beta](https://github.com/FarbalEduardo/Rinde-Android/compare/v1.5.0-beta...v1.6.0-beta) (2026-09-22)
+
+
+### Features
+
+* **dashboard:** audit implementation, clean architecture use cases, calendar modal and pull-to-refresh ([24fba73](https://github.com/FarbalEduardo/Rinde-Android/commit/24fba7349049b7928ff5d4eab6d2383ab1d72b0a))
+
+
+### Bug Fixes
+
+* **ci:** remove hardcoded Windows java.home from gradle.properties ([5dd2806](https://github.com/FarbalEduardo/Rinde-Android/commit/5dd2806558b1a735ed99026134492f5fb6af62c0))
+
 ## [1.4.0-beta](https://github.com/FarbalEduardo/Rinde-Android/compare/v1.3.0-beta...v1.4.0-beta) (2026-08-01)
 
 
