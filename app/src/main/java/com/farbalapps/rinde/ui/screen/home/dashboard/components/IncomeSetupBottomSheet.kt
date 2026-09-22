@@ -22,14 +22,30 @@ import com.farbalapps.rinde.domain.model.FinancialProfile
 import com.farbalapps.rinde.domain.model.IncomeFrequency
 import java.util.Locale
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CalendarToday
+import java.util.Date
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun IncomeSetupBottomSheet(
     currentProfile: FinancialProfile?,
+    currentMonthName: String = "",
     onDismiss: () -> Unit,
-    onSave: (amount: Double, frequency: IncomeFrequency, customStartDate: Long?, customEndDate: Long?) -> Unit
+    onSave: (
+        amount: Double,
+        frequency: IncomeFrequency,
+        customStartDate: Long?,
+        customEndDate: Long?,
+        isVariable: Boolean,
+        paymentDate: Long?
+    ) -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    var isVariableIncome by remember {
+        mutableStateOf(currentProfile?.isVariableIncome ?: false)
+    }
 
     var amountText by remember {
         mutableStateOf(
@@ -46,6 +62,12 @@ fun IncomeSetupBottomSheet(
     var selectedFrequency by remember {
         mutableStateOf(currentProfile?.incomeFrequency ?: IncomeFrequency.MONTHLY)
     }
+
+    var paymentDateMillis by remember {
+        mutableStateOf(currentProfile?.customStartDate ?: System.currentTimeMillis())
+    }
+
+    var showPaymentDatePicker by remember { mutableStateOf(false) }
 
     var customStartDate by remember {
         mutableStateOf(currentProfile?.customStartDate ?: System.currentTimeMillis())
@@ -102,9 +124,85 @@ fun IncomeSetupBottomSheet(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Selector Fijo (Paulatino) vs Variable (Por mes)
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(4.dp)
+                ) {
+                    val fixedSelected = !isVariableIncome
+                    val variableSelected = isVariableIncome
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(if (fixedSelected) MaterialTheme.colorScheme.primary else Color.Transparent)
+                            .clickable { isVariableIncome = false }
+                            .padding(vertical = 10.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = stringResource(id = R.string.dashboard_income_type_fixed),
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                fontWeight = if (fixedSelected) FontWeight.Bold else FontWeight.Medium
+                            ),
+                            color = if (fixedSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(if (variableSelected) MaterialTheme.colorScheme.primary else Color.Transparent)
+                            .clickable { isVariableIncome = true }
+                            .padding(vertical = 10.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = stringResource(id = R.string.dashboard_income_type_variable),
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                fontWeight = if (variableSelected) FontWeight.Bold else FontWeight.Medium
+                            ),
+                            color = if (variableSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
+            if (isVariableIncome) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = stringResource(id = R.string.dashboard_income_variable_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(12.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Campo de Monto
+            val labelString = if (isVariableIncome && currentMonthName.isNotBlank()) {
+                stringResource(id = R.string.dashboard_income_variable_label, currentMonthName)
+            } else {
+                stringResource(id = R.string.dashboard_income_amount_label)
+            }
+
             OutlinedTextField(
                 value = amountText,
                 onValueChange = { input ->
@@ -112,7 +210,7 @@ fun IncomeSetupBottomSheet(
                         amountText = input
                     }
                 },
-                label = { Text(stringResource(id = R.string.dashboard_income_amount_label)) },
+                label = { Text(labelString) },
                 prefix = {
                     Text(
                         text = "$ ",
@@ -137,110 +235,159 @@ fun IncomeSetupBottomSheet(
                 )
             )
 
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Text(
-                text = "Periodicidad del ingreso",
-                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            // Selector de frecuencia (Fila 1)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                FrequencyOptionCard(
-                    title = stringResource(id = R.string.dashboard_freq_monthly),
-                    subtitle = stringResource(id = R.string.dashboard_freq_monthly_sub),
-                    isSelected = selectedFrequency == IncomeFrequency.MONTHLY,
-                    onClick = { selectedFrequency = IncomeFrequency.MONTHLY },
-                    modifier = Modifier.weight(1f)
-                )
-
-                FrequencyOptionCard(
-                    title = stringResource(id = R.string.dashboard_freq_biweekly),
-                    subtitle = stringResource(id = R.string.dashboard_freq_biweekly_sub),
-                    isSelected = selectedFrequency == IncomeFrequency.BIWEEKLY,
-                    onClick = { selectedFrequency = IncomeFrequency.BIWEEKLY },
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Selector de frecuencia (Fila 2)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                FrequencyOptionCard(
-                    title = stringResource(id = R.string.dashboard_freq_weekly),
-                    subtitle = stringResource(id = R.string.dashboard_freq_weekly_sub),
-                    isSelected = selectedFrequency == IncomeFrequency.WEEKLY,
-                    onClick = { selectedFrequency = IncomeFrequency.WEEKLY },
-                    modifier = Modifier.weight(1f)
-                )
-
-                FrequencyOptionCard(
-                    title = stringResource(id = R.string.dashboard_freq_daily),
-                    subtitle = stringResource(id = R.string.dashboard_freq_daily_sub),
-                    isSelected = selectedFrequency == IncomeFrequency.DAILY,
-                    onClick = { selectedFrequency = IncomeFrequency.DAILY },
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Opción 5: Periodo Personalizado (con Calendario)
-            FrequencyOptionCard(
-                title = "🗓️ Periodo personalizado",
-                subtitle = if (selectedFrequency == IncomeFrequency.CUSTOM) {
-                    "${dateFormat.format(java.util.Date(customStartDate))} - ${dateFormat.format(java.util.Date(customEndDate))} ($customDays días)"
-                } else {
-                    "Elegir fechas exactas en calendario"
-                },
-                isSelected = selectedFrequency == IncomeFrequency.CUSTOM,
-                onClick = {
-                    selectedFrequency = IncomeFrequency.CUSTOM
-                    showDateRangePicker = true
-                },
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            if (selectedFrequency == IncomeFrequency.CUSTOM) {
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedButton(
-                    onClick = { showDateRangePicker = true },
+            // Selector de Fecha de Cobro (para variable o recurrente)
+            if (isVariableIncome || selectedFrequency != IncomeFrequency.CUSTOM) {
+                Spacer(modifier = Modifier.height(14.dp))
+                OutlinedCard(
+                    onClick = { showPaymentDatePicker = true },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.outlinedCardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
+                    ),
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        MaterialTheme.colorScheme.outlineVariant
+                    )
                 ) {
-                    Text("Cambiar rango de fechas en calendario 📅")
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = if (isVariableIncome) "Fecha de cobro de este mes" else "Día o fecha de cobro",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = dateFormat.format(Date(paymentDateMillis)),
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.Outlined.CalendarToday,
+                            contentDescription = stringResource(id = R.string.financial_select_date),
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(18.dp))
+            if (!isVariableIncome) {
+                Spacer(modifier = Modifier.height(20.dp))
 
-            // Nota de equivalencia mensual
-            if (parsedAmount > 0) {
-                val formattedEquiv = String.format(Locale.getDefault(), "$%,.0f MXN", monthlyEquiv)
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                    modifier = Modifier.fillMaxWidth()
+                Text(
+                    text = "Periodicidad del ingreso",
+                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Selector de frecuencia (Fila 1)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(
-                        text = stringResource(id = R.string.dashboard_monthly_equiv_note, formattedEquiv),
-                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
+                    FrequencyOptionCard(
+                        title = stringResource(id = R.string.dashboard_freq_monthly),
+                        subtitle = stringResource(id = R.string.dashboard_freq_monthly_sub),
+                        isSelected = selectedFrequency == IncomeFrequency.MONTHLY,
+                        onClick = { selectedFrequency = IncomeFrequency.MONTHLY },
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    FrequencyOptionCard(
+                        title = stringResource(id = R.string.dashboard_freq_biweekly),
+                        subtitle = stringResource(id = R.string.dashboard_freq_biweekly_sub),
+                        isSelected = selectedFrequency == IncomeFrequency.BIWEEKLY,
+                        onClick = { selectedFrequency = IncomeFrequency.BIWEEKLY },
+                        modifier = Modifier.weight(1f)
                     )
                 }
 
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Selector de frecuencia (Fila 2)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FrequencyOptionCard(
+                        title = stringResource(id = R.string.dashboard_freq_weekly),
+                        subtitle = stringResource(id = R.string.dashboard_freq_weekly_sub),
+                        isSelected = selectedFrequency == IncomeFrequency.WEEKLY,
+                        onClick = { selectedFrequency = IncomeFrequency.WEEKLY },
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    FrequencyOptionCard(
+                        title = stringResource(id = R.string.dashboard_freq_daily),
+                        subtitle = stringResource(id = R.string.dashboard_freq_daily_sub),
+                        isSelected = selectedFrequency == IncomeFrequency.DAILY,
+                        onClick = { selectedFrequency = IncomeFrequency.DAILY },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Opción 5: Periodo Personalizado (con Calendario)
+                FrequencyOptionCard(
+                    title = "🗓️ Periodo personalizado",
+                    subtitle = if (selectedFrequency == IncomeFrequency.CUSTOM) {
+                        "${dateFormat.format(Date(customStartDate))} - ${dateFormat.format(Date(customEndDate))} ($customDays días)"
+                    } else {
+                        "Elegir fechas exactas en calendario"
+                    },
+                    isSelected = selectedFrequency == IncomeFrequency.CUSTOM,
+                    onClick = {
+                        selectedFrequency = IncomeFrequency.CUSTOM
+                        showDateRangePicker = true
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                if (selectedFrequency == IncomeFrequency.CUSTOM) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = { showDateRangePicker = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Cambiar rango de fechas en calendario 📅")
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(18.dp))
+
+                // Nota de equivalencia mensual
+                if (parsedAmount > 0) {
+                    val formattedEquiv = String.format(Locale.getDefault(), "$%,.0f MXN", monthlyEquiv)
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = stringResource(id = R.string.dashboard_monthly_equiv_note, formattedEquiv),
+                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(20.dp))
+                }
+            } else {
+                Spacer(modifier = Modifier.height(24.dp))
             }
 
             // Botón Guardar
@@ -250,8 +397,10 @@ fun IncomeSetupBottomSheet(
                         onSave(
                             parsedAmount,
                             selectedFrequency,
-                            if (selectedFrequency == IncomeFrequency.CUSTOM) customStartDate else null,
-                            if (selectedFrequency == IncomeFrequency.CUSTOM) customEndDate else null
+                            if (selectedFrequency == IncomeFrequency.CUSTOM) customStartDate else paymentDateMillis,
+                            if (selectedFrequency == IncomeFrequency.CUSTOM) customEndDate else null,
+                            isVariableIncome,
+                            if (isVariableIncome) paymentDateMillis else null
                         )
                     }
                 },
@@ -270,6 +419,44 @@ fun IncomeSetupBottomSheet(
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
                 )
             }
+        }
+    }
+
+    // Modal de selección de fecha individual de cobro
+    if (showPaymentDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = paymentDateMillis
+        )
+        DatePickerDialog(
+            onDismissRequest = { showPaymentDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            paymentDateMillis = millis + 12 * 60 * 60 * 1000L
+                        }
+                        showPaymentDatePicker = false
+                    }
+                ) {
+                    Text("Aceptar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPaymentDatePicker = false }) {
+                    Text("Cancelar")
+                }
+            }
+        ) {
+            DatePicker(
+                state = datePickerState,
+                title = {
+                    Text(
+                        text = "Seleccionar fecha de cobro",
+                        modifier = Modifier.padding(16.dp),
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                    )
+                }
+            )
         }
     }
 

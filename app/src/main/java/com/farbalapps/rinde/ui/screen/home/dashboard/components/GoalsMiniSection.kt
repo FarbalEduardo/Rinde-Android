@@ -57,7 +57,7 @@ fun GoalsMiniSection(
                 contentPadding = PaddingValues(0.dp)
             ) {
                 Text(
-                    text = "Ver todas →",
+                    text = stringResource(id = R.string.dashboard_goals_view_all),
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
                     color = MaterialTheme.colorScheme.primary
                 )
@@ -198,7 +198,7 @@ private fun GoalDashboardCard(
             if (goal.targetDate != null && goal.targetDate > 0L) {
                 val dateStr = SimpleDateFormat("MMM yyyy", Locale.getDefault()).format(Date(goal.targetDate))
                 Text(
-                    text = "Meta: $dateStr",
+                    text = stringResource(id = R.string.dashboard_goals_deadline_format, dateStr),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -213,9 +213,9 @@ private fun GoalDashboardCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 val isAhead = fraction >= 0.3f || goal.isCompleted
-                val badgeColor = if (isAhead) Color(0xFF66BB6A) else Color(0xFFFFA726)
+                val badgeColor = if (isAhead) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary
                 val badgeText = if (goal.isCompleted) {
-                    "✔ Completada"
+                    stringResource(id = R.string.dashboard_goals_completed_badge)
                 } else if (isAhead) {
                     stringResource(id = R.string.dashboard_goals_on_track)
                 } else {

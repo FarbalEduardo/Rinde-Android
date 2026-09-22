@@ -20,10 +20,10 @@ interface FinancialDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertFinancialProfile(profile: FinancialProfileEntity)
 
-    @Query("SELECT * FROM extra_expenses WHERE userId = :userId AND year = :year AND month = :month ORDER BY createdAt DESC")
+    @Query("SELECT * FROM extra_expenses WHERE userId = :userId AND year = :year AND month = :month ORDER BY CASE WHEN expenseDate > 0 THEN expenseDate ELSE createdAt END ASC")
     fun getExtraExpenses(userId: String, year: Int, month: Int): Flow<List<ExtraExpenseEntity>>
 
-    @Query("SELECT * FROM extra_expenses WHERE userId = :userId AND createdAt >= :startTime AND createdAt <= :endTime ORDER BY createdAt DESC")
+    @Query("SELECT * FROM extra_expenses WHERE userId = :userId AND ((expenseDate > 0 AND expenseDate >= :startTime AND expenseDate <= :endTime) OR (expenseDate = 0 AND createdAt >= :startTime AND createdAt <= :endTime)) ORDER BY CASE WHEN expenseDate > 0 THEN expenseDate ELSE createdAt END ASC")
     fun getExtraExpensesBetween(userId: String, startTime: Long, endTime: Long): Flow<List<ExtraExpenseEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -32,8 +32,8 @@ interface FinancialDao {
     @Query("DELETE FROM extra_expenses WHERE id = :expenseId")
     suspend fun deleteExtraExpense(expenseId: String)
 
-    @Query("UPDATE extra_expenses SET label = :label, amount = :amount WHERE id = :id")
-    suspend fun updateExtraExpense(id: String, label: String, amount: Double)
+    @Query("UPDATE extra_expenses SET label = :label, amount = :amount, expenseDate = CASE WHEN :expenseDate > 0 THEN :expenseDate ELSE expenseDate END WHERE id = :id")
+    suspend fun updateExtraExpense(id: String, label: String, amount: Double, expenseDate: Long = 0L)
 
     @Query("DELETE FROM financial_profiles WHERE id = :userId")
     suspend fun deleteProfileByUserId(userId: String)
@@ -64,4 +64,39 @@ interface FinancialDao {
 
     @Query("DELETE FROM extra_expenses")
     suspend fun clearAllExtraExpenses()
+
+    // --- Ganancias Extras (Extra Incomes) ---
+    @Query("SELECT * FROM extra_incomes WHERE userId = :userId AND year = :year AND month = :month ORDER BY CASE WHEN incomeDate > 0 THEN incomeDate ELSE createdAt END ASC")
+    fun getExtraIncomes(userId: String, year: Int, month: Int): Flow<List<com.farbalapps.rinde.data.local.entity.ExtraIncomeEntity>>
+
+    @Query("SELECT * FROM extra_incomes WHERE userId = :userId AND ((incomeDate > 0 AND incomeDate >= :startTime AND incomeDate <= :endTime) OR (incomeDate = 0 AND createdAt >= :startTime AND createdAt <= :endTime)) ORDER BY CASE WHEN incomeDate > 0 THEN incomeDate ELSE createdAt END ASC")
+    fun getExtraIncomesBetween(userId: String, startTime: Long, endTime: Long): Flow<List<com.farbalapps.rinde.data.local.entity.ExtraIncomeEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertExtraIncome(income: com.farbalapps.rinde.data.local.entity.ExtraIncomeEntity)
+
+    @Query("DELETE FROM extra_incomes WHERE id = :incomeId")
+    suspend fun deleteExtraIncome(incomeId: String)
+
+    @Query("UPDATE extra_incomes SET label = :label, amount = :amount, incomeDate = CASE WHEN :incomeDate > 0 THEN :incomeDate ELSE incomeDate END WHERE id = :id")
+    suspend fun updateExtraIncome(id: String, label: String, amount: Double, incomeDate: Long = 0L)
+
+    @Query("DELETE FROM extra_incomes WHERE userId = :userId")
+    suspend fun deleteExtraIncomesByUserId(userId: String)
+
+    @Query("DELETE FROM extra_incomes")
+    suspend fun clearAllExtraIncomes()
+
+    // --- Ingresos Variables por Mes (Monthly Incomes) ---
+    @Query("SELECT * FROM monthly_incomes WHERE userId = :userId AND year = :year AND month = :month LIMIT 1")
+    fun getMonthlyVariableIncome(userId: String, year: Int, month: Int): Flow<com.farbalapps.rinde.data.local.entity.MonthlyIncomeEntity?>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertMonthlyVariableIncome(income: com.farbalapps.rinde.data.local.entity.MonthlyIncomeEntity)
+
+    @Query("DELETE FROM monthly_incomes WHERE userId = :userId")
+    suspend fun deleteMonthlyIncomesByUserId(userId: String)
+
+    @Query("DELETE FROM monthly_incomes")
+    suspend fun clearAllMonthlyIncomes()
 }

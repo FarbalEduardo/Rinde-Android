@@ -79,6 +79,7 @@ import com.farbalapps.rinde.ui.screen.home.community.components.AuthorAndDescrip
 import com.farbalapps.rinde.ui.screen.home.community.components.CommentsHeaderItem
 import com.farbalapps.rinde.ui.screen.home.community.components.CommentsListItems
 import com.farbalapps.rinde.ui.screen.home.community.components.ImageAndHeaderSection
+import com.farbalapps.rinde.ui.screen.home.community.components.PostCommentInputCard
 import com.farbalapps.rinde.ui.screen.home.community.components.PostDetailSkeleton
 import com.farbalapps.rinde.ui.screen.home.community.components.PostImageCarousel
 import com.farbalapps.rinde.ui.screen.home.community.components.SharedCommentInput
@@ -87,6 +88,8 @@ import com.farbalapps.rinde.ui.screen.home.community.components.VoteStateBannerI
 import com.farbalapps.rinde.ui.screen.home.community.components.VotingSectionItem
 import com.farbalapps.rinde.ui.theme.RindePrimary
 import com.farbalapps.rinde.ui.theme.RindeTheme
+import androidx.compose.ui.focus.FocusRequester
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /** Re-export para retrocompatibilidad con componentes existentes */
@@ -141,24 +144,7 @@ fun PostDetailScreen(
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-        bottomBar = {
-            uiState.post?.let {
-                SharedCommentInput(
-                    text = if (uiState.replyingToComment != null) uiState.replyText else uiState.commentText,
-                    replyingTo = uiState.replyingToComment,
-                    isSending = uiState.isSendingComment,
-                    onTextChange = { if (uiState.replyingToComment != null) viewModel.onReplyTextChange(it) else viewModel.onCommentTextChange(it) },
-                    onSubmit = { if (uiState.replyingToComment != null) viewModel.submitReply() else viewModel.submitComment() },
-                    onCancelReply = { viewModel.setReplyingTo(null) },
-                    onFocus = {
-                        if (uiState.replyingToComment == null) {
-                            viewModel.onNewCommentInputFocused()
-                        }
-                    }
-                )
-            }
-        }
+        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
     ) { paddingValues ->
         if (uiState.isLoadingPost && uiState.post == null) {
             PostDetailSkeleton(paddingValues = paddingValues)
@@ -270,6 +256,7 @@ fun PostDetailContent(
 ) {
     val lazyListState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
+    val commentInputFocusRequester = remember { FocusRequester() }
 
     val isAuthor = post.authorId == uiState.currentUserId
     val isPostExpired = post.verificationStatus == VerificationStatus.EXPIRED
@@ -279,25 +266,38 @@ fun PostDetailContent(
     if (hasExpiredBanner) bannersCount++
     if (hasOfflineBanner) bannersCount++
 
-    val commentListOffset = 9 + bannersCount
-    val imeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+    // Índice determinista del cuadro de comentario en la LazyColumn
+    val commentInputIndex = (if (hasOfflineBanner) 1 else 0) + 6 + (if (!isPostExpired) 2 else 0) + 1
 
-    LaunchedEffect(scrollToComments, uiState.comments) {
-        if (scrollToComments && uiState.comments.isNotEmpty()) {
+    val scrollToCommentInput: () -> Unit = {
+        coroutineScope.launch {
+            lazyListState.animateScrollToItem(commentInputIndex)
+            try {
+                commentInputFocusRequester.requestFocus()
+            } catch (_: Exception) {}
+        }
+    }
+
+    LaunchedEffect(scrollToComments) {
+        if (scrollToComments) {
             coroutineScope.launch {
-                lazyListState.animateScrollToItem(commentListOffset)
+                delay(200)
+                lazyListState.animateScrollToItem(commentInputIndex)
+                try {
+                    commentInputFocusRequester.requestFocus()
+                } catch (_: Exception) {}
             }
         }
     }
 
-    LaunchedEffect(uiState.replyingToComment, imeVisible) {
-        val replyingTo = uiState.replyingToComment
-        if (replyingTo != null && imeVisible) {
-            val idx = uiState.comments.indexOfFirst { it.id == replyingTo.id }
-            if (idx >= 0) {
-                coroutineScope.launch {
-                    lazyListState.animateScrollToItem(commentListOffset + idx)
-                }
+    LaunchedEffect(uiState.replyingToComment) {
+        if (uiState.replyingToComment != null) {
+            coroutineScope.launch {
+                delay(100)
+                lazyListState.animateScrollToItem(commentInputIndex)
+                try {
+                    commentInputFocusRequester.requestFocus()
+                } catch (_: Exception) {}
             }
         }
     }
@@ -535,7 +535,7 @@ fun PostDetailContent(
                 .fillMaxWidth()
                 .weight(1f),
             contentPadding = PaddingValues(
-                bottom = paddingValues.calculateBottomPadding() + 16.dp
+                bottom = paddingValues.calculateBottomPadding() + 32.dp
             )
         ) {
             VoteStateBannerItem(uiState.voteState, uiState.voteErrorMessage)
@@ -557,7 +557,8 @@ fun PostDetailContent(
                     post = post,
                     voteState = uiState.voteState,
                     onVoteTrue = onVoteTrue,
-                    onVoteFalse = onVoteFalse
+                    onVoteFalse = onVoteFalse,
+                    onJumpToComments = scrollToCommentInput
                 )
                 item { Spacer(modifier = Modifier.height(8.dp)) }
             }
@@ -567,6 +568,26 @@ fun PostDetailContent(
                 isLoadingComments = uiState.isLoadingComments,
                 commentsEmpty = uiState.comments.isEmpty()
             )
+
+            // Cuadro de comentarios reubicado en la parte superior de la sección de comentarios
+            item(key = "post_comment_input") {
+                PostCommentInputCard(
+                    text = if (uiState.replyingToComment != null) uiState.replyText else uiState.commentText,
+                    replyingTo = uiState.replyingToComment,
+                    isSending = uiState.isSendingComment,
+                    isFirstComment = uiState.comments.isEmpty() && !uiState.isLoadingComments,
+                    onTextChange = {
+                        if (uiState.replyingToComment != null) onReplyTextChange(it)
+                        else onCommentTextChange(it)
+                    },
+                    onSubmit = {
+                        if (uiState.replyingToComment != null) onReplySubmit()
+                        else onCommentSubmit()
+                    },
+                    onCancelReply = onCancelReply,
+                    focusRequester = commentInputFocusRequester
+                )
+            }
 
             CommentsListItems(
                 uiState = uiState,

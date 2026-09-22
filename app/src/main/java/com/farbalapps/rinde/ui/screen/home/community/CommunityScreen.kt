@@ -4,6 +4,7 @@ import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -106,6 +107,14 @@ fun CommunityScreen(
     }
 
     val context = LocalContext.current
+    val snackbarHostState = remember { androidx.compose.material3.SnackbarHostState() }
+
+    LaunchedEffect(uiState.snackbarMessage) {
+        uiState.snackbarMessage?.let { msg ->
+            snackbarHostState.showSnackbar(msg.asString(context))
+            viewModel.clearSnackbar()
+        }
+    }
 
     CommunityContent(
         currentTab = uiState.currentTab,
@@ -150,7 +159,8 @@ fun CommunityScreen(
         onRemoveRecentSearch = { searchViewModel.removeRecentSearch(it) },
         onClearRecentSearches = { searchViewModel.clearRecentSearches() },
         onNavigateToPostDetail = onNavigateToPostDetail,
-        innerPadding = innerPadding
+        innerPadding = innerPadding,
+        snackbarHostState = snackbarHostState
     )
 }
 
@@ -196,6 +206,7 @@ fun CommunityContent(
     onClearRecentSearches: () -> Unit,
     onNavigateToPostDetail: (String, Boolean, Boolean) -> Unit,
     innerPadding: PaddingValues,
+    snackbarHostState: androidx.compose.material3.SnackbarHostState = remember { androidx.compose.material3.SnackbarHostState() },
     modifier: Modifier = Modifier
 ) {
     var showNotificationsSheet by remember { mutableStateOf(false) }
@@ -317,6 +328,14 @@ fun CommunityContent(
                 onDismiss = { showNotificationsSheet = false }
             )
         }
+
+        androidx.compose.material3.SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(androidx.compose.ui.Alignment.BottomCenter)
+                .padding(bottom = innerPadding.calculateBottomPadding() + 8.dp)
+                .zIndex(3f)
+        )
     }
 }
 

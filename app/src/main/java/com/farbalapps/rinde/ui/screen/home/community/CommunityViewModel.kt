@@ -12,10 +12,18 @@ import com.farbalapps.rinde.domain.usecase.ToggleVoteUseCase
 import com.farbalapps.rinde.domain.usecase.UpdateFeedSeenTimestampUseCase
 import com.farbalapps.rinde.util.LocationService
 import com.farbalapps.rinde.util.logger.AppLogger
+import com.farbalapps.rinde.R
+import com.farbalapps.rinde.domain.usecase.community.DeletePostUseCase
+import com.farbalapps.rinde.domain.usecase.community.MarkPostExpiredUseCase
+import com.farbalapps.rinde.domain.usecase.community.ReportPostExpiredUseCase
+import com.farbalapps.rinde.domain.usecase.community.ToggleSavePostUseCase
+import com.farbalapps.rinde.util.UiText
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -33,7 +41,7 @@ data class CommunityUiState(
     val userName: String = "",
     val lastPostId: String? = null,
     val unreadNotificationCount: Int = 0,
-    val snackbarMessage: String? = null,
+    val snackbarMessage: UiText? = null,
     val newPostsCount: Int = 0
 )
 
@@ -42,6 +50,10 @@ class CommunityViewModel @Inject constructor(
     private val feedRepository: FeedRepository,
     private val authRepository: AuthRepository,
     private val toggleVoteUseCase: ToggleVoteUseCase,
+    private val toggleSavePostUseCase: ToggleSavePostUseCase,
+    private val deletePostUseCase: DeletePostUseCase,
+    private val markPostExpiredUseCase: MarkPostExpiredUseCase,
+    private val reportPostExpiredUseCase: ReportPostExpiredUseCase,
     private val locationService: LocationService,
     private val cleanOldCacheUseCase: CleanOldCacheUseCase,
     private val updateFeedSeenTimestampUseCase: UpdateFeedSeenTimestampUseCase,
@@ -130,8 +142,8 @@ class CommunityViewModel @Inject constructor(
         }
 
         // Polling loop cada 10 minutos para VERIFICAR si hay nuevas publicaciones en Discover
-        viewModelScope.launch {
-            while (true) {
+        viewModelScope.launch(Dispatchers.IO) {
+            while (isActive) {
                 delay(10 * 60 * 1000L)
                 if (_uiState.value.currentTab == CommunityTab.DISCOVER) {
                     checkForNewPostsOnResume()
@@ -264,7 +276,7 @@ class CommunityViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            feedRepository.toggleSave(_uiState.value.userId, postId)
+            toggleSavePostUseCase(_uiState.value.userId, postId)
                 .onFailure {
                     // Revert optimistic updates on failure
                     feedRepository.updateSavedStatusLocal(postId, wasSaved)
@@ -274,14 +286,23 @@ class CommunityViewModel @Inject constructor(
                         }
                         state.copy(
                             posts = revertedPosts,
-                            snackbarMessage = "No se pudo guardar la publicación. Intenta de nuevo."
+                            snackbarMessage = UiText.StringResource(R.string.community_save_error)
                         )
                     }
                 }
         }
     }
 
-    fun toggleVote(postId: String, voteValue: Int) {
+    private val lastVoteTimestamps = java.util.concurrent.ConcurrentHashMap<String, Long>()
+
+    fun toggleVote(postId: String, voteValue: Int, authorId: String? = null) {
+        val now = System.currentTimeMillis()
+        val lastVote = lastVoteTimestamps[postId] ?: 0L
+        if (now - lastVote < 400L) {
+            return // Ignorar toques espurios concurrentes (HU-06)
+        }
+        lastVoteTimestamps[postId] = now
+
         // 1. Actualización optimista de posts en UI (para pestaña de guardados) sin tocar contadores
         var originalVote = 0
         _uiState.update { state ->
@@ -296,11 +317,13 @@ class CommunityViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            // 2. Obtener authorId de la lista de posts en memoria
-            val authorId = _uiState.value.posts.find { it.id == postId }?.authorId
-                ?: return@launch
+            // 2. Obtener authorId con fallback robusto (B-01: Paging 3 items no están en posts de UI State)
+            val resolvedAuthorId = authorId
+                ?: _uiState.value.posts.find { it.id == postId }?.authorId
+                ?: feedRepository.getPostByIdOnce(postId)?.authorId
+                ?: ""
 
-            when (val result = toggleVoteUseCase(postId, voteValue, authorId)) {
+            when (val result = toggleVoteUseCase(postId, voteValue, resolvedAuthorId)) {
                 is com.farbalapps.rinde.domain.usecase.VoteResult.ServerError -> {
                     // Revertir cambio optimista y mostrar error en caso de fallo crítico de servidor
                     _uiState.update { state ->
@@ -311,14 +334,14 @@ class CommunityViewModel @Inject constructor(
                         }
                         state.copy(
                             posts = revertedPosts,
-                            snackbarMessage = result.message
+                            snackbarMessage = UiText.DynamicString(result.message)
                         )
                     }
                 }
                 is com.farbalapps.rinde.domain.usecase.VoteResult.NetworkError -> {
                     _uiState.update { state ->
                         state.copy(
-                            snackbarMessage = result.message
+                            snackbarMessage = UiText.DynamicString(result.message)
                         )
                     }
                 }
@@ -328,38 +351,45 @@ class CommunityViewModel @Inject constructor(
     }
 
     fun deletePost(postId: String, photoUrls: List<String>) {
+        val previousPosts = _uiState.value.posts
         _uiState.update { state -> state.copy(posts = state.posts.filter { it.id != postId }) }
         viewModelScope.launch {
-            feedRepository.deletePost(postId, photoUrls).onSuccess {
-                _uiState.update { it.copy(snackbarMessage = "Publicación eliminada") }
+            deletePostUseCase(postId, photoUrls).onSuccess {
+                _uiState.update { it.copy(snackbarMessage = UiText.StringResource(R.string.community_post_deleted)) }
+            }.onFailure { error ->
+                // Rollback en caso de fallo remoto (B-02)
+                _uiState.update { state ->
+                    state.copy(
+                        posts = previousPosts,
+                        snackbarMessage = UiText.DynamicString(error.localizedMessage ?: "Error al eliminar la publicación")
+                    )
+                }
             }
         }
     }
 
     fun markAsExpired(postId: String) {
-        feedRepository.updatePostStatusLocal(postId, com.farbalapps.rinde.domain.model.VerificationStatus.EXPIRED)
         viewModelScope.launch {
-            feedRepository.markPostAsExpired(postId)
+            markPostExpiredUseCase.markExpired(postId)
         }
     }
 
     fun markAsAvailable(postId: String) {
-        feedRepository.updatePostStatusLocal(postId, com.farbalapps.rinde.domain.model.VerificationStatus.PENDING)
         viewModelScope.launch {
-            feedRepository.markPostAsAvailable(postId)
+            markPostExpiredUseCase.markAvailable(postId)
         }
     }
 
     fun reportAsExpired(postId: String, postTitle: String, authorId: String) {
         viewModelScope.launch {
-            feedRepository.reportPostAsExpired(
+            reportPostExpiredUseCase(
                 postId = postId,
                 postTitle = postTitle,
                 authorId = authorId,
                 currentUserId = _uiState.value.userId,
                 currentUserName = _uiState.value.userName
             ).onSuccess {
-                _uiState.update { it.copy(snackbarMessage = "Reporte enviado al autor") }
+                _uiState.update { it.copy(snackbarMessage = UiText.StringResource(R.string.community_report_sent)) }
             }
         }
     }

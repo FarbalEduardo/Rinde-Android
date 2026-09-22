@@ -24,6 +24,11 @@ class SettingsManager @Inject constructor(
         private val APP_CURRENCY = stringPreferencesKey("app_currency")
         private val BUNKER_MODE = androidx.datastore.preferences.core.booleanPreferencesKey("bunker_mode")
         private val PRIVACY_MODE = androidx.datastore.preferences.core.booleanPreferencesKey("privacy_mode")
+        private val REMINDER_NOTIFICATIONS = androidx.datastore.preferences.core.booleanPreferencesKey("reminder_notifications_enabled")
+    }
+
+    val isRemindersEnabled: Flow<Boolean> = context.settingsDataStore.data.map { prefs ->
+        prefs[REMINDER_NOTIFICATIONS] ?: true
     }
 
     val themeMode: Flow<ThemeMode> = context.settingsDataStore.data.map { prefs ->
@@ -85,6 +90,12 @@ class SettingsManager @Inject constructor(
     suspend fun setBunkerMode(enabled: Boolean) {
         context.settingsDataStore.edit { prefs ->
             prefs[BUNKER_MODE] = enabled
+        }
+    }
+
+    suspend fun setRemindersEnabled(enabled: Boolean) {
+        context.settingsDataStore.edit { prefs ->
+            prefs[REMINDER_NOTIFICATIONS] = enabled
         }
     }
 

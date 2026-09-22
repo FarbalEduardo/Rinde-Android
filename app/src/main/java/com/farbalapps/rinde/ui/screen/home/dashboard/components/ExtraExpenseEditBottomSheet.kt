@@ -17,12 +17,17 @@ import androidx.compose.ui.unit.dp
 import com.farbalapps.rinde.R
 import com.farbalapps.rinde.domain.model.ExtraExpense
 
+import androidx.compose.material.icons.outlined.CalendarToday
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExtraExpenseEditBottomSheet(
     expense: ExtraExpense,
     onDismiss: () -> Unit,
-    onUpdate: (id: String, label: String, amount: Double) -> Unit,
+    onUpdate: (id: String, label: String, amount: Double, expenseDate: Long) -> Unit,
     onDelete: (id: String) -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -31,9 +36,41 @@ fun ExtraExpenseEditBottomSheet(
     var amountText by remember(expense.id) {
         mutableStateOf(if (expense.amount % 1.0 == 0.0) expense.amount.toLong().toString() else expense.amount.toString())
     }
+    var selectedDateMillis by remember(expense.id) {
+        mutableStateOf(if (expense.expenseDate > 0L) expense.expenseDate else expense.createdAt)
+    }
+    var showDatePickerDialog by remember { mutableStateOf(false) }
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
 
-    val parsedAmount = amountText.toDoubleOrNull() ?: 0.0
+    val dateFormat = remember { SimpleDateFormat("EEEE, d 'de' MMMM", Locale.getDefault()) }
+
+    val parsedAmount = amountText.replace(',', '.').toDoubleOrNull() ?: 0.0
     val isValid = labelText.isNotBlank() && parsedAmount > 0.0
+
+    if (showDeleteConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmDialog = false },
+            title = { Text(stringResource(id = R.string.dashboard_confirm_delete_title)) },
+            text = { Text(stringResource(id = R.string.dashboard_confirm_delete_desc)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteConfirmDialog = false
+                        onDelete(expense.id)
+                        onDismiss()
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text(stringResource(id = R.string.dashboard_confirm_delete_btn))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmDialog = false }) {
+                    Text(stringResource(id = R.string.dashboard_confirm_cancel_btn))
+                }
+            }
+        )
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -59,10 +96,7 @@ fun ExtraExpenseEditBottomSheet(
                 )
 
                 IconButton(
-                    onClick = {
-                        onDelete(expense.id)
-                        onDismiss()
-                    }
+                    onClick = { showDeleteConfirmDialog = true }
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.Delete,
@@ -131,13 +165,58 @@ fun ExtraExpenseEditBottomSheet(
                 )
             )
 
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Selector de Fecha
+            OutlinedCard(
+                onClick = { showDatePickerDialog = true },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.outlinedCardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
+                ),
+                border = androidx.compose.foundation.BorderStroke(
+                    1.dp,
+                    MaterialTheme.colorScheme.outlineVariant
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = stringResource(id = R.string.financial_expense_date_label),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = dateFormat.format(Date(selectedDateMillis))
+                                .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() },
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.Outlined.CalendarToday,
+                        contentDescription = stringResource(id = R.string.financial_select_date),
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+
             Spacer(modifier = Modifier.height(24.dp))
 
             // Botón Guardar / Actualizar
             Button(
                 onClick = {
                     if (isValid) {
-                        onUpdate(expense.id, labelText, parsedAmount)
+                        onUpdate(expense.id, labelText, parsedAmount, selectedDateMillis)
                         onDismiss()
                     }
                 },
@@ -185,6 +264,43 @@ fun ExtraExpenseEditBottomSheet(
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium)
                 )
             }
+        }
+    }
+
+    if (showDatePickerDialog) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = selectedDateMillis
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePickerDialog = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            selectedDateMillis = millis + 12 * 60 * 60 * 1000L
+                        }
+                        showDatePickerDialog = false
+                    }
+                ) {
+                    Text("Aceptar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePickerDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        ) {
+            DatePicker(
+                state = datePickerState,
+                title = {
+                    Text(
+                        text = stringResource(id = R.string.financial_expense_date_label),
+                        modifier = Modifier.padding(16.dp),
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                    )
+                }
+            )
         }
     }
 }

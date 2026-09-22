@@ -15,17 +15,27 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.farbalapps.rinde.R
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CalendarToday
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExtraExpenseBottomSheet(
     onDismiss: () -> Unit,
-    onSave: (label: String, amount: Double, iconKey: String) -> Unit
+    onSave: (label: String, amount: Double, iconKey: String, expenseDate: Long) -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     var labelText by remember { mutableStateOf("") }
     var amountText by remember { mutableStateOf("") }
     var selectedIconKey by remember { mutableStateOf("receipt") }
+    var selectedDateMillis by remember { mutableStateOf(System.currentTimeMillis()) }
+    var showDatePickerDialog by remember { mutableStateOf(false) }
+
+    val dateFormat = remember { SimpleDateFormat("EEEE, d 'de' MMMM", Locale("es", "ES")) }
 
     val quickSuggestions = listOf(
         Pair("💡 Luz", "electric"),
@@ -142,13 +152,58 @@ fun ExtraExpenseBottomSheet(
                 )
             )
 
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Selector de Fecha
+            OutlinedCard(
+                onClick = { showDatePickerDialog = true },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.outlinedCardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
+                ),
+                border = androidx.compose.foundation.BorderStroke(
+                    1.dp,
+                    MaterialTheme.colorScheme.outlineVariant
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = stringResource(id = R.string.financial_expense_date_label),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = dateFormat.format(Date(selectedDateMillis))
+                                .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() },
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.Outlined.CalendarToday,
+                        contentDescription = stringResource(id = R.string.financial_select_date),
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+
             Spacer(modifier = Modifier.height(24.dp))
 
             // Botón Guardar
             Button(
                 onClick = {
                     if (isValid) {
-                        onSave(labelText, parsedAmount, selectedIconKey)
+                        onSave(labelText, parsedAmount, selectedIconKey, selectedDateMillis)
                     }
                 },
                 enabled = isValid,
@@ -166,6 +221,44 @@ fun ExtraExpenseBottomSheet(
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
                 )
             }
+        }
+    }
+
+    if (showDatePickerDialog) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = selectedDateMillis
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePickerDialog = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            // Normalize UTC date picker millis to local midday or preserve timestamp
+                            selectedDateMillis = millis + 12 * 60 * 60 * 1000L
+                        }
+                        showDatePickerDialog = false
+                    }
+                ) {
+                    Text("Aceptar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePickerDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        ) {
+            DatePicker(
+                state = datePickerState,
+                title = {
+                    Text(
+                        text = stringResource(id = R.string.financial_expense_date_label),
+                        modifier = Modifier.padding(16.dp),
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                    )
+                }
+            )
         }
     }
 }

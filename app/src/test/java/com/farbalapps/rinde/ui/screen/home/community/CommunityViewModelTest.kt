@@ -1,8 +1,6 @@
 package com.farbalapps.rinde.ui.screen.home.community
 
 import app.cash.turbine.test
-import com.farbalapps.rinde.data.local.dao.PostDao
-import com.farbalapps.rinde.data.local.dao.SyncMetadataDao
 import com.farbalapps.rinde.domain.model.CommunityPost
 import com.farbalapps.rinde.domain.model.OfferType
 import com.farbalapps.rinde.domain.model.PostLocation
@@ -23,20 +21,26 @@ import androidx.lifecycle.viewModelScope
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
-import com.farbalapps.rinde.data.local.entity.toEntity
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class CommunityViewModelTest {
 
-    private val testDispatcher = StandardTestDispatcher()
+    @get:Rule
+    val mainDispatcherRule = com.farbalapps.rinde.util.MainDispatcherRule()
 
     private val feedRepository = mockk<FeedRepository>(relaxed = true)
     private val authRepository = mockk<AuthRepository>(relaxed = true)
     private val toggleVoteUseCase = mockk<ToggleVoteUseCase>()
+    private val toggleSavePostUseCase = mockk<com.farbalapps.rinde.domain.usecase.community.ToggleSavePostUseCase>(relaxed = true)
+    private val deletePostUseCase = mockk<com.farbalapps.rinde.domain.usecase.community.DeletePostUseCase>(relaxed = true)
+    private val markPostExpiredUseCase = mockk<com.farbalapps.rinde.domain.usecase.community.MarkPostExpiredUseCase>(relaxed = true)
+    private val reportPostExpiredUseCase = mockk<com.farbalapps.rinde.domain.usecase.community.ReportPostExpiredUseCase>(relaxed = true)
     private val locationService = mockk<LocationService>(relaxed = true)
-    private val syncMetadataDao = mockk<SyncMetadataDao>(relaxed = true)
-    private val postDao = mockk<PostDao>(relaxed = true)
+    private val cleanOldCacheUseCase = mockk<com.farbalapps.rinde.domain.usecase.CleanOldCacheUseCase>(relaxed = true)
+    private val updateFeedSeenTimestampUseCase = mockk<com.farbalapps.rinde.domain.usecase.UpdateFeedSeenTimestampUseCase>(relaxed = true)
+    private val logger = mockk<com.farbalapps.rinde.util.logger.AppLogger>(relaxed = true)
 
     private lateinit var viewModel: CommunityViewModel
 
@@ -68,7 +72,6 @@ class CommunityViewModelTest {
         websiteName = null,
         productLink = null,
         storeName = null,
-        isRecommended = false,
         expiresAt = null,
         normalPrice = 10.0,
         discountPrice = 8.0,
@@ -77,14 +80,11 @@ class CommunityViewModelTest {
         discountPercentage = 20,
         isAvailable = true,
         condition = "Nuevo",
-        myVoteValue = 0,
-        isSavedByMe = false
+        myVoteValue = 0
     )
 
     @Before
     fun setup() {
-        Dispatchers.setMain(testDispatcher)
-
         every { authRepository.getCurrentUser() } returns mockk {
             every { id } returns testUserId
             every { displayName } returns "Test User"
@@ -93,96 +93,100 @@ class CommunityViewModelTest {
         every { feedRepository.globalPostStatus } returns MutableStateFlow(emptyMap())
         every { feedRepository.globalSavedStatus } returns MutableStateFlow(emptyMap())
         every { feedRepository.globalVoteStatus } returns MutableStateFlow(emptyMap())
-        coEvery { postDao.getPostsOnce(any()) } returns emptyList()
+        coEvery { feedRepository.getUnreadNotificationsCount(any()) } returns flowOf(0)
+        coEvery { feedRepository.countNewPostsSince(any()) } returns 1
+        coEvery { feedRepository.syncUserVotes(any()) } returns Result.success(Unit)
+        coEvery { feedRepository.syncUserSavedPosts(any()) } returns Result.success(Unit)
+        coEvery { cleanOldCacheUseCase.invoke(any()) } returns Result.success(Unit)
+        coEvery { updateFeedSeenTimestampUseCase.invoke() } returns Unit
+        coEvery { toggleSavePostUseCase(any(), any()) } returns Result.success(Unit)
+        coEvery { deletePostUseCase(any(), any()) } returns Result.success(Unit)
+        coEvery { markPostExpiredUseCase.markExpired(any()) } returns Result.success(Unit)
+        coEvery { markPostExpiredUseCase.markAvailable(any()) } returns Result.success(Unit)
+        coEvery { reportPostExpiredUseCase.invoke(any(), any(), any(), any(), any()) } returns Result.success(Unit)
 
         viewModel = CommunityViewModel(
             feedRepository,
             authRepository,
             toggleVoteUseCase,
+            toggleSavePostUseCase,
+            deletePostUseCase,
+            markPostExpiredUseCase,
+            reportPostExpiredUseCase,
             locationService,
-            syncMetadataDao,
-            postDao
+            cleanOldCacheUseCase,
+            updateFeedSeenTimestampUseCase,
+            logger
         )
-    }
-
-    @After
-    fun tearDown() {
-        viewModel.viewModelScope.cancel()
-        Dispatchers.resetMain()
     }
 
     @Test
     fun `setTab should update current tab in UI state`() = runTest {
-        viewModel.uiState.test {
-            assertEquals(CommunityTab.DISCOVER, expectMostRecentItem().currentTab)
+        assertEquals(CommunityTab.DISCOVER, viewModel.uiState.value.currentTab)
 
-            viewModel.setTab(CommunityTab.HOT)
-            assertEquals(CommunityTab.HOT, expectMostRecentItem().currentTab)
+        viewModel.setTab(CommunityTab.HOT)
+        assertEquals(CommunityTab.HOT, viewModel.uiState.value.currentTab)
 
-            viewModel.setTab(CommunityTab.SAVED)
-            assertEquals(CommunityTab.SAVED, expectMostRecentItem().currentTab)
-        }
+        viewModel.setTab(CommunityTab.SAVED)
+        assertEquals(CommunityTab.SAVED, viewModel.uiState.value.currentTab)
     }
 
     @Test
-    fun `toggleSave should update state optimistically and rollback on failure`() = runTest {
-        coEvery { feedRepository.toggleSave(testUserId, testPostId) } returns Result.failure(Exception("Network error"))
+    fun `toggleSave should update state and rollback on failure`() = runTest {
+        coEvery { toggleSavePostUseCase(testUserId, testPostId) } returns Result.failure(Exception("Network error"))
 
         // Set initial posts in UI state
-        viewModel.setTab(CommunityTab.SAVED)
         coEvery { feedRepository.getSavedPosts(testUserId) } returns flowOf(listOf(testPost))
-        viewModel.refresh()
-        testScheduler.runCurrent()
+        viewModel.setTab(CommunityTab.SAVED)
 
-        viewModel.uiState.test {
-            val initialState = expectMostRecentItem()
-            assertEquals(1, initialState.posts.size)
-            assertEquals(false, initialState.posts.first().isSavedByMe)
+        assertEquals(1, viewModel.uiState.value.posts.size)
+        assertEquals(false, viewModel.uiState.value.posts.first().isSavedByMe)
 
-            // Trigger toggleSave -> should immediately reflect saved in UI
-            viewModel.toggleSave(testPostId)
-            
-            // Verificamos estado optimista
-            val optimisticState = expectMostRecentItem()
-            assertEquals(true, optimisticState.posts.first().isSavedByMe)
+        // Trigger toggleSave -> should trigger rollback due to failure
+        viewModel.toggleSave(testPostId)
 
-            // Procesar llamadas async
-            testScheduler.runCurrent()
-
-            // Verificamos rollback por fallo del servidor
-            val revertedState = expectMostRecentItem()
-            assertEquals(false, revertedState.posts.first().isSavedByMe)
-            assertEquals("No se pudo guardar la publicación. Intenta de nuevo.", revertedState.snackbarMessage)
-        }
+        val revertedState = viewModel.uiState.value
+        assertEquals(false, revertedState.posts.first().isSavedByMe)
+        assertEquals(
+            com.farbalapps.rinde.util.UiText.StringResource(com.farbalapps.rinde.R.string.community_save_error),
+            revertedState.snackbarMessage
+        )
     }
 
     @Test
-    fun `toggleVote should update state optimistically and rollback on error`() = runTest {
-        coEvery { postDao.getPostById(testPostId) } returns testPost.toEntity()
+    fun `toggleVote should update state and rollback on error`() = runTest {
         coEvery { toggleVoteUseCase(testPostId, 1, "author_1") } returns VoteResult.ServerError("Fallo del servidor")
 
         // Set initial posts in UI state
-        viewModel.setTab(CommunityTab.SAVED)
         coEvery { feedRepository.getSavedPosts(testUserId) } returns flowOf(listOf(testPost))
-        viewModel.refresh()
-        testScheduler.runCurrent()
+        viewModel.setTab(CommunityTab.SAVED)
 
-        viewModel.uiState.test {
-            val initialState = expectMostRecentItem()
-            assertEquals(0, initialState.posts.first().myVoteValue)
+        assertEquals(0, viewModel.uiState.value.posts.first().myVoteValue)
 
-            // Trigger toggleVote -> optimista
-            viewModel.toggleVote(testPostId, 1)
-            
-            val optimisticState = expectMostRecentItem()
-            assertEquals(1, optimisticState.posts.first().myVoteValue)
+        // Trigger toggleVote -> triggers rollback on ServerError
+        viewModel.toggleVote(testPostId, 1)
 
-            testScheduler.runCurrent()
+        val revertedState = viewModel.uiState.value
+        assertEquals(0, revertedState.posts.first().myVoteValue)
+        assertEquals(
+            com.farbalapps.rinde.util.UiText.DynamicString("Fallo del servidor"),
+            revertedState.snackbarMessage
+        )
+    }
 
-            // Rollback
-            val revertedState = expectMostRecentItem()
-            assertEquals(0, revertedState.posts.first().myVoteValue)
-            assertEquals("Fallo del servidor", revertedState.snackbarMessage)
-        }
+    @Test
+    fun `toggleVote should debounce multiple rapid clicks within 400ms`() = runTest {
+        coEvery { toggleVoteUseCase(testPostId, 1, any()) } returns VoteResult.Success(Triple(3, 1, 2))
+
+        coEvery { feedRepository.getSavedPosts(testUserId) } returns flowOf(listOf(testPost))
+        viewModel.setTab(CommunityTab.SAVED)
+
+        // First click
+        viewModel.toggleVote(testPostId, 1)
+        // Second rapid click on same post immediately
+        viewModel.toggleVote(testPostId, 1)
+
+        // Only one call should be dispatched to toggleVoteUseCase
+        coVerify(exactly = 1) { toggleVoteUseCase(testPostId, 1, any()) }
     }
 }

@@ -10,7 +10,8 @@ import androidx.room.PrimaryKey
 @Entity(
     tableName = "extra_expenses",
     indices = [
-        Index(value = ["userId", "year", "month"])
+        Index(value = ["userId", "year", "month"]),
+        Index(value = ["userId", "expenseDate"])
     ]
 )
 data class ExtraExpenseEntity(
@@ -21,5 +22,6 @@ data class ExtraExpenseEntity(
     val iconKey: String = "receipt",
     val month: Int = 1,
     val year: Int = 2026,
-    val createdAt: Long = 0L
+    val createdAt: Long = 0L,
+    val expenseDate: Long = 0L
 )

@@ -330,6 +330,14 @@ class FeedInteractionDelegate @Inject constructor(
             userVoteDao.upsertVote(UserVoteEntity(postId, userId, finalNextVote))
         }
 
+        postDao.updateVoteState(
+            postId = postId,
+            voteValue = finalNextVote,
+            truthCount = finalCounts.first,
+            falseCount = finalCounts.second,
+            score = finalCounts.third
+        )
+
         updateVoteStatusLocal(
             postId,
             VoteOverlay(
@@ -396,7 +404,22 @@ class FeedInteractionDelegate @Inject constructor(
     }
 
     suspend fun applyOptimisticVote(postId: String, voteValue: Int) {
-        val existingPost = postDao.getPostById(postId) ?: return
+        val existingPost = postDao.getPostById(postId)
+        if (existingPost == null) {
+            val currentOverlay = _globalVoteStatus.value[postId]
+            val origVote = currentOverlay?.myVote ?: 0
+            val nextVote = if (origVote == voteValue) 0 else voteValue
+            updateVoteStatusLocal(
+                postId,
+                VoteOverlay(
+                    truthCount = currentOverlay?.truthCount,
+                    falseCount = currentOverlay?.falseCount,
+                    myVote = nextVote
+                )
+            )
+            return
+        }
+
         val origVote = existingPost.myVoteValue ?: 0
         val origTruth = existingPost.truthCount
         val origFalse = existingPost.falseCount

@@ -3,7 +3,8 @@ package com.farbalapps.rinde.domain.model
 enum class NotificationType {
     POST_EXPIRED,
     NEW_COMMENT,
-    POST_VERIFIED
+    POST_VERIFIED,
+    NEW_REPLY
 }
 
 data class AppNotification(

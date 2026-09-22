@@ -1,44 +1,69 @@
-# 🚀 Notas de Lanzamiento — Rinde v1.5.0-beta
+# 🚀 Notas de Lanzamiento — Rinde v1.6.0-beta
 
-Esta versión marca un hito fundamental en la madurez y robustez técnica de **Rinde**, elevando la arquitectura a estándares **Production-Ready / Senior Enterprise**. Se logra un aislamiento estricto de Clean Architecture, una refactorización modular completa de la capa de interfaz de usuario con Jetpack Compose y Material Design 3, y una suite de pruebas con trazabilidad directa a los requerimientos de negocio (SDD).
-
----
-
-## 🏛️ Aislamiento Estricto de Clean Architecture
-
-* **Dominio Kotlin 100% Puro**: Erradicación total de imports de `android.net.Uri` en las entidades y casos de uso de dominio (`CommentRepository`, `CreatePostUseCase`, `AddCommentUseCase`, `AddReplyUseCase`). Toda la lógica de negocio opera ahora con contratos primitivos y universales de Kotlin (`String?`, `List<String>`), encapsulando el parseo de SDK en la frontera con la capa de datos (`CommentRepositoryImpl`).
-* **Desacoplamiento de ViewModels y DAOs**: Eliminación de la inyección directa de `PostDao` y `SyncMetadataDao` en `CommunityViewModel`. Se introdujeron los casos de uso especializados `CleanOldCacheUseCase` (política de retención de caché local) y `UpdateFeedSeenTimestampUseCase` (gestión de estado de lectura del feed).
-* **Infraestructura de Logging Testeable**: Reemplazo de llamadas acopladas a `android.util.Log` por la abstracción `AppLogger` (`util/logger/`), implementada por `AndroidAppLogger` y provista mediante Hilt `LoggingModule` con ciclo de vida `@Singleton`.
+Esta versión representa un avance significativo en la madurez arquitectónica, robustez financiera y experiencia visual de **Rinde**. Se consolida la auditoría técnica de la pantalla **Dashboard**, se establece una arquitectura basada en casos de uso de dominio puros, se integra el **Calendario Financiero de Pagos y Gastos**, y se garantiza el **aislamiento estricto de sueldos y movimientos por periodo**.
 
 ---
 
-## 🎨 Descomposición Modular de UI (Jetpack Compose & Material 3)
-
-* **Descomposición de `CommunityScreen`**: Reducción drástica del monolito de **1 178 líneas a ~305 líneas**, aplicando State Hoisting y separación estricta Stateful/Stateless:
-  * `CommunityTopBar`: Búsqueda integrada M3, notificaciones y tabs.
-  * `CommunityFeedList`: Lista paginada reactiva Paging 3 y Pull-to-refresh.
-  * `NewPostsBanner`: Banner contextual con animación expand/shrink.
-  * `EmptyFeedState` y `FeedErrorState`: Estados visuales enriquecidos con animaciones continuas.
-* **Descomposición de `PostDetailScreen`**: Reducción del monolito de **1 276 líneas a ~375 líneas**:
-  * `PostDetailHeader`: Carrusel interactivo y bloque de precios semi-bold.
-  * `PostDetailMetaSection`: Información de comercio, cupón con copiado en un toque y autor verificado.
-  * `PostDetailVotingSection`: Votación comunitaria de veracidad y avisos offline.
-  * `PostDetailCommentSection`: Hilos de comentarios y respuestas anidadas.
-  * `PostDetailSkeleton`: Carga fluida con Shimmer.
-* **Cumplimiento de Tokens M3**: Eliminación de colores hexadecimales directos; adopción integral de `MaterialTheme.colorScheme` y `@PreviewLightDark` en todos los componentes stateless.
+## 📊 Dashboard y Clean Architecture
+* **Capa de Dominio con Casos de Uso Dedicados**:
+  * `GetDashboardSummaryUseCase`: Flujo reactivo consolidado de ingresos, compras realizadas de la lista de compras, gastos del hogar y metas de ahorro activas.
+  * `ManageExtraExpenseUseCase`: Lógica de validación (etiqueta y monto mayor a cero) y persistencia para gastos del hogar (`addExpense`, `updateExpense`, `deleteExpense`).
+  * `ManageExtraIncomeUseCase`: Validación y persistencia para ganancias extras (`addIncome`, `updateIncome`, `deleteIncome`).
+  * `SyncDashboardDataUseCase`: Orquestación de sincronización remota con Firebase, metas, listas y verificación de rollover mensual.
+* **Semáforo Financiero Neutro (`FinancialHealthStatus.SETUP_REQUIRED`)**:
+  * Cuando el usuario no cuenta con sueldo configurado ni gastos registrados, el semáforo despliega un estado informativo con badge color terciario y la invitación directa *"Configurar sueldo"*, eliminando falsos positivos de salud financiera.
+* **Acceso Directo al Calendario Financiero desde el Header**:
+  * Al presionar el chip superior de fecha del mes ("Septiembre 2026"), se despliega de inmediato el modal del **Calendario Financiero**, permitiendo consultar los cobros y pagos día por día sin salir de la vista principal.
+* **Gesto Nativo Pull-to-Refresh**:
+  * Soporte de `PullToRefreshBox` de Material 3 para forzar la sincronización en la nube con un simple deslizamiento hacia abajo.
+* **Optimización de Rendimiento en Jetpack Compose**:
+  * Migración de animaciones continuas de escala y traslación a `Modifier.graphicsLayer`, aislando las transformaciones en la GPU y erradicando recomposiciones de layout por frame.
 
 ---
 
-## 🧪 Calidad SDD y Trazabilidad de Historias de Usuario
+## 🗓️ Detalle Financiero y Calendario de Pagos/Gastos
+* **Aislamiento de Sueldo Fijo por Periodo**:
+  * Los cambios o asignaciones de sueldo fijo aplican únicamente al periodo en curso y hacia el futuro, manteniendo inmutables los registros cerrados de meses pasados.
+* **Aislamiento de Ingresos Variables**:
+  * Los ingresos variables capturados para un mes específico no se proyectan a meses posteriores en el Calendario Financiero.
+* **Eliminación Granular de Sueldos Recurrentes**:
+  * Diálogo de confirmación con 3 alternativas intuitivas:
+    1. *Solo este mes*: Suprime el ingreso del mes seleccionado mediante balance cerrado.
+    2. *Este y los meses futuros*: Da por terminada la recurrencia a partir del mes en consulta.
+    3. *Todos los pagos*: Cancela el sueldo en el perfil del usuario.
+* **Gestión Integral en Detalle Financiero**:
+  * Visualización y edición en tarjeta de sueldo base y desglose de ganancias extras del periodo.
+  * Botón unificado y persistente para agregar gastos del hogar.
+  * Diálogos de confirmación (`AlertDialog`) en BottomSheets de edición para prevenir borrados accidentales.
 
-* **Mapeo de Pruebas Unitarias a Requerimientos**:
-  * **[HU-01] Feed y Publicación**: `ToggleVoteUseCaseTest`, `CreatePostUseCaseTest`, `CleanOldCacheUseCaseTest`.
-  * **[HU-02] Búsqueda**: `SearchPostsUseCaseTest` (validación de debouncing, trim y categorías).
-  * **[HU-03] Comentarios y Respuestas**: `AddCommentUseCaseTest`, `AddReplyUseCaseTest`.
-  * **[HU-04] Guardados**: `ToggleSavePostUseCaseTest`.
-  * **[HU-05] Detalle de Ofertas**: `GetCommentsUseCaseTest`.
-* **Pipeline de Integración Local Automatizado (`run_pipeline.ps1`)**:
-  * `Mobile Developer Audit`: **PASSED** (0 fugas de capa).
-  * `Design Expert Audit`: **PASSED** (M3 compliance y estabilidad Compose).
-  * `Quality PM Audit`: **PASSED** (cobertura total de UseCases).
-  * `Security Expert Audit`: **PASSED** (análisis SAST y dependencias).
+---
+
+## 💾 Persistencia de Datos y Sincronización
+* **Esquema Room v31**:
+  * Nuevas columnas `expense_date`, `income_date` y `payment_date` con índices optimizados para consultas temporales y de calendario.
+  * Migración `MIGRATION_30_31` probada e integrada.
+* **Protección Offline-First**:
+  * Verificación de marcas de tiempo `updatedAt` en `DashboardRepositoryImpl.syncFromFirebase()` para salvaguardar cambios locales sin conexión frente a sobreescrituras remotas.
+
+---
+
+## 🎨 Experiencia Visual y UX ("Wow Factor")
+* **Carrusel Educativo y Animaciones en Estado Vacío (`SetupIncomeCard`)**:
+  * Carrusel rotativo cada 3 segundos con 4 pilares clave de la app, píldoras interactivas animadas y transiciones `AnimatedContent`.
+  * Micro-animaciones continuas de respiración en ícono y bordes.
+* **Alineación Centrada del Disponible Real**:
+  * Monto disponible y subtítulo centrados en la tarjeta principal del Dashboard y Detalle Financiero, optimizando el balance y jerarquía visual.
+
+---
+
+## 🧪 Calidad y Validación Automatizada
+* **100% de Pruebas Unitarias Exitosas**:
+  * `DashboardViewModelTest`: 12/12 pruebas PASSED.
+  * `DashboardUseCasesTest`: 5/5 pruebas PASSED.
+  * `FinancialDetailViewModelTest`: 19/19 pruebas PASSED.
+* **Pipeline SDD de Integración Local (`run_pipeline.ps1`)**:
+  * `Mobile Developer Audit`: **PASSED** (0 fugas de arquitectura).
+  * `Design Expert Audit`: **PASSED** (Tokens M3 y Compose stability).
+  * `Quality Expert Audit`: **PASSED** (Cobertura completa de requerimientos).
+  * `Security Expert Audit`: **PASSED** (SAST y seguridad Android).
+  * **Estado General**: **PIPELINE COMPLETED SUCCESSFULLY**.

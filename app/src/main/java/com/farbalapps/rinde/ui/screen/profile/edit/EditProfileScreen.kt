@@ -1,34 +1,38 @@
 package com.farbalapps.rinde.ui.screen.profile.edit
 
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil.compose.AsyncImage
-import androidx.compose.ui.res.stringResource
 import com.farbalapps.rinde.R
+import com.farbalapps.rinde.ui.screen.profile.edit.components.ChangePasswordDialog
 import com.farbalapps.rinde.ui.screen.profile.edit.components.EditAvatarSection
+import com.farbalapps.rinde.ui.screen.profile.edit.components.PermanentDeleteConfirmationDialog
 import com.farbalapps.rinde.ui.screen.profile.edit.components.PrivacyToggleSection
+import com.farbalapps.rinde.ui.screen.profile.edit.components.SoftAccountActionDialog
 import com.farbalapps.rinde.ui.theme.RindeTheme
-import androidx.compose.ui.tooling.preview.Preview
 
 @Composable
 fun EditProfileScreen(
@@ -37,6 +41,7 @@ fun EditProfileScreen(
     viewModel: EditProfileViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
 
     LaunchedEffect(uiState.isSuccess) {
         if (uiState.isSuccess) {
@@ -46,7 +51,33 @@ fun EditProfileScreen(
 
     LaunchedEffect(uiState.isAccountDeleted) {
         if (uiState.isAccountDeleted) {
+            Toast.makeText(
+                context,
+                context.getString(R.string.account_deleted_success),
+                Toast.LENGTH_LONG
+            ).show()
             onAccountDeleted()
+        }
+    }
+
+    LaunchedEffect(uiState.isAccountSuspended) {
+        if (uiState.isAccountSuspended) {
+            Toast.makeText(
+                context,
+                context.getString(R.string.account_suspended_success),
+                Toast.LENGTH_LONG
+            ).show()
+            onAccountDeleted()
+        }
+    }
+
+    LaunchedEffect(uiState.changePasswordSuccess) {
+        if (uiState.changePasswordSuccess) {
+            Toast.makeText(
+                context,
+                context.getString(R.string.change_password_success),
+                Toast.LENGTH_SHORT
+            ).show()
         }
     }
 
@@ -57,7 +88,15 @@ fun EditProfileScreen(
         onPhotoChange = { viewModel.onPhotoChange(it) },
         onPrivacyToggle = { viewModel.togglePrivacy(it) },
         onSave = { viewModel.saveProfile() },
-        onDeleteAccount = { viewModel.deleteAccount() }
+        onOpenChangePassword = { viewModel.openChangePasswordDialog() },
+        onChangePasswordConfirm = { current, new, confirm ->
+            viewModel.changePassword(current, new, confirm)
+        },
+        onOpenAccountManagement = { viewModel.openAccountManagementDialog() },
+        onSuspendAccount = { viewModel.suspendAccount() },
+        onProceedToPermanentDelete = { viewModel.proceedToPermanentDeleteDialog() },
+        onConfirmPermanentDelete = { viewModel.deleteAccountPermanently() },
+        onDismissDialog = { viewModel.dismissDialog() }
     )
 }
 
@@ -70,14 +109,24 @@ fun EditProfileContent(
     onPhotoChange: (String?) -> Unit,
     onPrivacyToggle: (Boolean) -> Unit,
     onSave: () -> Unit,
-    onDeleteAccount: () -> Unit
+    onOpenChangePassword: () -> Unit,
+    onChangePasswordConfirm: (current: String, new: String, confirm: String) -> Unit,
+    onOpenAccountManagement: () -> Unit,
+    onSuspendAccount: () -> Unit,
+    onProceedToPermanentDelete: () -> Unit,
+    onConfirmPermanentDelete: () -> Unit,
+    onDismissDialog: () -> Unit
 ) {
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             CenterAlignedTopAppBar(
-                title = { 
-                    Text(stringResource(R.string.edit_profile_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) 
+                title = {
+                    Text(
+                        stringResource(R.string.edit_profile_title),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -91,18 +140,53 @@ fun EditProfileContent(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(horizontal = 24.dp)
-                .verticalScroll(androidx.compose.foundation.rememberScrollState())
+                .padding(horizontal = 18.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
+            Spacer(modifier = Modifier.height(2.dp))
+
             EditProfileForm(
                 uiState = uiState,
                 onNameChange = onNameChange,
                 onPhotoChange = onPhotoChange,
                 onPrivacyToggle = onPrivacyToggle,
                 onSave = onSave,
-                onDeleteAccount = onDeleteAccount
+                onOpenChangePassword = onOpenChangePassword,
+                onOpenAccountManagement = onOpenAccountManagement
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+    }
+
+    // --- Diálogos Modal Conectados ---
+
+    when (uiState.activeDialog) {
+        EditProfileActiveDialog.CHANGE_PASSWORD -> {
+            ChangePasswordDialog(
+                onDismiss = onDismissDialog,
+                onConfirm = onChangePasswordConfirm,
+                isLoading = uiState.isChangingPassword,
+                errorMessage = uiState.changePasswordError
             )
         }
+        EditProfileActiveDialog.SOFT_OPTIONS -> {
+            SoftAccountActionDialog(
+                onDismiss = onDismissDialog,
+                onSuspend = onSuspendAccount,
+                onProceedToPermanentDelete = onProceedToPermanentDelete,
+                isLoading = uiState.isLoading
+            )
+        }
+        EditProfileActiveDialog.PERMANENT_DELETE -> {
+            PermanentDeleteConfirmationDialog(
+                onDismiss = onDismissDialog,
+                onConfirmDelete = onConfirmPermanentDelete,
+                isLoading = uiState.isLoading
+            )
+        }
+        EditProfileActiveDialog.NONE -> Unit
     }
 }
 
@@ -114,7 +198,8 @@ fun EditProfileForm(
     onPhotoChange: (String?) -> Unit,
     onPrivacyToggle: (Boolean) -> Unit,
     onSave: () -> Unit,
-    onDeleteAccount: () -> Unit
+    onOpenChangePassword: () -> Unit,
+    onOpenAccountManagement: () -> Unit
 ) {
     val photoLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
@@ -138,12 +223,16 @@ fun EditProfileForm(
         )
     }
 
-    Spacer(modifier = Modifier.height(16.dp))
-
-    // Avatar Selection
-    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+    // 1. Hero Section: Avatar compacto con edición
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        contentAlignment = Alignment.Center
+    ) {
         EditAvatarSection(
             photoUrl = uiState.photoUrl,
+            size = 120.dp,
             onClick = {
                 if (uiState.photoUrl.isNullOrBlank()) {
                     photoLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
@@ -154,134 +243,233 @@ fun EditProfileForm(
         )
     }
 
-    Spacer(modifier = Modifier.height(40.dp))
-
-    Text(
-        text = stringResource(R.string.edit_profile_label_name),
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.primary,
-        fontWeight = FontWeight.Bold,
-        modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
-    )
-    
-    OutlinedTextField(
-        value = uiState.name,
-        onValueChange = onNameChange,
-        modifier = Modifier.fillMaxWidth(),
-        singleLine = true,
-        shape = MaterialTheme.shapes.medium
-    )
-
-    Spacer(modifier = Modifier.height(24.dp))
-
-    // Privacy Option
-    PrivacyToggleSection(
-        isPrivate = uiState.isPrivate,
-        onToggle = onPrivacyToggle
-    )
-
-    Spacer(modifier = Modifier.height(40.dp))
-
-    if (uiState.isLoading) {
-        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
-        }
-    } else {
-        Button(
-            onClick = onSave,
-            modifier = Modifier.fillMaxWidth().height(56.dp),
-            shape = MaterialTheme.shapes.large
+    // 2. Tarjeta: Información Personal
+    Card(
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text(stringResource(R.string.edit_profile_btn_save), fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            // Campo Nombre
+            OutlinedTextField(
+                value = uiState.name,
+                onValueChange = onNameChange,
+                label = { Text(stringResource(R.string.edit_profile_label_name)) },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                },
+                shape = MaterialTheme.shapes.small
+            )
+
+            // Fila Correo (Informativo / no editable compacto)
+            if (uiState.email.isNotBlank()) {
+                Surface(
+                    shape = MaterialTheme.shapes.small,
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Email,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = uiState.email,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Icon(
+                            imageVector = Icons.Default.Lock,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.outline,
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    // 3. Tarjeta: Seguridad y Privacidad
+    Card(
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 8.dp)
+        ) {
+            if (uiState.isGoogleUser) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.outline,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = stringResource(R.string.change_password_google_user),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(MaterialTheme.shapes.small)
+                        .clickable { onOpenChangePassword() }
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.LockReset,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = stringResource(R.string.edit_profile_btn_change_password),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+
+            HorizontalDivider(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+            )
+
+            // Toggle de Privacidad compacto
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = if (uiState.isPrivate) Icons.Default.Lock else Icons.Default.LockOpen,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column {
+                        Text(
+                            text = "Perfil Privado",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = if (uiState.isPrivate) "Solo tus seguidores ven tus posts" else "Público para todos",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                Switch(
+                    checked = uiState.isPrivate,
+                    onCheckedChange = onPrivacyToggle
+                )
+            }
         }
     }
 
     if (uiState.error != null) {
         Text(
-            text = uiState.error!!,
+            text = uiState.error,
             color = MaterialTheme.colorScheme.error,
             style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.padding(top = 8.dp, start = 4.dp)
+            modifier = Modifier.padding(start = 4.dp)
         )
     }
 
-    var showDeleteDialog by remember { mutableStateOf(false) }
-
-    if (showDeleteDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
-            title = {
-                Text(
-                    text = stringResource(R.string.settings_delete_account_dialog_title),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-            },
-            text = {
-                Text(
-                    text = stringResource(R.string.settings_delete_account_dialog_desc),
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        showDeleteDialog = false
-                        onDeleteAccount()
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                    shape = MaterialTheme.shapes.medium
-                ) {
-                    Text(
-                        text = stringResource(R.string.settings_delete_account_confirm),
-                        color = MaterialTheme.colorScheme.onError
-                    )
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
-                    Text(stringResource(R.string.btn_cancel))
-                }
-            }
-        )
+    // 4. Botón Guardar Cambios (Compacto)
+    if (uiState.isLoading) {
+        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(modifier = Modifier.size(28.dp))
+        }
+    } else {
+        Button(
+            onClick = onSave,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(46.dp),
+            shape = MaterialTheme.shapes.medium
+        ) {
+            Text(
+                stringResource(R.string.edit_profile_btn_save),
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
     }
 
-    Spacer(modifier = Modifier.height(36.dp))
-
-    // Zona de eliminación de cuenta
-    HorizontalDivider(
-        modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-    )
-
-    Spacer(modifier = Modifier.height(20.dp))
-
-    OutlinedButton(
-        onClick = { showDeleteDialog = true },
-        modifier = Modifier.fillMaxWidth().height(50.dp),
-        shape = MaterialTheme.shapes.large,
-        colors = ButtonDefaults.outlinedButtonColors(
+    // 5. Zona de Peligro / Gestión de Cuenta (Compacto)
+    TextButton(
+        onClick = onOpenAccountManagement,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(38.dp),
+        colors = ButtonDefaults.textButtonColors(
             contentColor = MaterialTheme.colorScheme.error
-        ),
-        border = androidx.compose.foundation.BorderStroke(
-            1.dp,
-            MaterialTheme.colorScheme.error.copy(alpha = 0.4f)
         )
     ) {
         Icon(
             imageVector = Icons.Default.DeleteForever,
             contentDescription = null,
-            modifier = Modifier.size(20.dp),
+            modifier = Modifier.size(16.dp),
             tint = MaterialTheme.colorScheme.error
         )
-        Spacer(modifier = Modifier.width(8.dp))
+        Spacer(modifier = Modifier.width(6.dp))
         Text(
             text = stringResource(R.string.settings_btn_delete_account),
+            style = MaterialTheme.typography.bodySmall,
             fontWeight = FontWeight.SemiBold
         )
     }
-
-    Spacer(modifier = Modifier.height(32.dp))
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -306,15 +494,16 @@ private fun PhotoOptionsBottomSheet(
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
-            
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .clip(MaterialTheme.shapes.medium)
                     .clickable { onChooseFromGallery() }
                     .padding(vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Default.PhotoLibrary, contentDescription = null)
+                Icon(Icons.Default.PhotoLibrary, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 Spacer(modifier = Modifier.width(16.dp))
                 Text("Elegir de la galería", style = MaterialTheme.typography.bodyLarge)
             }
@@ -322,19 +511,22 @@ private fun PhotoOptionsBottomSheet(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .clip(MaterialTheme.shapes.medium)
                     .clickable { onDeletePhoto() }
                     .padding(vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
                 Spacer(modifier = Modifier.width(16.dp))
-                Text("Eliminar foto actual", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.error)
+                Text(
+                    "Eliminar foto actual",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.error
+                )
             }
         }
     }
 }
-
-
 
 @Preview(showBackground = true)
 @Composable
@@ -343,6 +535,7 @@ fun EditProfileScreenPreview() {
         EditProfileContent(
             uiState = EditProfileUiState(
                 name = "Eduardo Farbal",
+                email = "eduardo@example.com",
                 isPrivate = true
             ),
             onBack = {},
@@ -350,7 +543,13 @@ fun EditProfileScreenPreview() {
             onPhotoChange = {},
             onPrivacyToggle = {},
             onSave = {},
-            onDeleteAccount = {}
+            onOpenChangePassword = {},
+            onChangePasswordConfirm = { _, _, _ -> },
+            onOpenAccountManagement = {},
+            onSuspendAccount = {},
+            onProceedToPermanentDelete = {},
+            onConfirmPermanentDelete = {},
+            onDismissDialog = {}
         )
     }
 }

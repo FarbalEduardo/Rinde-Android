@@ -15,6 +15,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+import com.farbalapps.rinde.domain.usecase.account.ReactivateAccountUseCase
+
 data class LoginUIState(
     val email: String = "",
     val emailError: String? = null,
@@ -23,7 +25,11 @@ data class LoginUIState(
     val isLoading: Boolean = false,
     val loginError: String? = null,
     val isSuccess: Boolean = false,
-    val wasAttempted: Boolean = false
+    val wasAttempted: Boolean = false,
+    val showReactivateDialog: Boolean = false,
+    val pendingUserId: String = "",
+    val pendingUserEmail: String = "",
+    val reactivatedSuccess: Boolean = false
 )
 
 @HiltViewModel
@@ -32,6 +38,7 @@ class LoginViewModel @Inject constructor(
     private val signUpUseCase: com.farbalapps.rinde.domain.usecase.SignUpUseCase,
     private val googleSignInUseCase: com.farbalapps.rinde.domain.usecase.GoogleSignInUseCase,
     private val resetPasswordUseCase: com.farbalapps.rinde.domain.usecase.ResetPasswordUseCase,
+    private val reactivateAccountUseCase: ReactivateAccountUseCase,
     private val authRepository: com.farbalapps.rinde.domain.repository.AuthRepository,
     private val sessionManager: SessionManager,
     private val validateEmail: ValidateEmail,
@@ -88,8 +95,7 @@ class LoginViewModel @Inject constructor(
                     is Resource.Success -> {
                         val user = result.data
                         if (user != null) {
-                            sessionManager.saveSession(user.id, user.email)
-                            _state.update { it.copy(isLoading = false, isSuccess = true) }
+                            handlePostLoginCheck(user)
                         }
                     }
                     is Resource.Error -> {
@@ -117,14 +123,71 @@ class LoginViewModel @Inject constructor(
                 val user = result.data
                 if (user != null) {
                     viewModelScope.launch {
-                        sessionManager.saveSession(user.id, user.email)
-                        _state.update { it.copy(isLoading = false, isSuccess = true) }
+                        handlePostLoginCheck(user)
                     }
                 }
             }
             is Resource.Error -> {
                 _state.update { it.copy(isLoading = false, loginError = result.message) }
             }
+        }
+    }
+
+    private suspend fun handlePostLoginCheck(user: com.farbalapps.rinde.domain.model.User) {
+        val isSuspended = reactivateAccountUseCase.isSuspended(user.id).getOrDefault(false)
+        if (isSuspended) {
+            _state.update {
+                it.copy(
+                    isLoading = false,
+                    showReactivateDialog = true,
+                    pendingUserId = user.id,
+                    pendingUserEmail = user.email
+                )
+            }
+        } else {
+            sessionManager.saveSession(user.id, user.email)
+            _state.update { it.copy(isLoading = false, isSuccess = true) }
+        }
+    }
+
+    fun confirmReactivation() {
+        val uid = _state.value.pendingUserId
+        val email = _state.value.pendingUserEmail
+        if (uid.isBlank()) return
+
+        viewModelScope.launch {
+            _state.update { it.copy(isLoading = true) }
+            val result = reactivateAccountUseCase(uid)
+            if (result.isSuccess) {
+                sessionManager.saveSession(uid, email)
+                _state.update {
+                    it.copy(
+                        isLoading = false,
+                        showReactivateDialog = false,
+                        isSuccess = true,
+                        reactivatedSuccess = true
+                    )
+                }
+            } else {
+                _state.update {
+                    it.copy(
+                        isLoading = false,
+                        loginError = result.exceptionOrNull()?.localizedMessage ?: "Error al reactivar cuenta"
+                    )
+                }
+            }
+        }
+    }
+
+    fun dismissReactivation() {
+        authRepository.logout()
+        _state.update {
+            it.copy(
+                showReactivateDialog = false,
+                pendingUserId = "",
+                pendingUserEmail = "",
+                isLoading = false
+            )
         }
     }
 }

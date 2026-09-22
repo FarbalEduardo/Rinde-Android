@@ -27,7 +27,8 @@ data class FinancialProfile(
     val currency: String = "MXN",
     val updatedAt: Long = System.currentTimeMillis(),
     val customStartDate: Long? = null,
-    val customEndDate: Long? = null
+    val customEndDate: Long? = null,
+    val isVariableIncome: Boolean = false
 ) {
     /**
      * Días que abarca el periodo personalizado (mínimo 1).

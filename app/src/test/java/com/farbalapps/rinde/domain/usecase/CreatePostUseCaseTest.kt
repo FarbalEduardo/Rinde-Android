@@ -34,7 +34,7 @@ class CreatePostUseCaseTest {
 
         every { authRepository.getCurrentUser() } returns User(
             id = "user_123",
-            name = "Test User",
+            displayName = "Test User",
             email = "test@example.com"
         )
 
@@ -60,7 +60,7 @@ class CreatePostUseCaseTest {
 
         assertTrue(result.isFailure)
         assertEquals("El título es obligatorio", result.exceptionOrNull()?.message)
-        coVerify(exactly = 0) { feedRepository.uploadPostWithImages(any(), any()) }
+        coVerify(exactly = 0) { feedRepository.uploadPost(any(), any()) }
     }
 
     /**
@@ -78,7 +78,7 @@ class CreatePostUseCaseTest {
 
         assertTrue(result.isFailure)
         assertEquals("La descripción es obligatoria", result.exceptionOrNull()?.message)
-        coVerify(exactly = 0) { feedRepository.uploadPostWithImages(any(), any()) }
+        coVerify(exactly = 0) { feedRepository.uploadPost(any(), any()) }
     }
 
     /**
@@ -98,7 +98,7 @@ class CreatePostUseCaseTest {
 
         assertTrue(result.isFailure)
         assertEquals("Lenguaje ofensivo", result.exceptionOrNull()?.message)
-        coVerify(exactly = 0) { feedRepository.uploadPostWithImages(any(), any()) }
+        coVerify(exactly = 0) { feedRepository.uploadPost(any(), any()) }
     }
 
     /**
@@ -106,8 +106,8 @@ class CreatePostUseCaseTest {
      */
     @Test
     fun `cuando los datos son validos y moderacion aprueba debe publicar con exito`() = runBlocking {
-        every { moderationExpert.analyzeText(any(), any()) } returns ContentModerator.ModerationResult.Approved
-        coEvery { feedRepository.uploadPostWithImages(any(), any()) } returns Result.success(Unit)
+        every { moderationExpert.analyzeText(any(), any()) } returns ContentModerator.ModerationResult.Allowed
+        coEvery { feedRepository.uploadPost(any(), any()) } returns Result.success(Unit)
 
         val photos = listOf("file://photo1.jpg", "file://photo2.jpg")
         val result = createPostUseCase(
@@ -122,6 +122,6 @@ class CreatePostUseCaseTest {
         )
 
         assertTrue(result.isSuccess)
-        coVerify(exactly = 1) { feedRepository.uploadPostWithImages(any(), photos) }
+        coVerify(exactly = 1) { feedRepository.uploadPost(any(), photos) }
     }
 }

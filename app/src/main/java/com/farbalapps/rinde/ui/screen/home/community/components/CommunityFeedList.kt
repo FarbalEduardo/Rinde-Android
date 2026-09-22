@@ -113,11 +113,16 @@ fun CommunityFeedList(
                     val isDiscoverLoading = loadState.refresh is LoadState.Loading ||
                             loadState.mediator?.refresh is LoadState.Loading ||
                             loadState.source.refresh is LoadState.Loading
-                    val isDiscoverError = loadState.refresh is LoadState.Error ||
-                            loadState.mediator?.refresh is LoadState.Error
+                    val isDiscoverError = (loadState.refresh is LoadState.Error ||
+                            loadState.mediator?.refresh is LoadState.Error) && discoverItems.itemCount == 0
                     val endOfPaginationReached = (loadState.refresh as? LoadState.NotLoading)?.endOfPaginationReached == true
+                    val isDiscoverTrulyEmpty = discoverItems.itemCount == 0 &&
+                            !isDiscoverLoading &&
+                            !isDiscoverError &&
+                            endOfPaginationReached &&
+                            loadState.mediator?.refresh !is LoadState.Loading
 
-                    if (isDiscoverError && discoverItems.itemCount == 0) {
+                    if (isDiscoverError) {
                         val error = (loadState.refresh as? LoadState.Error)?.error
                             ?: (loadState.mediator?.refresh as? LoadState.Error)?.error
                         item {
@@ -126,11 +131,11 @@ fun CommunityFeedList(
                                 onRetry = { discoverItems.retry() }
                             )
                         }
-                    } else if (discoverItems.itemCount == 0 && (isDiscoverLoading || !endOfPaginationReached)) {
+                    } else if (discoverItems.itemCount == 0 && !isDiscoverTrulyEmpty) {
                         items(5) {
                             PostCardSkeleton(modifier = Modifier.padding(horizontal = paddingMedium / 2, vertical = 2.dp))
                         }
-                    } else if (discoverItems.itemCount == 0) {
+                    } else if (isDiscoverTrulyEmpty) {
                         item {
                             EmptyFeedState(tab = CommunityTab.DISCOVER)
                         }
@@ -214,11 +219,19 @@ fun CommunityFeedList(
                 }
                 CommunityTab.HOT -> {
                     val loadState = hotItems.loadState
-                    val isHotLoading = loadState.refresh is LoadState.Loading
-                    val isHotError = loadState.refresh is LoadState.Error ||
-                            loadState.mediator?.refresh is LoadState.Error
+                    val isHotLoading = loadState.refresh is LoadState.Loading ||
+                            loadState.mediator?.refresh is LoadState.Loading ||
+                            loadState.source.refresh is LoadState.Loading
+                    val isHotError = (loadState.refresh is LoadState.Error ||
+                            loadState.mediator?.refresh is LoadState.Error) && hotItems.itemCount == 0
+                    val isHotEndOfPagination = (loadState.refresh as? LoadState.NotLoading)?.endOfPaginationReached == true
+                    val isHotTrulyEmpty = hotItems.itemCount == 0 &&
+                            !isHotLoading &&
+                            !isHotError &&
+                            isHotEndOfPagination &&
+                            loadState.mediator?.refresh !is LoadState.Loading
 
-                    if (isHotError && hotItems.itemCount == 0) {
+                    if (isHotError) {
                         val error = (loadState.refresh as? LoadState.Error)?.error
                             ?: (loadState.mediator?.refresh as? LoadState.Error)?.error
                         item {
@@ -227,11 +240,11 @@ fun CommunityFeedList(
                                 onRetry = { hotItems.retry() }
                             )
                         }
-                    } else if (hotItems.itemCount == 0 && isHotLoading) {
+                    } else if (hotItems.itemCount == 0 && !isHotTrulyEmpty) {
                         items(5) {
                             PostCardSkeleton(modifier = Modifier.padding(horizontal = paddingMedium / 2, vertical = 2.dp))
                         }
-                    } else if (hotItems.itemCount == 0) {
+                    } else if (isHotTrulyEmpty) {
                         item {
                             EmptyFeedState(tab = CommunityTab.HOT)
                         }

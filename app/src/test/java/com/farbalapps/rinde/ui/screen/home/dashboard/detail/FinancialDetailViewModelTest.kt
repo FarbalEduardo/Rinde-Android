@@ -5,6 +5,7 @@ import com.farbalapps.rinde.domain.model.*
 import com.farbalapps.rinde.domain.repository.DashboardRepository
 import com.farbalapps.rinde.domain.repository.GoalsRepository
 import com.farbalapps.rinde.domain.repository.ListRepository
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
@@ -34,6 +35,7 @@ class FinancialDetailViewModelTest {
     private val itemsFlow = MutableStateFlow<List<ShoppingItem>>(emptyList())
     private val goalsFlow = MutableStateFlow<List<SavingsGoal>>(emptyList())
     private val extraExpensesFlow = MutableStateFlow<List<ExtraExpense>>(emptyList())
+    private val extraIncomesFlow = MutableStateFlow<List<ExtraIncome>>(emptyList())
 
     private lateinit var viewModel: FinancialDetailViewModel
 
@@ -46,7 +48,10 @@ class FinancialDetailViewModelTest {
         every { goalsRepository.getGoals() } returns goalsFlow
         every { dashboardRepository.getExtraExpensesBetween(any(), any()) } returns extraExpensesFlow
         every { dashboardRepository.getExtraExpenses(any(), any()) } returns extraExpensesFlow
+        every { dashboardRepository.getExtraIncomes(any(), any()) } returns extraIncomesFlow
+        every { dashboardRepository.getExtraIncomesBetween(any(), any()) } returns extraIncomesFlow
         every { dashboardRepository.getMonthlyRecord(any(), any()) } returns MutableStateFlow(null)
+        every { dashboardRepository.getMonthlyVariableIncome(any(), any()) } returns MutableStateFlow(null)
 
         viewModel = FinancialDetailViewModel(dashboardRepository, listRepository, goalsRepository)
     }
@@ -136,6 +141,47 @@ class FinancialDetailViewModelTest {
     }
 
     @Test
+    fun testExtraIncomesIncludedInPeriodIncomeAndProportional() = runTest {
+        viewModel.uiState.test {
+            awaitItem() // initial
+
+            // Sueldo base $20,000 + Ganancia extra $5,000
+            profileFlow.value = FinancialProfile(
+                income = 20000.0,
+                incomeFrequency = IncomeFrequency.MONTHLY
+            )
+            extraIncomesFlow.value = listOf(
+                ExtraIncome(
+                    id = "inc_1",
+                    label = "Bono",
+                    amount = 5000.0,
+                    month = 9,
+                    year = 2026,
+                    incomeDate = System.currentTimeMillis()
+                )
+            )
+            testScheduler.advanceUntilIdle()
+
+            // 1. En mes: Ingreso Total = 20000 + 5000 = 25000
+            val monthState = expectMostRecentItem()
+            assertEquals(20000.0, monthState.basePeriodIncome, 0.01)
+            assertEquals(5000.0, monthState.extraIncomesTotal, 0.01)
+            assertEquals(25000.0, monthState.periodIncome, 0.01)
+
+            // 2. En quincena (15 días): Base = 10,000; Extra proporcional = (5000/30)*15 = 2,500; Total = 12,500
+            viewModel.setPeriodType(PeriodType.FORTNIGHT)
+            testScheduler.advanceUntilIdle()
+
+            val fortnightState = expectMostRecentItem()
+            assertEquals(10000.0, fortnightState.basePeriodIncome, 0.01)
+            assertEquals(2500.0, fortnightState.proportionalExtraIncome, 0.01)
+            assertEquals(12500.0, fortnightState.periodIncome, 0.01)
+
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
     fun testOnlyBoughtShoppingItemsAreCountedAndDisplayed() = runTest {
         viewModel.uiState.test {
             awaitItem() // initial
@@ -203,5 +249,345 @@ class FinancialDetailViewModelTest {
 
             cancelAndIgnoreRemainingEvents()
         }
+    }
+
+    @Test
+    fun testCalendarAndAddExpenseModalControls() = runTest {
+        viewModel.uiState.test {
+            awaitItem()
+
+            assertFalse(viewModel.uiState.value.isFinancialCalendarOpen)
+            assertFalse(viewModel.uiState.value.isAddExpenseSheetOpen)
+
+            viewModel.openFinancialCalendar()
+            testScheduler.advanceUntilIdle()
+            assertTrue(expectMostRecentItem().isFinancialCalendarOpen)
+
+            viewModel.closeFinancialCalendar()
+            testScheduler.advanceUntilIdle()
+            assertFalse(expectMostRecentItem().isFinancialCalendarOpen)
+
+            viewModel.openAddExpenseSheet()
+            testScheduler.advanceUntilIdle()
+            assertTrue(expectMostRecentItem().isAddExpenseSheetOpen)
+
+            viewModel.closeAddExpenseSheet()
+            testScheduler.advanceUntilIdle()
+            assertFalse(expectMostRecentItem().isAddExpenseSheetOpen)
+
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun testPastMonthIncomeDoesNotTakeNewCurrentMonthProfile() = runTest {
+        viewModel.uiState.test {
+            awaitItem() // initial
+
+            // Sueldo fijo configurado para el mes actual
+            val now = System.currentTimeMillis()
+            profileFlow.value = FinancialProfile(
+                income = 25000.0,
+                incomeFrequency = IncomeFrequency.MONTHLY,
+                updatedAt = now,
+                customStartDate = now
+            )
+            testScheduler.advanceUntilIdle()
+
+            // En el mes actual, el ingreso base es $25,000
+            val currentMonthState = expectMostRecentItem()
+            assertEquals(25000.0, currentMonthState.basePeriodIncome, 0.01)
+
+            // Navegar al mes pasado (no tiene monthlyRecord previo)
+            viewModel.navigatePrevious()
+            testScheduler.advanceUntilIdle()
+
+            // El mes pasado no debe ser afectado por el nuevo sueldo, debe mantenerse en 0.0
+            val pastMonthState = expectMostRecentItem()
+            assertEquals(0.0, pastMonthState.basePeriodIncome, 0.01)
+
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun testIncomeSheetModalControls() = runTest {
+        viewModel.uiState.test {
+            awaitItem()
+
+            assertFalse(viewModel.uiState.value.isIncomeSheetOpen)
+
+            viewModel.openIncomeSheet()
+            testScheduler.advanceUntilIdle()
+            assertTrue(expectMostRecentItem().isIncomeSheetOpen)
+
+            viewModel.closeIncomeSheet()
+            testScheduler.advanceUntilIdle()
+            assertFalse(expectMostRecentItem().isIncomeSheetOpen)
+
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun testSaveIncomeFixed() = runTest {
+        val now = System.currentTimeMillis()
+        profileFlow.value = FinancialProfile(id = "user1", income = 20000.0)
+        testScheduler.advanceUntilIdle()
+
+        viewModel.openIncomeSheet()
+        viewModel.saveIncome(
+            income = 35000.0,
+            frequency = IncomeFrequency.MONTHLY,
+            customStartDate = now,
+            customEndDate = null,
+            isVariable = false,
+            paymentDate = now
+        )
+        testScheduler.advanceUntilIdle()
+
+        coVerify {
+            dashboardRepository.saveFinancialProfile(
+                income = 35000.0,
+                frequency = IncomeFrequency.MONTHLY,
+                currency = "MXN",
+                customStartDate = now,
+                customEndDate = null,
+                isVariableIncome = false
+            )
+        }
+        assertFalse(viewModel.uiState.value.isIncomeSheetOpen)
+    }
+
+    @Test
+    fun testSaveIncomeVariable() = runTest {
+        val now = System.currentTimeMillis()
+        val currentProfile = FinancialProfile(id = "user1", income = 20000.0)
+        profileFlow.value = currentProfile
+        testScheduler.advanceUntilIdle()
+
+        viewModel.openIncomeSheet()
+        viewModel.saveIncome(
+            income = 18500.0,
+            frequency = IncomeFrequency.MONTHLY,
+            customStartDate = now,
+            customEndDate = null,
+            isVariable = true,
+            paymentDate = now
+        )
+        testScheduler.advanceUntilIdle()
+
+        coVerify {
+            dashboardRepository.saveFinancialProfile(
+                income = 18500.0,
+                frequency = IncomeFrequency.MONTHLY,
+                currency = "MXN",
+                customStartDate = now,
+                customEndDate = null,
+                isVariableIncome = true
+            )
+            dashboardRepository.saveMonthlyVariableIncome(
+                year = any(),
+                month = any(),
+                amount = 18500.0,
+                paymentDate = now
+            )
+        }
+        assertFalse(viewModel.uiState.value.isIncomeSheetOpen)
+    }
+
+    @Test
+    fun testDeleteSalarySingleMonth() = runTest {
+        val currentProfile = FinancialProfile(id = "user1", income = 25000.0)
+        profileFlow.value = currentProfile
+        testScheduler.advanceUntilIdle()
+
+        viewModel.deleteSalarySingleMonth(2026, 9)
+        testScheduler.advanceUntilIdle()
+
+        coVerify {
+            dashboardRepository.saveMonthlyRecord(
+                match { it.year == 2026 && it.month == 9 && it.income == 0.0 && it.isClosed }
+            )
+        }
+        assertFalse(viewModel.uiState.value.isDeleteSalaryDialogOpen)
+    }
+
+    @Test
+    fun testDeleteSalaryFutureMonths() = runTest {
+        val calStart = java.util.Calendar.getInstance().apply {
+            set(2026, java.util.Calendar.JANUARY, 1)
+        }
+        val currentProfile = FinancialProfile(
+            id = "user1",
+            income = 30000.0,
+            incomeFrequency = IncomeFrequency.MONTHLY,
+            customStartDate = calStart.timeInMillis
+        )
+        profileFlow.value = currentProfile
+        testScheduler.advanceUntilIdle()
+
+        viewModel.deleteSalaryFutureMonths(2026, 10)
+        testScheduler.advanceUntilIdle()
+
+        coVerify {
+            dashboardRepository.saveFinancialProfile(
+                income = 30000.0,
+                frequency = IncomeFrequency.MONTHLY,
+                currency = "MXN",
+                customStartDate = calStart.timeInMillis,
+                customEndDate = any(),
+                isVariableIncome = false
+            )
+        }
+        assertFalse(viewModel.uiState.value.isDeleteSalaryDialogOpen)
+    }
+
+    @Test
+    fun testDeleteSalaryAll() = runTest {
+        val currentProfile = FinancialProfile(
+            id = "user1",
+            income = 30000.0,
+            incomeFrequency = IncomeFrequency.MONTHLY
+        )
+        profileFlow.value = currentProfile
+        testScheduler.advanceUntilIdle()
+
+        viewModel.deleteSalaryAll()
+        testScheduler.advanceUntilIdle()
+
+        coVerify {
+            dashboardRepository.saveFinancialProfile(
+                income = 0.0,
+                frequency = IncomeFrequency.MONTHLY,
+                currency = "MXN",
+                customStartDate = null,
+                customEndDate = null,
+                isVariableIncome = false
+            )
+        }
+        assertFalse(viewModel.uiState.value.isDeleteSalaryDialogOpen)
+    }
+
+    @Test
+    fun testExtraIncomeSheetAndModalControls() = runTest {
+        viewModel.uiState.test {
+            awaitItem()
+
+            assertFalse(viewModel.uiState.value.isAddIncomeSheetOpen)
+            assertFalse(viewModel.uiState.value.isEditIncomeSheetOpen)
+            assertEquals(null, viewModel.uiState.value.editingIncome)
+
+            viewModel.openAddExtraIncomeSheet()
+            testScheduler.advanceUntilIdle()
+            assertTrue(expectMostRecentItem().isAddIncomeSheetOpen)
+
+            viewModel.closeAddExtraIncomeSheet()
+            testScheduler.advanceUntilIdle()
+            assertFalse(expectMostRecentItem().isAddIncomeSheetOpen)
+
+            val sampleIncome = ExtraIncome(
+                id = "inc_test",
+                label = "Comisión",
+                amount = 2500.0,
+                month = 9,
+                year = 2026,
+                incomeDate = System.currentTimeMillis()
+            )
+
+            viewModel.openEditExtraIncome(sampleIncome)
+            testScheduler.advanceUntilIdle()
+            val editState = expectMostRecentItem()
+            assertTrue(editState.isEditIncomeSheetOpen)
+            assertEquals(sampleIncome, editState.editingIncome)
+
+            viewModel.closeEditExtraIncome()
+            testScheduler.advanceUntilIdle()
+            val closedEditState = expectMostRecentItem()
+            assertFalse(closedEditState.isEditIncomeSheetOpen)
+            assertEquals(null, closedEditState.editingIncome)
+
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun testAddExtraIncomeCallsRepository() = runTest {
+        val now = System.currentTimeMillis()
+        viewModel.openAddExtraIncomeSheet()
+        viewModel.addExtraIncome(
+            label = "Venta freelance",
+            amount = 3500.0,
+            iconKey = "payments",
+            incomeDate = now
+        )
+        testScheduler.advanceUntilIdle()
+
+        coVerify {
+            dashboardRepository.addExtraIncome(
+                label = "Venta freelance",
+                amount = 3500.0,
+                iconKey = "payments",
+                year = any(),
+                month = any(),
+                incomeDate = now
+            )
+        }
+        assertFalse(viewModel.uiState.value.isAddIncomeSheetOpen)
+    }
+
+    @Test
+    fun testUpdateExtraIncomeCallsRepository() = runTest {
+        val now = System.currentTimeMillis()
+        val income = ExtraIncome(
+            id = "inc_freelance",
+            label = "Freelance",
+            amount = 3000.0,
+            month = 9,
+            year = 2026,
+            incomeDate = now
+        )
+        viewModel.openEditExtraIncome(income)
+
+        viewModel.updateExtraIncome(
+            id = "inc_freelance",
+            label = "Freelance Actualizado",
+            amount = 4500.0,
+            incomeDate = now
+        )
+        testScheduler.advanceUntilIdle()
+
+        coVerify {
+            dashboardRepository.updateExtraIncome(
+                id = "inc_freelance",
+                label = "Freelance Actualizado",
+                amount = 4500.0,
+                incomeDate = now
+            )
+        }
+        assertFalse(viewModel.uiState.value.isEditIncomeSheetOpen)
+        assertEquals(null, viewModel.uiState.value.editingIncome)
+    }
+
+    @Test
+    fun testDeleteExtraIncomeCallsRepository() = runTest {
+        val income = ExtraIncome(
+            id = "inc_to_delete",
+            label = "Aguinaldo",
+            amount = 5000.0,
+            month = 9,
+            year = 2026,
+            incomeDate = System.currentTimeMillis()
+        )
+        viewModel.openEditExtraIncome(income)
+
+        viewModel.deleteExtraIncome("inc_to_delete")
+        testScheduler.advanceUntilIdle()
+
+        coVerify {
+            dashboardRepository.deleteExtraIncome("inc_to_delete")
+        }
+        assertFalse(viewModel.uiState.value.isEditIncomeSheetOpen)
+        assertEquals(null, viewModel.uiState.value.editingIncome)
     }
 }

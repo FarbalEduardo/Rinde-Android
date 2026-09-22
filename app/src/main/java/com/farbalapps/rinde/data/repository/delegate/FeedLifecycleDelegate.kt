@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import com.farbalapps.rinde.data.local.dao.PostDao
+import com.farbalapps.rinde.data.local.dao.ProfileDao
 import com.farbalapps.rinde.data.local.dao.SyncMetadataDao
 import com.farbalapps.rinde.data.local.dao.UserVoteDao
 import com.farbalapps.rinde.data.local.entity.SyncMetadataEntity
@@ -44,6 +45,7 @@ class FeedLifecycleDelegate @Inject constructor(
     private val database: FirebaseDatabase,
     private val workManager: WorkManager,
     private val postDao: PostDao,
+    private val profileDao: ProfileDao,
     private val syncMetadataDao: SyncMetadataDao,
     private val userVoteDao: UserVoteDao,
     private val savedPostsMemoryCache: SavedPostsMemoryCache,
@@ -303,6 +305,11 @@ class FeedLifecycleDelegate @Inject constructor(
 
         val workData = androidx.work.Data.Builder().putAll(inputMap).build()
 
+        val authorId = post.authorId.takeIf { it.isNotBlank() && it != "anonymous" } ?: firebaseAuth.currentUser?.uid
+        if (!authorId.isNullOrEmpty()) {
+            profileDao.updatePostsCount(authorId, 1)
+        }
+
         workManager.enqueue(
             OneTimeWorkRequestBuilder<CreatePostWorker>()
                 .setInputData(workData)
@@ -311,8 +318,22 @@ class FeedLifecycleDelegate @Inject constructor(
     }
 
     suspend fun deletePost(postId: String, photoUrls: List<String>): Result<Unit> = runCatching {
+        val post = postDao.getPostById(postId)
+        val authorId = post?.authorId ?: firebaseAuth.currentUser?.uid
+
         postDao.updatePostStatus(postId, false)
         firestore.collection("posts").document(postId).delete().await()
+
+        if (!authorId.isNullOrEmpty()) {
+            try {
+                firestore.collection("users").document(authorId)
+                    .update("postsCount", FieldValue.increment(-1)).await()
+            } catch (e: Exception) {
+                android.util.Log.w(TAG, "No se pudo decrementar postsCount en Firestore: ${e.message}")
+            }
+            profileDao.updatePostsCount(authorId, -1)
+        }
+
         android.util.Log.d(TAG, "Post eliminado de Firestore: $postId. Eliminando ${photoUrls.size} imágenes de Cloudinary...")
         photoUrls.forEach { photoUrl ->
             try {

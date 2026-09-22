@@ -42,12 +42,17 @@ fun ProfileHeaderCard(
 ) {
     val profile = uiState.profile
 
-    Surface(
+    Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        tonalElevation = 0.dp,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        ),
+        border = BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
             modifier = Modifier
@@ -64,7 +69,7 @@ fun ProfileHeaderCard(
                     modifier = Modifier
                         .size(70.dp)
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
                     contentAlignment = Alignment.Center
                 ) {
                     val photoUrl = profile?.photoUrl?.takeIf { it.isNotBlank() }
@@ -82,7 +87,7 @@ fun ProfileHeaderCard(
                             imageVector = Icons.Default.Person,
                             contentDescription = null,
                             modifier = Modifier.size(38.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = MaterialTheme.colorScheme.primary
                         )
                     }
                 }
@@ -101,7 +106,7 @@ fun ProfileHeaderCard(
                                 ?: stringResource(id = R.string.profile_default_name),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f, fill = false)
@@ -118,12 +123,12 @@ fun ProfileHeaderCard(
                         }
                     }
 
-                    if (!profile?.email.isNullOrBlank()) {
+                    if (uiState.isCurrentUser && !profile?.email.isNullOrBlank()) {
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = profile?.email ?: "",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -145,7 +150,7 @@ fun ProfileHeaderCard(
 
             Spacer(modifier = Modifier.height(14.dp))
             HorizontalDivider(
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
                 thickness = 0.8.dp
             )
             Spacer(modifier = Modifier.height(12.dp))
@@ -162,11 +167,15 @@ fun ProfileHeaderCard(
                 ) {
                     ProfileStatItem(
                         count = profile?.postsCount ?: 0,
-                        label = stringResource(id = R.string.profile_stat_posts)
+                        label = stringResource(id = R.string.profile_stat_posts),
+                        countColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        labelColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f)
                     )
                     ProfileStatItem(
                         count = profile?.commentsCount ?: 0,
-                        label = "Comentarios"
+                        label = stringResource(id = R.string.profile_stat_comments),
+                        countColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        labelColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f)
                     )
                 }
 
@@ -176,8 +185,8 @@ fun ProfileHeaderCard(
                         shape = RoundedCornerShape(12.dp),
                         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
                         colors = ButtonDefaults.filledTonalButtonColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = MaterialTheme.colorScheme.primary
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
                         )
                     ) {
                         Icon(
@@ -259,7 +268,7 @@ private fun ProfileHeaderBadges(profile: Profile?) {
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "Nivel ${profile?.trustLevel ?: "NUEVO"}",
+                        text = stringResource(R.string.profile_trust_level_format, profile?.trustLevel ?: "NUEVO"),
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSecondaryContainer
@@ -303,18 +312,23 @@ private fun ProfileHeaderBadges(profile: Profile?) {
 }
 
 @Composable
-fun ProfileStatItem(count: Int, label: String) {
+fun ProfileStatItem(
+    count: Int, 
+    label: String,
+    countColor: Color = MaterialTheme.colorScheme.onSurface,
+    labelColor: Color = MaterialTheme.colorScheme.onSurfaceVariant
+) {
     Column(horizontalAlignment = Alignment.Start) {
         Text(
             text = count.toString(),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
+            color = countColor
         )
         Text(
             text = label,
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = labelColor
         )
     }
 }
@@ -697,6 +711,45 @@ fun CurrencySelectorSheet(
                         }
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun ProfilePrivateNoticeCard(modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.Lock,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(28.dp)
+            )
+            Spacer(modifier = Modifier.width(14.dp))
+            Column {
+                Text(
+                    text = stringResource(R.string.profile_private_restricted_title),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = stringResource(R.string.profile_private_restricted_msg),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }

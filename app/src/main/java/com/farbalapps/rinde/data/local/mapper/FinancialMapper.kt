@@ -13,7 +13,8 @@ fun FinancialProfileEntity.toDomain(): FinancialProfile = FinancialProfile(
     currency = currency,
     updatedAt = updatedAt,
     customStartDate = customStartDate,
-    customEndDate = customEndDate
+    customEndDate = customEndDate,
+    isVariableIncome = isVariableIncome
 )
 
 fun FinancialProfile.toEntity(userId: String): FinancialProfileEntity = FinancialProfileEntity(
@@ -23,7 +24,8 @@ fun FinancialProfile.toEntity(userId: String): FinancialProfileEntity = Financia
     currency = currency,
     updatedAt = updatedAt,
     customStartDate = customStartDate,
-    customEndDate = customEndDate
+    customEndDate = customEndDate,
+    isVariableIncome = isVariableIncome
 )
 
 fun ExtraExpenseEntity.toDomain(): ExtraExpense = ExtraExpense(
@@ -34,7 +36,8 @@ fun ExtraExpenseEntity.toDomain(): ExtraExpense = ExtraExpense(
     iconKey = iconKey,
     month = month,
     year = year,
-    createdAt = createdAt
+    createdAt = createdAt,
+    expenseDate = if (expenseDate > 0) expenseDate else createdAt
 )
 
 fun ExtraExpense.toEntity(userId: String): ExtraExpenseEntity = ExtraExpenseEntity(
@@ -45,8 +48,35 @@ fun ExtraExpense.toEntity(userId: String): ExtraExpenseEntity = ExtraExpenseEnti
     iconKey = iconKey,
     month = month,
     year = year,
-    createdAt = createdAt
+    createdAt = createdAt,
+    expenseDate = expenseDate
 )
+
+fun com.farbalapps.rinde.data.local.entity.ExtraIncomeEntity.toDomain(): com.farbalapps.rinde.domain.model.ExtraIncome =
+    com.farbalapps.rinde.domain.model.ExtraIncome(
+        id = id,
+        userId = userId,
+        label = label,
+        amount = amount,
+        iconKey = iconKey,
+        month = month,
+        year = year,
+        createdAt = createdAt,
+        incomeDate = if (incomeDate > 0) incomeDate else createdAt
+    )
+
+fun com.farbalapps.rinde.domain.model.ExtraIncome.toEntity(userId: String): com.farbalapps.rinde.data.local.entity.ExtraIncomeEntity =
+    com.farbalapps.rinde.data.local.entity.ExtraIncomeEntity(
+        id = id,
+        userId = userId,
+        label = label,
+        amount = amount,
+        iconKey = iconKey,
+        month = month,
+        year = year,
+        createdAt = createdAt,
+        incomeDate = incomeDate
+    )
 
 fun com.farbalapps.rinde.data.local.entity.MonthlyFinancialRecordEntity.toDomain(): com.farbalapps.rinde.domain.model.MonthlyFinancialRecord =
     com.farbalapps.rinde.domain.model.MonthlyFinancialRecord(

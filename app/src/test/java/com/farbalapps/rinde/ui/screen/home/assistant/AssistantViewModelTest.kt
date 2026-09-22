@@ -39,18 +39,20 @@ class AssistantViewModelTest {
     private val aiRepository: AiRepository = mockk()
     private val auth: FirebaseAuth = mockk(relaxed = true)
     private val firebaseUser: FirebaseUser = mockk(relaxed = true)
+    private val logger: com.farbalapps.rinde.util.logger.AppLogger = mockk(relaxed = true)
 
     private lateinit var viewModel: AssistantViewModel
 
     @Before
     fun setUp() {
         every { auth.currentUser } returns firebaseUser
-        every { firebaseUser.uid } returns "user_123"
+        every { firebaseUser.uid } returns "test_user_123"
         every { listRepository.getItems() } returns flowOf(
             listOf(
-                ShoppingItem(id = "1", name = "Pollo", category = "Carnes", isCompleted = true),
-                ShoppingItem(id = "2", name = "Arroz", category = "Granos", isCompleted = true),
-                ShoppingItem(id = "3", name = "Detergente", category = "Limpieza", isCompleted = true) // non-cookable
+                ShoppingItem(id = "1", name = "Tomates", category = "Verduras", isCompleted = true),
+                ShoppingItem(id = "2", name = "Pollo", category = "Carnes", isCompleted = true),
+                ShoppingItem(id = "3", name = "Detergente", category = "Limpieza", isCompleted = true),
+                ShoppingItem(id = "4", name = "Arroz", category = "Granos", isCompleted = true)
             )
         )
         every { savedListRepository.getSavedLists() } returns flowOf(emptyList())
@@ -62,7 +64,8 @@ class AssistantViewModelTest {
             filterCookableItemsUseCase = filterCookableItemsUseCase,
             chatRepository = chatRepository,
             aiRepository = aiRepository,
-            auth = auth
+            auth = auth,
+            logger = logger
         )
     }
 
@@ -156,7 +159,8 @@ class AssistantViewModelTest {
             filterCookableItemsUseCase = filterCookableItemsUseCase,
             chatRepository = chatRepository,
             aiRepository = aiRepository,
-            auth = auth
+            auth = auth,
+            logger = logger
         )
 
         val chips = vm.uiState.value.availableIngredients

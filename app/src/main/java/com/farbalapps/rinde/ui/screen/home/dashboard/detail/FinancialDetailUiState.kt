@@ -1,6 +1,7 @@
 package com.farbalapps.rinde.ui.screen.home.dashboard.detail
 
 import com.farbalapps.rinde.domain.model.ExtraExpense
+import com.farbalapps.rinde.domain.model.ExtraIncome
 import com.farbalapps.rinde.domain.model.FinancialPeriod
 import com.farbalapps.rinde.domain.model.FinancialProfile
 import com.farbalapps.rinde.domain.model.PeriodType
@@ -17,18 +18,34 @@ data class FinancialDetailUiState(
     val periodType: PeriodType = PeriodType.MONTH,
     val profile: FinancialProfile? = null,
     val periodIncome: Double = 0.0,
+    val basePeriodIncome: Double = 0.0,
+    val extraIncomesTotal: Double = 0.0,
+    val proportionalExtraIncome: Double = 0.0,
     val listTotal: Double = 0.0,
     val extraExpensesTotal: Double = 0.0,
     val goalsCommittedTotal: Double = 0.0,
     val shoppingItems: List<ShoppingItem> = emptyList(),
     val extraExpenses: List<ExtraExpense> = emptyList(),
+    val extraIncomes: List<ExtraIncome> = emptyList(),
     val activeGoals: List<SavingsGoal> = emptyList(),
     val currency: String = "MXN",
     val showDatePickerModal: Boolean = false,
     val showDateRangePickerModal: Boolean = false,
     val editingExpense: ExtraExpense? = null,
-    val isEditExpenseSheetOpen: Boolean = false
+    val isEditExpenseSheetOpen: Boolean = false,
+    val isAddExpenseSheetOpen: Boolean = false,
+    val isFinancialCalendarOpen: Boolean = false,
+    val calendarSelectedDateMillis: Long? = null,
+    val isIncomeSheetOpen: Boolean = false,
+    val isDeleteSalaryDialogOpen: Boolean = false,
+    val pendingDeleteSalaryYear: Int = 0,
+    val pendingDeleteSalaryMonth: Int = 0,
+    val editingIncome: ExtraIncome? = null,
+    val isEditIncomeSheetOpen: Boolean = false,
+    val isAddIncomeSheetOpen: Boolean = false
 ) {
+    val isVariableIncome: Boolean
+        get() = profile?.isVariableIncome ?: false
     val totalExpenses: Double
         get() = listTotal + extraExpensesTotal + goalsCommittedTotal
 

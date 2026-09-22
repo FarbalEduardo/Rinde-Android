@@ -21,11 +21,14 @@ import coil.compose.AsyncImage
 @Composable
 fun EditAvatarSection(
     photoUrl: String?,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    size: androidx.compose.ui.unit.Dp = 88.dp
 ) {
+    val badgeSize = (size * 0.33f).coerceAtLeast(28.dp)
     Box(
-        modifier = Modifier
-            .size(120.dp)
+        modifier = modifier
+            .size(size)
             .clickable { onClick() },
         contentAlignment = Alignment.BottomEnd
     ) {
@@ -41,13 +44,13 @@ fun EditAvatarSection(
             shape = CircleShape,
             color = MaterialTheme.colorScheme.primary,
             tonalElevation = 4.dp,
-            modifier = Modifier.size(36.dp)
+            modifier = Modifier.size(badgeSize)
         ) {
             Icon(
                 imageVector = Icons.Default.CameraAlt,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier.padding(8.dp).fillMaxSize()
+                modifier = Modifier.padding(6.dp).fillMaxSize()
             )
         }
     }

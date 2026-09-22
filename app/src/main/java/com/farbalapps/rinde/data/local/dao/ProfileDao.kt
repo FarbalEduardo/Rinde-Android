@@ -17,4 +17,10 @@ interface ProfileDao {
     
     @Query("DELETE FROM profiles WHERE id = :id")
     suspend fun deleteProfile(id: String)
+
+    @Query("UPDATE profiles SET postsCount = MAX(0, postsCount + :delta) WHERE id = :id")
+    suspend fun updatePostsCount(id: String, delta: Int)
+
+    @Query("UPDATE profiles SET commentsCount = MAX(0, commentsCount + :delta) WHERE id = :id")
+    suspend fun updateCommentsCount(id: String, delta: Int)
 }

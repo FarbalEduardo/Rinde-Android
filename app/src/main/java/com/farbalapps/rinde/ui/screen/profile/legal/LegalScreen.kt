@@ -106,6 +106,9 @@ fun LegalScreen(
 
 @Composable
 private fun PrivacyPolicyContent() {
+    val lastUpdated = stringResource(R.string.legal_last_updated_date)
+    val complianceTag = stringResource(R.string.legal_badge_compliance)
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
@@ -113,16 +116,16 @@ private fun PrivacyPolicyContent() {
     ) {
         item {
             HeaderBadge(
-                date = "Septiembre 2026",
-                tag = "Conformidad Google Play & ARCO"
+                date = lastUpdated,
+                tag = complianceTag
             )
         }
 
         item {
             HighlightCard(
                 icon = Icons.Default.Lock,
-                title = "Compromiso de Privacidad",
-                description = "En Rinde nos tomamos en serio tu privacidad. No comercializamos tus datos personales ni tus listas con terceros. Tienes el control total sobre tu cuenta y puedes eliminarla en cualquier momento.",
+                title = stringResource(R.string.legal_privacy_commitment_title),
+                description = stringResource(R.string.legal_privacy_commitment_desc),
                 containerColor = MaterialTheme.colorScheme.primaryContainer,
                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                 iconColor = MaterialTheme.colorScheme.primary
@@ -133,12 +136,8 @@ private fun PrivacyPolicyContent() {
             LegalSectionCard(
                 number = "1",
                 icon = Icons.Default.Badge,
-                title = "Información que Recopilamos",
-                content = "• Datos de Cuenta: Nombre o alias público, correo electrónico y fotografía de perfil administrados con Firebase Authentication.\n" +
-                        "• Contenido Generado por el Usuario (UGC): Ofertas compartidas, títulos, precios, descripciones, sucursales y fotos de comprobación.\n" +
-                        "• Interacciones Sociales: Votos de veracidad (Verdad/Falso), comentarios, ofertas guardadas y reportes comunitarios.\n" +
-                        "• Listas y Presupuesto Personal: Nombres de listas, productos y metas de ahorro (almacenados localmente o sincronizados en la nube según el Modo Búnker).\n" +
-                        "• Métricas y Diagnóstico: Datos técnicos anonimizados sobre versión del sistema y registros de fallos para estabilidad."
+                title = stringResource(R.string.legal_privacy_sec1_title),
+                content = stringResource(R.string.legal_privacy_sec1_content)
             )
         }
 
@@ -146,32 +145,26 @@ private fun PrivacyPolicyContent() {
             LegalSectionCard(
                 number = "2",
                 icon = Icons.Default.Handshake,
-                title = "Uso de la Información",
-                content = "La información se emplea exclusivamente para:\n" +
-                        "1. Operar y sincronizar tus listas de compras y publicaciones.\n" +
-                        "2. Calcular la reputación comunitaria y veracidad de ofertas.\n" +
-                        "3. Mantener la seguridad de tu sesión y prevenir fraude.\n\n" +
-                        "Rinde NO vende, alquila ni comparte tus datos personales o hábitos de compra con empresas publicitarias de terceros."
+                title = stringResource(R.string.legal_privacy_sec2_title),
+                content = stringResource(R.string.legal_privacy_sec2_content)
             )
         }
 
         item {
             LegalSectionCard(
                 number = "3",
-                icon = Icons.Default.CameraAlt,
-                title = "Permisos del Dispositivo",
-                content = "• Cámara: Permite tomar fotos de etiquetas o tickets de compra para respaldar ofertas. No se accede a la cámara fuera de esta acción.\n" +
-                        "• Galería Multimedia: Permite adjuntar fotos existentes de ofertas que decidas compartir.\n" +
-                        "• Conexión a Internet: Para sincronizar el feed colaborativo en tiempo real."
+                icon = Icons.Default.PhoneAndroid,
+                title = stringResource(R.string.legal_privacy_sec3_title),
+                content = stringResource(R.string.legal_privacy_sec3_content)
             )
         }
 
         item {
             LegalSectionCard(
                 number = "4",
-                icon = Icons.Default.Cloud,
-                title = "Servicios de Terceros e Infraestructura",
-                content = "Utilizamos la infraestructura de Google Firebase (Authentication, Cloud Firestore y Storage) con cifrado estándar TLS/SSL en tránsito y AES-256 en reposo, y Coil para almacenamiento en caché local eficiente de imágenes."
+                icon = Icons.Default.Shield,
+                title = stringResource(R.string.legal_privacy_sec4_title),
+                content = stringResource(R.string.legal_privacy_sec4_content)
             )
         }
 
@@ -179,8 +172,8 @@ private fun PrivacyPolicyContent() {
             LegalSectionCard(
                 number = "5",
                 icon = Icons.Default.Storage,
-                title = "Almacenamiento Local y Modo Búnker",
-                content = "Tus listas y productos locales se gestionan mediante una base de datos SQLite segura (Room) y Jetpack DataStore en la memoria privada de la app, cumpliendo con las pautas OWASP MASVS de seguridad móvil."
+                title = stringResource(R.string.legal_privacy_sec5_title),
+                content = stringResource(R.string.legal_privacy_sec5_content)
             )
         }
 
@@ -188,9 +181,8 @@ private fun PrivacyPolicyContent() {
             LegalSectionCard(
                 number = "6",
                 icon = Icons.Default.PersonRemove,
-                title = "Derechos ARCO y Eliminación de Cuenta",
-                content = "Puedes actualizar tu información en cualquier momento desde Editar Perfil.\n\n" +
-                        "Derecho al olvido: Conforme a las normativas de Google Play, Rinde incluye la opción de eliminación directa e irreversible en 'Perfil > Editar Perfil > Eliminar Cuenta', borrando tu usuario de Firebase y datos personales de nuestros registros."
+                title = stringResource(R.string.legal_privacy_sec6_title),
+                content = stringResource(R.string.legal_privacy_sec6_content)
             )
         }
 
@@ -198,11 +190,8 @@ private fun PrivacyPolicyContent() {
             LegalSectionCard(
                 number = "7",
                 icon = Icons.Default.Mail,
-                title = "Contacto de Privacidad",
-                content = "Para cualquier duda o ejercicio de tus derechos de privacidad:\n" +
-                        "• Correo: soporte@rinde.app / farbalapps1993@gmail.com\n" +
-                        "• Desarrollador: FarbalApps\n" +
-                        "• Sitio Web: https://rinde.app"
+                title = stringResource(R.string.legal_privacy_sec7_title),
+                content = stringResource(R.string.legal_privacy_sec7_content)
             )
         }
 
@@ -214,6 +203,9 @@ private fun PrivacyPolicyContent() {
 
 @Composable
 private fun TermsOfUseContent() {
+    val lastUpdated = stringResource(R.string.legal_last_updated_date)
+    val termsTag = stringResource(R.string.legal_terms_badge_tag)
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
@@ -221,16 +213,16 @@ private fun TermsOfUseContent() {
     ) {
         item {
             HeaderBadge(
-                date = "Septiembre 2026",
-                tag = "Acuerdo de Uso Oficial"
+                date = lastUpdated,
+                tag = termsTag
             )
         }
 
         item {
             HighlightCard(
                 icon = Icons.Default.WarningAmber,
-                title = "Aviso Crucial sobre Precios",
-                description = "Rinde es una plataforma comunitaria y colaborativa. NO somos una tienda ni vendemos productos. Los precios y promociones pertenecen a comercios terceros y pueden variar o agotarse sin previo aviso.",
+                title = stringResource(R.string.legal_terms_notice_title),
+                description = stringResource(R.string.legal_terms_notice_desc),
                 containerColor = MaterialTheme.colorScheme.tertiaryContainer,
                 contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
                 iconColor = MaterialTheme.colorScheme.tertiary
@@ -241,10 +233,8 @@ private fun TermsOfUseContent() {
             LegalSectionCard(
                 number = "1",
                 icon = Icons.Default.Storefront,
-                title = "Naturaleza del Servicio y Exención de Responsabilidad",
-                content = "• Rinde no fija precios ni garantiza la disponibilidad de los artículos en tiendas físicas u online.\n" +
-                        "• Toda compra se realiza directamente entre el usuario y el comercio vendedor externo.\n" +
-                        "• Rinde no asume responsabilidad por diferencias tarifarias, promociones caducadas o reclamos de garantía ante tiendas terceras."
+                title = stringResource(R.string.legal_terms_sec1_title),
+                content = stringResource(R.string.legal_terms_sec1_content)
             )
         }
 
@@ -252,13 +242,8 @@ private fun TermsOfUseContent() {
             LegalSectionCard(
                 number = "2",
                 icon = Icons.Default.Groups,
-                title = "Normas de la Comunidad y Contenido de Usuarios (UGC)",
-                content = "Está estrictamente prohibido:\n" +
-                        "1. Publicar ofertas falsas, engañosas o enlaces fraudulentos (phishing).\n" +
-                        "2. Compartir contenido ilícito, dañino o enlaces a malware.\n" +
-                        "3. Realizar spam comercial o manipular votos de veracidad mediante cuentas falsas.\n" +
-                        "4. Emitir comentarios difamatorios o agresivos.\n\n" +
-                        "Moderación: La comunidad cuenta con votos 'Verdad/Falso', reportes de ofertas y bloqueo de usuarios. Rinde se reserva el derecho de retirar publicaciones o cancelar cuentas infractoras sin previo aviso."
+                title = stringResource(R.string.legal_terms_sec2_title),
+                content = stringResource(R.string.legal_terms_sec2_content)
             )
         }
 
@@ -266,8 +251,8 @@ private fun TermsOfUseContent() {
             LegalSectionCard(
                 number = "3",
                 icon = Icons.Default.Block,
-                title = "Uso Permitido y Restricciones Técnicas",
-                content = "Queda prohibido descompilar o aplicar ingeniería inversa a la aplicación, vulnerar las medidas de seguridad, o usar bots o scrapers automáticos para extraer información sin consentimiento expreso."
+                title = stringResource(R.string.legal_terms_sec3_title),
+                content = stringResource(R.string.legal_terms_sec3_content)
             )
         }
 
@@ -275,9 +260,8 @@ private fun TermsOfUseContent() {
             LegalSectionCard(
                 number = "4",
                 icon = Icons.Default.Copyright,
-                title = "Propiedad Intelectual",
-                content = "La marca Rinde, su imagotipo, diseño de interfaz, código fuente y algoritmos de reputación son propiedad de FarbalApps.\n\n" +
-                        "Las marcas registradas, nombres comerciales y logotipos de comercios o productos exhibidos en las ofertas pertenecen a sus respectivos titulares y se utilizan con carácter meramente informativo y referencial (uso legítimo / fair use)."
+                title = stringResource(R.string.legal_terms_sec4_title),
+                content = stringResource(R.string.legal_terms_sec4_content)
             )
         }
 
@@ -285,8 +269,8 @@ private fun TermsOfUseContent() {
             LegalSectionCard(
                 number = "5",
                 icon = Icons.Default.Shield,
-                title = "Limitación de Garantías",
-                content = "La app se ofrece 'tal cual' (as is). Rinde no se responsabiliza por pérdidas de datos ocasionadas por fallas en el dispositivo del usuario o por interrupciones de red ajenas a nuestro control en servidores en la nube."
+                title = stringResource(R.string.legal_terms_sec5_title),
+                content = stringResource(R.string.legal_terms_sec5_content)
             )
         }
 
@@ -294,8 +278,8 @@ private fun TermsOfUseContent() {
             LegalSectionCard(
                 number = "6",
                 icon = Icons.Default.Update,
-                title = "Modificaciones a las Condiciones",
-                content = "Nos reservamos el derecho de actualizar estos términos para incorporar mejoras o cumplir cambios normativos. La fecha de última actualización siempre estará visible en este apartado."
+                title = stringResource(R.string.legal_terms_sec6_title),
+                content = stringResource(R.string.legal_terms_sec6_content)
             )
         }
 
@@ -303,8 +287,8 @@ private fun TermsOfUseContent() {
             LegalSectionCard(
                 number = "7",
                 icon = Icons.Default.Gavel,
-                title = "Ley Aplicable y Jurisdicción",
-                content = "Estos términos se rigen por las leyes aplicables de comercio electrónico y protección de datos. Para resolver cualquier controversia, las partes se someterán a las instancias y tribunales competentes correspondientes."
+                title = stringResource(R.string.legal_terms_sec7_title),
+                content = stringResource(R.string.legal_terms_sec7_content)
             )
         }
 
@@ -326,7 +310,7 @@ private fun HeaderBadge(date: String, tag: String) {
             color = MaterialTheme.colorScheme.surfaceContainerHigh
         ) {
             Text(
-                text = "Actualizado: $date",
+                text = stringResource(R.string.legal_badge_updated, date),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
@@ -459,4 +443,3 @@ private fun LegalScreenPreview() {
         LegalScreen(onBack = {})
     }
 }
-

@@ -52,31 +52,9 @@ fun LazyListScope.CommentsHeaderItem(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 if (isLoadingComments && commentsEmpty) {
+                    Spacer(modifier = Modifier.height(8.dp))
                     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         repeat(3) { CommentSkeleton() }
-                    }
-                } else if (commentsEmpty) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 24.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(
-                                imageVector = Icons.Default.ChatBubbleOutline,
-                                contentDescription = null,
-                                modifier = Modifier.size(48.dp),
-                                tint = MaterialTheme.colorScheme.surfaceVariant
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = "Aún no hay comentarios.\n¡Sé el primero en preguntar o dar tu opinión!",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center
-                            )
-                        }
                     }
                 }
             }

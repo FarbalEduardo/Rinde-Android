@@ -31,14 +31,16 @@ import com.farbalapps.rinde.ui.theme.RindeTheme
 import androidx.compose.ui.tooling.preview.Preview
 
 private fun sharePost(context: Context, post: CommunityPost) {
+    val shareText = context.getString(
+        R.string.profile_share_offer_format,
+        post.title,
+        "https://rinde.app/post/${post.id}"
+    )
     val shareIntent = Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"
-        putExtra(
-            Intent.EXTRA_TEXT,
-            "¡Mira esta oferta en Rinde!\n${post.title}\nhttps://rinde.app/post/${post.id}"
-        )
+        putExtra(Intent.EXTRA_TEXT, shareText)
     }
-    context.startActivity(Intent.createChooser(shareIntent, "Compartir publicación"))
+    context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.profile_share_chooser_title)))
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -56,6 +58,7 @@ fun UserPostsScreen(
     val savedStatusOverlay by viewModel.savedStatusOverlay.collectAsStateWithLifecycle()
     val voteStatusOverlay by viewModel.voteStatusOverlay.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
 
     LaunchedEffect(userId) {
         viewModel.loadProfile(userId)
@@ -63,7 +66,7 @@ fun UserPostsScreen(
 
     LaunchedEffect(uiState.snackbarMessage) {
         uiState.snackbarMessage?.let { msg ->
-            snackbarHostState.showSnackbar(msg)
+            snackbarHostState.showSnackbar(msg.asString(context))
             viewModel.clearSnackbar()
         }
     }
@@ -77,7 +80,11 @@ fun UserPostsScreen(
                         text = if (uiState.isCurrentUser) {
                             stringResource(R.string.profile_tab_posts)
                         } else {
-                            if (userName.isNotBlank()) "Publicaciones de $userName" else "Publicaciones"
+                            if (userName.isNotBlank()) {
+                                stringResource(R.string.profile_user_posts_title_format, userName)
+                            } else {
+                                stringResource(R.string.profile_tab_posts)
+                            }
                         },
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold

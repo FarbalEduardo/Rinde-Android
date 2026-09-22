@@ -55,6 +55,7 @@ class CommentsViewModel @Inject constructor(
     private val currentUser = authRepository.getCurrentUser()
     private val currentUserId = currentUser?.id ?: ""
     private var currentPostId: String? = null
+    private var loadCommentsJob: kotlinx.coroutines.Job? = null
 
     init {
         _uiState.update { it.copy(currentUserId = currentUserId) }
@@ -62,7 +63,8 @@ class CommentsViewModel @Inject constructor(
 
     fun loadComments(postId: String) {
         currentPostId = postId
-        viewModelScope.launch {
+        loadCommentsJob?.cancel()
+        loadCommentsJob = viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             getCommentsUseCase.getComments(postId).collect { comments ->
                 _uiState.update { it.copy(comments = comments, isLoading = false) }
@@ -114,7 +116,7 @@ class CommentsViewModel @Inject constructor(
         if (text.isBlank()) return
 
         viewModelScope.launch {
-            if (state.editingCommentId != null) {
+            val result = if (state.editingCommentId != null) {
                 editCommentUseCase(postId, state.editingCommentId, state.currentUserId, text)
             } else if (state.editingReplyId != null) {
                 var parentCommentId = ""
@@ -126,9 +128,18 @@ class CommentsViewModel @Inject constructor(
                 }
                 if (parentCommentId.isNotEmpty()) {
                     editReplyUseCase(parentCommentId, state.editingReplyId, state.currentUserId, text)
+                } else {
+                    Result.failure(Exception("No se encontró el comentario principal asociado"))
                 }
+            } else {
+                Result.success(Unit)
             }
-            cancelEdit()
+
+            if (result.isSuccess) {
+                cancelEdit()
+            } else {
+                _uiState.update { it.copy(error = result.exceptionOrNull()?.message ?: "Error al guardar edición") }
+            }
         }
     }
 
@@ -154,20 +165,22 @@ class CommentsViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             
-            val result = if (state.replyingTo != null) {
-                addReplyUseCase(
-                    commentId = state.replyingTo.id,
-                    postId = postId,
-                    text = state.commentText,
-                    imageUri = null
-                )
-            } else {
-                addCommentUseCase(
-                    postId = postId,
-                    text = state.commentText,
-                    imageUri = null
-                )
-            }
+            val result = kotlinx.coroutines.withTimeoutOrNull(20_000L) {
+                if (state.replyingTo != null) {
+                    addReplyUseCase(
+                        commentId = state.replyingTo.id,
+                        postId = postId,
+                        text = state.commentText,
+                        imageUri = null
+                    )
+                } else {
+                    addCommentUseCase(
+                        postId = postId,
+                        text = state.commentText,
+                        imageUri = null
+                    )
+                }
+            } ?: Result.failure(Exception("Tiempo de espera agotado al enviar comentario"))
 
             if (result.isSuccess) {
                 _uiState.update { it.copy(

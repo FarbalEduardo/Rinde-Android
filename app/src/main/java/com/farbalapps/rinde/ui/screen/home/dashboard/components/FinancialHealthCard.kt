@@ -25,10 +25,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.farbalapps.rinde.R
 import com.farbalapps.rinde.domain.model.ExtraExpense
+import com.farbalapps.rinde.domain.model.ExtraIncome
 import com.farbalapps.rinde.ui.screen.home.dashboard.DashboardUiState
 import com.farbalapps.rinde.ui.screen.home.dashboard.FinancialHealthStatus
 import java.util.Locale
@@ -42,8 +44,10 @@ fun FinancialHealthCard(
     uiState: DashboardUiState,
     onEditIncome: () -> Unit,
     onAddExpense: () -> Unit,
-    onDeleteExpense: (String) -> Unit,
+    onDeleteExpense: (String) -> Unit = {},
     onEditExpense: (com.farbalapps.rinde.domain.model.ExtraExpense) -> Unit = {},
+    onAddExtraIncome: () -> Unit = {},
+    onEditExtraIncome: (ExtraIncome) -> Unit = {},
     modifier: Modifier = Modifier,
     onCardClick: () -> Unit = {}
 ) {
@@ -91,30 +95,39 @@ fun FinancialHealthCard(
                 HealthStatusBadge(status = uiState.healthStatus)
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Monto disponible real
-            val availableFormatted = String.format(Locale.getDefault(), "$%,.0f", uiState.availableAmount)
-            Text(
-                text = availableFormatted,
-                style = MaterialTheme.typography.headlineLarge.copy(
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 30.sp
-                ),
-                color = if (uiState.availableAmount < 0) {
-                    MaterialTheme.colorScheme.error
-                } else {
-                    MaterialTheme.colorScheme.onPrimaryContainer
-                }
-            )
-
-            Text(
-                text = "${uiState.currency} · ${stringResource(id = R.string.dashboard_available_real)}",
-                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f)
-            )
-
             Spacer(modifier = Modifier.height(10.dp))
+
+            // Monto disponible real (centrado)
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                val availableFormatted = String.format(Locale.getDefault(), "$%,.0f", uiState.availableAmount)
+                Text(
+                    text = availableFormatted,
+                    style = MaterialTheme.typography.headlineLarge.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 32.sp
+                    ),
+                    textAlign = TextAlign.Center,
+                    color = if (uiState.availableAmount < 0) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(2.dp))
+
+                Text(
+                    text = "${uiState.currency} · ${stringResource(id = R.string.dashboard_available_real)}",
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
             HorizontalDivider(color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.15f), thickness = 1.dp)
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -124,10 +137,124 @@ fun FinancialHealthCard(
                 title = stringResource(id = R.string.dashboard_income_title),
                 amount = uiState.monthlyIncome,
                 isPositive = true,
-                onActionClick = onEditIncome,
-                actionIcon = Icons.Default.Edit,
-                actionDescription = stringResource(id = R.string.dashboard_btn_edit_income)
+                actionsContent = {
+                    IconButton(
+                        onClick = onEditIncome,
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = stringResource(id = R.string.dashboard_btn_edit_income),
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(15.dp)
+                        )
+                    }
+                    IconButton(
+                        onClick = onAddExtraIncome,
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = stringResource(id = R.string.dashboard_add_extra_income),
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
             )
+
+            // Aviso si no tiene sueldo base configurado
+            if (!uiState.hasIncomeConfigured) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 28.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable(onClick = onEditIncome)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Text(
+                            text = stringResource(id = R.string.dashboard_no_salary_banner),
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 11.sp
+                            ),
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
+
+            // Aviso si requiere capturar ingreso del mes en modo variable
+            if (uiState.needsMonthlyIncomeCapture) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.7f),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 28.dp)
+                        .clickable(onClick = onEditIncome)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Text(
+                            text = stringResource(id = R.string.dashboard_income_variable_prompt, uiState.currentMonthName),
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold, fontSize = 11.sp),
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    }
+                }
+            }
+
+            // Chips compactos horizontales de ingresos extras
+            if (uiState.extraIncomes.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 28.dp)
+                ) {
+                    items(uiState.extraIncomes, key = { it.id }) { income ->
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.65f),
+                            border = androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)),
+                            onClick = { onEditExtraIncome(income) }
+                        ) {
+                            Text(
+                                text = "+ ${income.label}: $${String.format(Locale.getDefault(), "%,.0f", income.amount)}",
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, fontWeight = FontWeight.SemiBold),
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.height(6.dp))
 
@@ -240,7 +367,7 @@ fun FinancialHealthCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Ver detalle por meses, días, semanas...",
+                    text = stringResource(id = R.string.financial_health_view_period_detail),
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
                     color = MaterialTheme.colorScheme.primary
                 )
@@ -264,6 +391,7 @@ private fun HealthStatusBadge(
         FinancialHealthStatus.GOOD -> Pair(Color(0xFF66BB6A), R.string.dashboard_health_good)
         FinancialHealthStatus.WARNING -> Pair(Color(0xFFFFA726), R.string.dashboard_health_warning)
         FinancialHealthStatus.CRITICAL -> Pair(Color(0xFFEF5350), R.string.dashboard_health_critical)
+        FinancialHealthStatus.SETUP_REQUIRED -> Pair(MaterialTheme.colorScheme.primary, R.string.dashboard_health_setup_required)
     }
 
     Row(
@@ -295,7 +423,8 @@ private fun BreakdownRow(
     modifier: Modifier = Modifier,
     onActionClick: (() -> Unit)? = null,
     actionIcon: ImageVector? = null,
-    actionDescription: String? = null
+    actionDescription: String? = null,
+    actionsContent: (@Composable RowScope.() -> Unit)? = null
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -317,7 +446,9 @@ private fun BreakdownRow(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onPrimaryContainer
             )
-            if (onActionClick != null && actionIcon != null) {
+            if (actionsContent != null) {
+                actionsContent()
+            } else if (onActionClick != null && actionIcon != null) {
                 IconButton(
                     onClick = onActionClick,
                     modifier = Modifier.size(24.dp)
@@ -339,52 +470,5 @@ private fun BreakdownRow(
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
             color = MaterialTheme.colorScheme.onPrimaryContainer
         )
-    }
-}
-
-@Composable
-private fun ExtraExpenseItemRow(
-    expense: ExtraExpense,
-    onDelete: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
-                shape = RoundedCornerShape(10.dp)
-            )
-            .padding(horizontal = 10.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = "• ${expense.label}",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Text(
-                text = String.format(Locale.getDefault(), "-$%,.0f", expense.amount),
-                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            IconButton(
-                onClick = onDelete,
-                modifier = Modifier.size(20.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.DeleteOutline,
-                    contentDescription = "Eliminar gasto",
-                    tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f),
-                    modifier = Modifier.size(15.dp)
-                )
-            }
-        }
     }
 }

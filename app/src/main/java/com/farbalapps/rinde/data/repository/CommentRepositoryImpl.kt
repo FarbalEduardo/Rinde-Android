@@ -2,6 +2,7 @@ package com.farbalapps.rinde.data.repository
 
 import android.content.Context
 import com.farbalapps.rinde.domain.model.Comment
+import com.farbalapps.rinde.domain.model.NotificationType
 import com.farbalapps.rinde.domain.model.Reply
 import com.farbalapps.rinde.domain.repository.CommentRepository
 import com.farbalapps.rinde.util.CloudinaryHelper
@@ -22,10 +23,13 @@ import com.farbalapps.rinde.data.remote.model.ReplyDto
 import com.farbalapps.rinde.data.mapper.toDomain
 import com.farbalapps.rinde.data.mapper.toDto
 
+import com.farbalapps.rinde.data.local.dao.ProfileDao
+
 class CommentRepositoryImpl @Inject constructor(
     @dagger.hilt.android.qualifiers.ApplicationContext private val context: Context,
     private val rtdb: FirebaseDatabase,
-    private val firestore: FirebaseFirestore
+    private val firestore: FirebaseFirestore,
+    private val profileDao: ProfileDao
 ) : CommentRepository {
 
     override fun getComments(postId: String): Flow<List<Comment>> = callbackFlow {
@@ -131,7 +135,8 @@ class CommentRepositoryImpl @Inject constructor(
             .update("commentsCount", com.google.firebase.firestore.FieldValue.increment(1)).await()
         if (authorId.isNotEmpty()) {
             firestore.collection("users").document(authorId)
-                .update("commentsCount", com.google.firebase.firestore.FieldValue.increment(1))
+                .update("commentsCount", com.google.firebase.firestore.FieldValue.increment(1)).await()
+            profileDao.updateCommentsCount(authorId, 1)
         }
     }
 
@@ -151,7 +156,7 @@ class CommentRepositoryImpl @Inject constructor(
                 "timestamp" to System.currentTimeMillis(),
                 "isRead" to false
             )
-            firestore.collection("notifications").document(postAuthorId).collection("items").document(notifId).set(notifData)
+            firestore.collection("notifications").document(postAuthorId).collection("items").document(notifId).set(notifData).await()
         }
     }
 
@@ -165,6 +170,37 @@ class CommentRepositoryImpl @Inject constructor(
         replyRef.setValue(buildReplyMap(finalReply)).await()
         
         incrementReplyCounts(reply.postId, commentId, finalReply.authorId)
+        notifyCommentAuthor(reply.postId, commentId, finalReply)
+    }
+
+    private suspend fun notifyCommentAuthor(postId: String, commentId: String, reply: Reply) {
+        runCatching {
+            val commentSnapshot = rtdb.getReference("comments").child(postId).child(commentId).get().await()
+            val commentAuthorId = commentSnapshot.child("authorId").getValue(String::class.java) ?: ""
+            if (commentAuthorId.isNotEmpty() && commentAuthorId != reply.authorId) {
+                val postDoc = firestore.collection("posts").document(postId).get().await()
+                val postTitle = postDoc.getString("title") ?: "tu publicación"
+                val notifId = java.util.UUID.randomUUID().toString()
+                val notifData = hashMapOf(
+                    "id" to notifId,
+                    "type" to NotificationType.NEW_REPLY.name,
+                    "postId" to postId,
+                    "postTitle" to postTitle,
+                    "actorName" to reply.authorName,
+                    "actorPhotoUrl" to (reply.authorPhotoUrl ?: ""),
+                    "timestamp" to System.currentTimeMillis(),
+                    "isRead" to false
+                )
+                firestore.collection("notifications")
+                    .document(commentAuthorId)
+                    .collection("items")
+                    .document(notifId)
+                    .set(notifData)
+                    .await()
+            }
+        }.onFailure { e ->
+            android.util.Log.e("CommentRepository", "Error al notificar al autor del comentario: ${e.message}")
+        }
     }
 
     private fun buildReplyMap(reply: Reply): Map<String, Any> {
@@ -194,6 +230,7 @@ class CommentRepositoryImpl @Inject constructor(
         if (authorId.isNotEmpty()) {
             firestore.collection("users").document(authorId)
                 .update("commentsCount", com.google.firebase.firestore.FieldValue.increment(1))
+            profileDao.updateCommentsCount(authorId, 1)
         }
     }
 
@@ -227,23 +264,43 @@ class CommentRepositoryImpl @Inject constructor(
     }
 
     override suspend fun deleteComment(postId: String, commentId: String): Result<Unit> = runCatching {
-        // 1. Obtener la cantidad de respuestas y autor del comentario
+        // 1. Obtener autor del comentario padre
         val commentSnapshot = rtdb.getReference("comments").child(postId).child(commentId).get().await()
-        val repliesCount = commentSnapshot.child("repliesCount").getValue(Long::class.java)?.toInt() ?: 0
         val authorId = commentSnapshot.child("authorId").getValue(String::class.java) ?: ""
-        val totalToRemove = 1 + repliesCount
 
-        // 2. Delete all replies from RTDB
+        // 2. Obtener los autores de las respuestas antes de borrarlas para sincronizar contadores
+        val repliesSnapshot = rtdb.getReference("replies").child(commentId).get().await()
+        val replyAuthorCounts = mutableMapOf<String, Int>()
+        for (replyChild in repliesSnapshot.children) {
+            val rAuthorId = replyChild.child("authorId").getValue(String::class.java) ?: ""
+            if (rAuthorId.isNotEmpty()) {
+                replyAuthorCounts[rAuthorId] = (replyAuthorCounts[rAuthorId] ?: 0) + 1
+            }
+        }
+        val totalReplies = repliesSnapshot.childrenCount.toInt()
+        val totalToRemove = 1 + totalReplies
+
+        // 3. Delete all replies from RTDB
         rtdb.getReference("replies").child(commentId).removeValue().await()
-        // 3. Delete comment from RTDB
+        // 4. Delete comment from RTDB
         rtdb.getReference("comments").child(postId).child(commentId).removeValue().await()
-        // 4. Decrement total count in Firestore (post + autor del comentario)
+
+        // 5. Decrement total count in Firestore post
         firestore.collection("posts").document(postId)
             .update("commentsCount", com.google.firebase.firestore.FieldValue.increment(-totalToRemove.toLong())).await()
 
+        // 6. Decrement count for parent comment author
         if (authorId.isNotEmpty()) {
             firestore.collection("users").document(authorId)
-                .update("commentsCount", com.google.firebase.firestore.FieldValue.increment(-1))
+                .update("commentsCount", com.google.firebase.firestore.FieldValue.increment(-1)).await()
+            profileDao.updateCommentsCount(authorId, -1)
+        }
+
+        // 7. Decrement count for all reply authors
+        for ((rAuthorId, count) in replyAuthorCounts) {
+            firestore.collection("users").document(rAuthorId)
+                .update("commentsCount", com.google.firebase.firestore.FieldValue.increment(-count.toLong())).await()
+            profileDao.updateCommentsCount(rAuthorId, -count)
         }
     }
 
@@ -272,7 +329,8 @@ class CommentRepositoryImpl @Inject constructor(
 
         if (authorId.isNotEmpty()) {
             firestore.collection("users").document(authorId)
-                .update("commentsCount", com.google.firebase.firestore.FieldValue.increment(-1))
+                .update("commentsCount", com.google.firebase.firestore.FieldValue.increment(-1)).await()
+            profileDao.updateCommentsCount(authorId, -1)
         }
     }
 

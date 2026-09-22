@@ -13,6 +13,11 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+
 data class NotificationsUiState(
     val unreadCount: Int = 0,
     val notifications: List<AppNotification> = emptyList(),
@@ -26,27 +31,42 @@ class NotificationsViewModel @Inject constructor(
     private val auth: FirebaseAuth
 ) : ViewModel() {
 
-    private val currentUserId: String
-        get() = auth.currentUser?.uid ?: ""
+    private val _userIdFlow = MutableStateFlow(auth.currentUser?.uid.orEmpty())
 
-    val uiState: StateFlow<NotificationsUiState> = combine(
-        notificationRepository.getUnreadCount(currentUserId),
-        notificationRepository.getNotifications(currentUserId)
-    ) { unreadCount, notifications ->
-        NotificationsUiState(
-            unreadCount = unreadCount,
-            notifications = notifications,
-            isLoading = false,
-            currentUserId = currentUserId
-        )
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val uiState: StateFlow<NotificationsUiState> = _userIdFlow.flatMapLatest { uid ->
+        if (uid.isEmpty()) {
+            flowOf(NotificationsUiState(isLoading = false, currentUserId = ""))
+        } else {
+            combine(
+                notificationRepository.getUnreadCount(uid),
+                notificationRepository.getNotifications(uid)
+            ) { unreadCount, notifications ->
+                NotificationsUiState(
+                    unreadCount = unreadCount,
+                    notifications = notifications,
+                    isLoading = false,
+                    currentUserId = uid
+                )
+            }
+        }
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
-        initialValue = NotificationsUiState(isLoading = true, currentUserId = currentUserId)
+        initialValue = NotificationsUiState(isLoading = true, currentUserId = auth.currentUser?.uid.orEmpty())
     )
 
+    init {
+        auth.addAuthStateListener { firebaseAuth ->
+            val newUid = firebaseAuth.currentUser?.uid.orEmpty()
+            if (_userIdFlow.value != newUid) {
+                _userIdFlow.value = newUid
+            }
+        }
+    }
+
     fun markAsRead(notificationId: String) {
-        val uid = currentUserId
+        val uid = _userIdFlow.value
         if (uid.isEmpty()) return
         viewModelScope.launch {
             notificationRepository.markAsRead(uid, notificationId)
@@ -54,7 +74,7 @@ class NotificationsViewModel @Inject constructor(
     }
 
     fun markAllAsRead() {
-        val uid = currentUserId
+        val uid = _userIdFlow.value
         if (uid.isEmpty()) return
         viewModelScope.launch {
             notificationRepository.markAllAsRead(uid)

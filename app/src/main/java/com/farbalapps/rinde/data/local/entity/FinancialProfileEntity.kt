@@ -14,5 +14,6 @@ data class FinancialProfileEntity(
     val currency: String = "MXN",
     val updatedAt: Long = 0L,
     val customStartDate: Long? = null,
-    val customEndDate: Long? = null
+    val customEndDate: Long? = null,
+    val isVariableIncome: Boolean = false
 )

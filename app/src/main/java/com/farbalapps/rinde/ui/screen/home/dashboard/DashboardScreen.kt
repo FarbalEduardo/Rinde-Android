@@ -1,15 +1,16 @@
 package com.farbalapps.rinde.ui.screen.home.dashboard
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -24,13 +25,17 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.tooling.preview.Preview
 import com.farbalapps.rinde.R
 import com.farbalapps.rinde.domain.model.ExtraExpense
+import com.farbalapps.rinde.domain.model.ExtraIncome
 import com.farbalapps.rinde.ui.screen.home.dashboard.components.ExtraExpenseBottomSheet
 import com.farbalapps.rinde.ui.screen.home.dashboard.components.ExtraExpenseEditBottomSheet
+import com.farbalapps.rinde.ui.screen.home.dashboard.components.ExtraIncomeBottomSheet
+import com.farbalapps.rinde.ui.screen.home.dashboard.components.ExtraIncomeEditBottomSheet
 import com.farbalapps.rinde.ui.screen.home.dashboard.components.FinancialHealthCard
 import com.farbalapps.rinde.ui.screen.home.dashboard.components.GoalsMiniSection
 import com.farbalapps.rinde.ui.screen.home.dashboard.components.IncomeSetupBottomSheet
 import com.farbalapps.rinde.ui.screen.home.dashboard.components.LockedSavingsCard
 import com.farbalapps.rinde.ui.screen.home.dashboard.components.SetupIncomeCard
+import com.farbalapps.rinde.ui.screen.home.dashboard.detail.FinancialCalendarModal
 import com.farbalapps.rinde.ui.theme.RindeTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -52,6 +57,9 @@ fun DashboardScreen(
         onGoalClick = onGoalClick,
         onNavigateToGoals = onNavigateToGoals,
         onCardClick = onCardClick,
+        onRefresh = { viewModel.refreshDashboard() },
+        onOpenCalendar = { viewModel.openFinancialCalendar() },
+        onCloseFinancialCalendar = { viewModel.closeFinancialCalendar() },
         modifier = modifier,
         onSetupIncomeClick = { viewModel.openIncomeSheet() },
         onEditIncome = { viewModel.openIncomeSheet() },
@@ -59,11 +67,31 @@ fun DashboardScreen(
         onEditExpense = { expense -> viewModel.openEditExpenseSheet(expense) },
         onDeleteExpense = { expenseId -> viewModel.deleteExtraExpense(expenseId) },
         onCloseIncomeSheet = { viewModel.closeIncomeSheet() },
-        onSaveIncome = { amount, frequency, start, end -> viewModel.saveIncome(amount, frequency, "MXN", start, end) },
+        onSaveIncome = { amount, frequency, start, end, isVariable, paymentDate ->
+            viewModel.saveIncome(amount, frequency, uiState.currency, start, end, isVariable, paymentDate)
+        },
         onCloseExpenseSheet = { viewModel.closeExpenseSheet() },
-        onAddExtraExpense = { label, amount, iconKey -> viewModel.addExtraExpense(label, amount, iconKey) },
+        onAddExtraExpense = { label, amount, iconKey, expenseDate ->
+            viewModel.addExtraExpense(label, amount, iconKey, expenseDate)
+        },
         onCloseEditExpenseSheet = { viewModel.closeEditExpenseSheet() },
-        onUpdateExtraExpense = { id, label, amount -> viewModel.updateExtraExpense(id, label, amount) }
+        onUpdateExtraExpense = { id, label, amount, expenseDate ->
+            viewModel.updateExtraExpense(id, label, amount, expenseDate)
+        },
+        onAddExtraIncome = { viewModel.openExtraIncomeSheet() },
+        onEditExtraIncome = { income -> viewModel.openEditExtraIncomeSheet(income) },
+        onCloseExtraIncomeSheet = { viewModel.closeExtraIncomeSheet() },
+        onSaveExtraIncome = { label, amount, iconKey, incomeDate ->
+            viewModel.addExtraIncome(label, amount, iconKey, incomeDate)
+        },
+        onCloseEditExtraIncomeSheet = { viewModel.closeEditExtraIncomeSheet() },
+        onUpdateExtraIncome = { id, label, amount, incomeDate ->
+            viewModel.updateExtraIncome(id, label, amount, incomeDate)
+        },
+        onDeleteExtraIncome = { incomeId -> viewModel.deleteExtraIncome(incomeId) },
+        onDeleteSalarySingleMonth = { year, month -> viewModel.deleteSalarySingleMonth(year, month) },
+        onDeleteSalaryFutureMonths = { year, month -> viewModel.deleteSalaryFutureMonths(year, month) },
+        onDeleteSalaryAll = { viewModel.deleteSalaryAll() }
     )
 }
 
@@ -75,6 +103,9 @@ fun DashboardContent(
     onGoalClick: (String) -> Unit,
     onNavigateToGoals: () -> Unit,
     onCardClick: () -> Unit = {},
+    onRefresh: () -> Unit = {},
+    onOpenCalendar: () -> Unit = {},
+    onCloseFinancialCalendar: () -> Unit = {},
     modifier: Modifier = Modifier,
     onSetupIncomeClick: () -> Unit = {},
     onEditIncome: () -> Unit = {},
@@ -82,18 +113,30 @@ fun DashboardContent(
     onEditExpense: (ExtraExpense) -> Unit = {},
     onDeleteExpense: (String) -> Unit = {},
     onCloseIncomeSheet: () -> Unit = {},
-    onSaveIncome: (Double, com.farbalapps.rinde.domain.model.IncomeFrequency, Long?, Long?) -> Unit = { _, _, _, _ -> },
+    onSaveIncome: (Double, com.farbalapps.rinde.domain.model.IncomeFrequency, Long?, Long?, Boolean, Long?) -> Unit = { _, _, _, _, _, _ -> },
     onCloseExpenseSheet: () -> Unit = {},
-    onAddExtraExpense: (String, Double, String) -> Unit = { _, _, _ -> },
+    onAddExtraExpense: (String, Double, String, Long) -> Unit = { _, _, _, _ -> },
     onCloseEditExpenseSheet: () -> Unit = {},
-    onUpdateExtraExpense: (String, String, Double) -> Unit = { _, _, _ -> }
+    onUpdateExtraExpense: (String, String, Double, Long) -> Unit = { _, _, _, _ -> },
+    onAddExtraIncome: () -> Unit = {},
+    onEditExtraIncome: (ExtraIncome) -> Unit = {},
+    onCloseExtraIncomeSheet: () -> Unit = {},
+    onSaveExtraIncome: (String, Double, String, Long) -> Unit = { _, _, _, _ -> },
+    onCloseEditExtraIncomeSheet: () -> Unit = {},
+    onUpdateExtraIncome: (String, String, Double, Long) -> Unit = { _, _, _, _ -> },
+    onDeleteExtraIncome: (String) -> Unit = {},
+    onDeleteSalarySingleMonth: (Int, Int) -> Unit = { _, _ -> },
+    onDeleteSalaryFutureMonths: (Int, Int) -> Unit = { _, _ -> },
+    onDeleteSalaryAll: () -> Unit = {}
 ) {
     val scrollState = rememberScrollState()
 
     // El card de ahorros se mantiene listo pero oculto según la especificación
     val showSavingsCard = false
 
-    Box(
+    PullToRefreshBox(
+        isRefreshing = uiState.isRefreshing,
+        onRefresh = onRefresh,
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
@@ -107,7 +150,7 @@ fun DashboardContent(
         ) {
             Spacer(modifier = Modifier.height(4.dp))
 
-            // Header: Título "Rinde", Subtítulo y Chip del Mes Activo
+            // Header: Título "Rinde", Subtítulo y Chip del Mes Activo (con acción táctil hacia el calendario)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -129,7 +172,7 @@ fun DashboardContent(
                     )
                 }
 
-                // Selector / Chip Informativo del Periodo Actual
+                // Selector / Chip Interactivo del Periodo Actual (abre el calendario de pagos y gastos)
                 if (uiState.currentMonthName.isNotBlank()) {
                     Surface(
                         shape = RoundedCornerShape(12.dp),
@@ -137,7 +180,10 @@ fun DashboardContent(
                         border = androidx.compose.foundation.BorderStroke(
                             1.dp,
                             MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
-                        )
+                        ),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable(onClick = onOpenCalendar)
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -145,7 +191,7 @@ fun DashboardContent(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.CalendarMonth,
-                                contentDescription = null,
+                                contentDescription = stringResource(id = R.string.dashboard_period_chip_cd),
                                 modifier = Modifier.size(14.dp),
                                 tint = MaterialTheme.colorScheme.primary
                             )
@@ -165,10 +211,11 @@ fun DashboardContent(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // Card Principal: Salud Financiera (o Skeleton si está cargando, o Setup si no tiene ingreso)
+            // Card Principal: Salud Financiera (o Skeleton si está cargando, o Setup si no tiene ingreso ni movimientos)
+            val hasFinancialActivity = uiState.hasIncomeConfigured || uiState.listTotal > 0.0 || uiState.extraExpensesTotal > 0.0 || uiState.extraIncomesTotal > 0.0
             if (uiState.isLoading) {
                 DashboardCardSkeleton()
-            } else if (!uiState.hasIncomeConfigured) {
+            } else if (!hasFinancialActivity) {
                 SetupIncomeCard(
                     onSetupIncomeClick = onSetupIncomeClick
                 )
@@ -179,6 +226,8 @@ fun DashboardContent(
                     onAddExpense = onAddExpense,
                     onDeleteExpense = onDeleteExpense,
                     onEditExpense = onEditExpense,
+                    onAddExtraIncome = onAddExtraIncome,
+                    onEditExtraIncome = onEditExtraIncome,
                     onCardClick = onCardClick
                 )
             }
@@ -226,6 +275,39 @@ fun DashboardContent(
                 onDismiss = onCloseEditExpenseSheet,
                 onUpdate = onUpdateExtraExpense,
                 onDelete = onDeleteExpense
+            )
+        }
+
+        // BottomSheet para agregar una ganancia o ingreso extra
+        if (uiState.isExtraIncomeSheetOpen) {
+            ExtraIncomeBottomSheet(
+                onDismiss = onCloseExtraIncomeSheet,
+                onSave = onSaveExtraIncome
+            )
+        }
+
+        // BottomSheet para editar o eliminar una ganancia extra existente
+        if (uiState.isEditExtraIncomeSheetOpen && uiState.editingExtraIncome != null) {
+            ExtraIncomeEditBottomSheet(
+                income = uiState.editingExtraIncome,
+                onDismiss = onCloseEditExtraIncomeSheet,
+                onUpdate = onUpdateExtraIncome,
+                onDelete = onDeleteExtraIncome
+            )
+        }
+
+        // Modal de Calendario Financiero de Pagos y Gastos
+        if (uiState.isFinancialCalendarOpen) {
+            FinancialCalendarModal(
+                initialYear = uiState.currentYear,
+                initialMonth = uiState.currentMonth,
+                extraExpenses = uiState.extraExpenses,
+                extraIncomes = uiState.extraIncomes,
+                profile = uiState.profile,
+                onDismiss = onCloseFinancialCalendar,
+                onDeleteSalarySingleMonth = onDeleteSalarySingleMonth,
+                onDeleteSalaryFutureMonths = onDeleteSalaryFutureMonths,
+                onDeleteSalaryAll = onDeleteSalaryAll
             )
         }
     }

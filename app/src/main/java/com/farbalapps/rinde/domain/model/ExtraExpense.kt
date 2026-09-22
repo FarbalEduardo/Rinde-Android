@@ -13,5 +13,6 @@ data class ExtraExpense(
     val iconKey: String = "receipt",
     val month: Int,
     val year: Int,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val expenseDate: Long = createdAt
 )
