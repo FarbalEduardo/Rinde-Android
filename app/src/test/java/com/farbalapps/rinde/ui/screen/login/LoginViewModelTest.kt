@@ -31,18 +31,22 @@ class LoginViewModelTest {
     private val signUpUseCase: com.farbalapps.rinde.domain.usecase.SignUpUseCase = mockk()
     private val googleSignInUseCase: com.farbalapps.rinde.domain.usecase.GoogleSignInUseCase = mockk()
     private val resetPasswordUseCase: com.farbalapps.rinde.domain.usecase.ResetPasswordUseCase = mockk()
-    private val authRepository: AuthRepository = mockk()
+    private val reactivateAccountUseCase: com.farbalapps.rinde.domain.usecase.account.ReactivateAccountUseCase = mockk(relaxed = true)
+    private val authRepository: AuthRepository = mockk(relaxed = true)
     private val sessionManager: SessionManager = mockk(relaxed = true)
     private val validateEmail: ValidateEmail = mockk()
     private val validatePassword: ValidatePassword = mockk()
 
     @Before
     fun setup() {
+        coEvery { reactivateAccountUseCase.isSuspended(any()) } returns Result.success(false)
+
         viewModel = LoginViewModel(
             loginUseCase,
             signUpUseCase,
             googleSignInUseCase,
             resetPasswordUseCase,
+            reactivateAccountUseCase,
             authRepository,
             sessionManager,
             validateEmail,
@@ -143,6 +147,35 @@ class LoginViewModelTest {
             val finalState = awaitItem()
             assertFalse(finalState.isSuccess)
             assertEquals(errorMessage, finalState.loginError)
+        }
+    }
+
+    @Test
+    fun `given suspended account, when login succeeds, then displays reactivate dialog without navigating to success`() = runTest {
+        // Given
+        val email = "suspended@example.com"
+        val password = "Password123!"
+        val user = User("suspended_uid", email)
+
+        viewModel.onEmailChanged(email)
+        viewModel.onPasswordChanged(password)
+
+        every { validateEmail.execute(email) } returns ValidationResult(true)
+        every { validatePassword.execute(password) } returns ValidationResult(true)
+        coEvery { loginUseCase.execute(email, password) } returns flowOf(
+            Resource.Success(user)
+        )
+        coEvery { reactivateAccountUseCase.isSuspended("suspended_uid") } returns Result.success(true)
+
+        // When
+        viewModel.onLoginClick()
+
+        // Then
+        viewModel.state.test {
+            val finalState = awaitItem()
+            assertTrue("Reactivate dialog should be shown", finalState.showReactivateDialog)
+            assertFalse("Should not navigate to success yet", finalState.isSuccess)
+            assertEquals("suspended_uid", finalState.pendingUserId)
         }
     }
 }

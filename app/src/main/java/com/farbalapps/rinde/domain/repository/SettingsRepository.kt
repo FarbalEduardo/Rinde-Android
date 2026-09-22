@@ -1,7 +1,7 @@
 package com.farbalapps.rinde.domain.repository
 
-import com.farbalapps.rinde.data.local.AppLanguage
-import com.farbalapps.rinde.data.local.ThemeMode
+import com.farbalapps.rinde.domain.model.AppLanguage
+import com.farbalapps.rinde.domain.model.ThemeMode
 import kotlinx.coroutines.flow.Flow
 
 interface SettingsRepository {

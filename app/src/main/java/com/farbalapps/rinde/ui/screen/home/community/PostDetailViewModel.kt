@@ -27,6 +27,7 @@ import javax.inject.Inject
 
 import com.farbalapps.rinde.domain.usecase.VoteResult
 
+import com.farbalapps.rinde.util.logger.AppLogger
 import kotlinx.coroutines.flow.combine
 
 enum class VoteUiState { IDLE, SENDING, ERROR, OFFLINE }
@@ -68,7 +69,11 @@ class PostDetailViewModel @Inject constructor(
     private val editCommentUseCase: EditCommentUseCase,
     private val deleteReplyUseCase: DeleteReplyUseCase,
     private val editReplyUseCase: EditReplyUseCase,
-    private val reportCommentUseCase: ReportCommentUseCase
+    private val reportCommentUseCase: ReportCommentUseCase,
+    private val markPostExpiredUseCase: com.farbalapps.rinde.domain.usecase.community.MarkPostExpiredUseCase,
+    private val deletePostUseCase: com.farbalapps.rinde.domain.usecase.community.DeletePostUseCase,
+    private val reportPostExpiredUseCase: com.farbalapps.rinde.domain.usecase.community.ReportPostExpiredUseCase,
+    private val logger: AppLogger
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PostDetailUiState())
@@ -136,7 +141,7 @@ class PostDetailViewModel @Inject constructor(
                     _uiState.update { it.copy(comments = sorted, isLoadingComments = false) }
                 }
             } catch (e: Exception) {
-                android.util.Log.e("PostDetailVM", "Error cargando comentarios: ${e.message}")
+                logger.error(TAG, "Error cargando comentarios: ${e.message}", e)
                 _uiState.update { it.copy(isLoadingComments = false) }
             }
         }
@@ -155,7 +160,7 @@ class PostDetailViewModel @Inject constructor(
                     }
                 }
             } catch (e: Exception) {
-                android.util.Log.e("PostDetailVM", "Error cargando respuestas: ${e.message}")
+                logger.error(TAG, "Error cargando respuestas: ${e.message}", e)
             }
         }
     }
@@ -291,8 +296,14 @@ class PostDetailViewModel @Inject constructor(
     // Voting
     // ─────────────────────────────────────────────────────────────────────────
 
+    private var lastVoteTimestamp = 0L
+
     fun toggleVote(voteValue: Int) {
         val post = _uiState.value.post ?: return
+        val now = System.currentTimeMillis()
+        if (now - lastVoteTimestamp < 400L) return
+        lastVoteTimestamp = now
+
         if (_uiState.value.voteState == VoteUiState.SENDING) return
 
         val nextVote = if (post.myVoteValue == voteValue) 0 else voteValue
@@ -431,8 +442,10 @@ class PostDetailViewModel @Inject constructor(
         val post = _uiState.value.post ?: return
         val postId = currentPostId ?: return
         viewModelScope.launch {
-            feedRepository.deletePost(postId, post.photos).onSuccess {
+            deletePostUseCase(postId, post.photos).onSuccess {
                 _uiState.update { it.copy(isDeleted = true, snackbarMessage = "Publicación eliminada") }
+            }.onFailure { error ->
+                _uiState.update { it.copy(error = error.localizedMessage) }
             }
         }
     }
@@ -440,24 +453,22 @@ class PostDetailViewModel @Inject constructor(
 
     fun markAsExpired() {
         val postId = currentPostId ?: return
-        feedRepository.updatePostStatusLocal(postId, com.farbalapps.rinde.domain.model.VerificationStatus.EXPIRED)
         viewModelScope.launch {
-            feedRepository.markPostAsExpired(postId)
+            markPostExpiredUseCase.markExpired(postId)
         }
     }
 
     fun markAsAvailable() {
         val postId = currentPostId ?: return
-        feedRepository.updatePostStatusLocal(postId, com.farbalapps.rinde.domain.model.VerificationStatus.PENDING)
         viewModelScope.launch {
-            feedRepository.markPostAsAvailable(postId)
+            markPostExpiredUseCase.markAvailable(postId)
         }
     }
 
     fun reportAsExpired() {
         val post = _uiState.value.post ?: return
         viewModelScope.launch {
-            feedRepository.reportPostAsExpired(
+            reportPostExpiredUseCase(
                 postId = post.id,
                 postTitle = post.title,
                 authorId = post.authorId,
@@ -465,11 +476,17 @@ class PostDetailViewModel @Inject constructor(
                 currentUserName = _uiState.value.currentUserName
             ).onSuccess {
                 _uiState.update { it.copy(snackbarMessage = "Reporte enviado al autor") }
+            }.onFailure { error ->
+                _uiState.update { it.copy(error = error.localizedMessage) }
             }
         }
     }
 
     fun clearSnackbar() {
         _uiState.update { it.copy(snackbarMessage = null) }
+    }
+
+    companion object {
+        private const val TAG = "PostDetailVM"
     }
 }

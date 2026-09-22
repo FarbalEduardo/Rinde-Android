@@ -4,8 +4,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -14,7 +17,8 @@ import java.util.*
 
 @Composable
 fun SaveListDialog(
-    totalItems: Int,
+    purchasedItemsCount: Int,
+    unpurchasedItemsCount: Int,
     totalPrice: Double?,
     currency: String,
     onDismiss: () -> Unit,
@@ -50,7 +54,7 @@ fun SaveListDialog(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    text = "Crea un respaldo de tu lista actual para volver a usarla o consultarla en el futuro.",
+                    text = "Crea un respaldo con los productos comprados de tu lista actual para consultarlos o usarlos en Chef IA.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -64,26 +68,83 @@ fun SaveListDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
+                // Aviso de productos no comprados o lista vacía
+                if (purchasedItemsCount == 0) {
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.7f),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.WarningAmber,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onErrorContainer,
+                                modifier = Modifier.size(22.dp)
+                            )
+                            Text(
+                                text = "No tienes productos marcados como comprados. Marca al menos un producto con la casilla para poder guardarlo.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                    }
+                } else if (unpurchasedItemsCount > 0) {
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.7f),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Info,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                                modifier = Modifier.size(22.dp)
+                            )
+                            Text(
+                                text = "Hay $unpurchasedItemsCount producto${if (unpurchasedItemsCount != 1) "s" else ""} pendiente${if (unpurchasedItemsCount != 1) "s" else ""} de compra que no se guardar${if (unpurchasedItemsCount != 1) "án" else "á"}. Solo se respaldarán los $purchasedItemsCount producto${if (purchasedItemsCount != 1) "s" else ""} marcados como comprados.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer
+                            )
+                        }
+                    }
+                }
+
                 SaveListSummaryBlock(
-                    totalItems = totalItems,
+                    purchasedItemsCount = purchasedItemsCount,
                     totalPrice = totalPrice,
                     currency = currency
                 )
 
-                SaveListClearSwitchBlock(
-                    clearAfterSave = clearAfterSave,
-                    onClearAfterSaveChange = { clearAfterSave = it }
-                )
+                if (purchasedItemsCount > 0) {
+                    SaveListClearSwitchBlock(
+                        clearAfterSave = clearAfterSave,
+                        onClearAfterSaveChange = { clearAfterSave = it }
+                    )
+                }
             }
         },
         confirmButton = {
             Button(
                 onClick = {
-                    if (listName.isNotBlank()) {
+                    if (listName.isNotBlank() && purchasedItemsCount > 0) {
                         onConfirm(listName.trim(), clearAfterSave)
                     }
                 },
-                enabled = listName.isNotBlank(),
+                enabled = listName.isNotBlank() && purchasedItemsCount > 0,
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Text("Guardar")
@@ -101,7 +162,7 @@ fun SaveListDialog(
 
 @Composable
 private fun SaveListSummaryBlock(
-    totalItems: Int,
+    purchasedItemsCount: Int,
     totalPrice: Double?,
     currency: String
 ) {
@@ -115,10 +176,10 @@ private fun SaveListSummaryBlock(
                 .fillMaxWidth()
                 .padding(12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "📦 $totalItems producto${if (totalItems != 1) "s" else ""}",
+                text = "📦 $purchasedItemsCount producto${if (purchasedItemsCount != 1) "s" else ""} a guardar",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -150,16 +211,16 @@ private fun SaveListClearSwitchBlock(
                 .fillMaxWidth()
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Vaciar pantalla al guardar",
+                    text = "Vaciar productos comprados",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    text = "Limpia la lista actual para agregar nuevas compras",
+                    text = "Elimina de la pantalla solo los productos comprados guardados",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

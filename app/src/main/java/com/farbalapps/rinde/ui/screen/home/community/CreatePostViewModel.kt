@@ -50,7 +50,7 @@ class CreatePostViewModel @Inject constructor(
     private val createPostUseCase: CreatePostUseCase,
     private val getProfileUseCase: com.farbalapps.rinde.domain.usecase.profile.GetProfileUseCase,
     private val locationService: LocationService,
-    private val firebaseAuth: com.google.firebase.auth.FirebaseAuth
+    private val authRepository: com.farbalapps.rinde.domain.repository.AuthRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CreatePostUiState())
@@ -61,7 +61,7 @@ class CreatePostViewModel @Inject constructor(
     }
 
     private fun checkUserPrivacy() {
-        val uid = firebaseAuth.currentUser?.uid ?: return
+        val uid = authRepository.getCurrentUser()?.id ?: return
         viewModelScope.launch {
             getProfileUseCase(uid).collect { profile ->
                 _uiState.update { it.copy(isPrivateProfile = profile.isPrivate) }
@@ -247,7 +247,8 @@ class CreatePostViewModel @Inject constructor(
                 description = state.description,
                 category = state.category,
                 locationName = state.locationName,
-                photoUris = state.photoUris,
+                // La capa UI tiene Uri; los convertimos a String antes de cruzar la frontera con el Dominio
+                photos = state.photoUris.map { it.toString() },
                 offerType = state.offerType,
                 websiteName = state.websiteName.takeIf { it.isNotBlank() },
                 productLink = state.productLink.takeIf { it.isNotBlank() },

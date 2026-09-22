@@ -21,6 +21,7 @@ import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
 
+import com.farbalapps.rinde.domain.usecase.goals.ArchiveGoalUseCase
 import com.farbalapps.rinde.domain.usecase.goals.UpdateGoalUseCase
 
 @HiltViewModel
@@ -30,7 +31,8 @@ class GoalDetailViewModel @Inject constructor(
     private val getGoalTransactionsUseCase: GetGoalTransactionsUseCase,
     private val calculateGoalSuggestionUseCase: CalculateGoalSuggestionUseCase,
     private val depositToGoalUseCase: DepositToGoalUseCase,
-    private val updateGoalUseCase: UpdateGoalUseCase
+    private val updateGoalUseCase: UpdateGoalUseCase,
+    private val archiveGoalUseCase: ArchiveGoalUseCase
 ) : ViewModel() {
 
     val goalId: String = try {
@@ -154,6 +156,16 @@ class GoalDetailViewModel @Inject constructor(
                 _events.emit(GoalsEvent.Success("Meta actualizada con éxito"))
             }.onFailure { e ->
                 _events.emit(GoalsEvent.ValidationError(e.message ?: "Error al actualizar la meta"))
+            }
+        }
+    }
+
+    fun archiveGoal() {
+        viewModelScope.launch {
+            archiveGoalUseCase(goalId).onSuccess {
+                _events.emit(GoalsEvent.Success("Meta archivada"))
+            }.onFailure { e ->
+                _events.emit(GoalsEvent.ValidationError(e.message ?: "Error al archivar la meta"))
             }
         }
     }

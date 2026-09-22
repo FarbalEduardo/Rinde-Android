@@ -31,6 +31,8 @@ fun SettingsScreen(
     onLogout: () -> Unit,
     onNavigateToSaved: () -> Unit,
     onNavigateToBlocked: () -> Unit,
+    onNavigateToAbout: () -> Unit = {},
+    onNavigateToVerifyAccount: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     var showLogoutDialog by remember { mutableStateOf(false) }
@@ -52,23 +54,60 @@ fun SettingsScreen(
     }
 
     if (showThemeSheet) {
-        SettingsSelectionSheet(
-            title = stringResource(R.string.settings_item_theme),
-            options = ThemeMode.entries.map { it.name },
-            selectedOption = themeMode.name,
-            onOptionSelected = { viewModel.setTheme(ThemeMode.valueOf(it)) },
-            onDismiss = { showThemeSheet = false }
+        val themeOptions = listOf(
+            ThemeMode.SYSTEM.name to stringResource(R.string.theme_system),
+            ThemeMode.LIGHT.name to stringResource(R.string.theme_light),
+            ThemeMode.DARK.name to stringResource(R.string.theme_dark)
         )
+        ModalBottomSheet(onDismissRequest = { showThemeSheet = false }) {
+            Column(modifier = Modifier.padding(bottom = 32.dp)) {
+                Text(
+                    text = stringResource(R.string.settings_item_theme),
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.padding(16.dp)
+                )
+                themeOptions.forEach { (themeKey, label) ->
+                    ListItem(
+                        modifier = Modifier.clickable {
+                            viewModel.setTheme(ThemeMode.valueOf(themeKey))
+                            showThemeSheet = false
+                        },
+                        headlineContent = { Text(label) },
+                        trailingContent = {
+                            RadioButton(selected = themeKey == themeMode.name, onClick = null)
+                        }
+                    )
+                }
+            }
+        }
     }
 
     if (showLanguageSheet) {
-        SettingsSelectionSheet(
-            title = stringResource(R.string.settings_item_language),
-            options = AppLanguage.entries.map { it.name },
-            selectedOption = appLanguage.name,
-            onOptionSelected = { viewModel.setLanguage(AppLanguage.valueOf(it)) },
-            onDismiss = { showLanguageSheet = false }
+        val options = listOf(
+            AppLanguage.ES.name to stringResource(R.string.language_es),
+            AppLanguage.EN.name to stringResource(R.string.language_en)
         )
+        ModalBottomSheet(onDismissRequest = { showLanguageSheet = false }) {
+            Column(modifier = Modifier.padding(bottom = 32.dp)) {
+                Text(
+                    text = stringResource(R.string.settings_item_language),
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.padding(16.dp)
+                )
+                options.forEach { (langKey, label) ->
+                    ListItem(
+                        modifier = Modifier.clickable {
+                            viewModel.setLanguage(AppLanguage.valueOf(langKey))
+                            showLanguageSheet = false
+                        },
+                        headlineContent = { Text(label) },
+                        trailingContent = {
+                            RadioButton(selected = langKey == appLanguage.name, onClick = null)
+                        }
+                    )
+                }
+            }
+        }
     }
 
     Scaffold(
@@ -91,6 +130,8 @@ fun SettingsScreen(
             onTogglePrivacy = { viewModel.togglePrivacy(it) },
             onNavigateToSaved = onNavigateToSaved,
             onNavigateToBlocked = onNavigateToBlocked,
+            onNavigateToAbout = onNavigateToAbout,
+            onNavigateToVerifyAccount = onNavigateToVerifyAccount,
             onShowTheme = { showThemeSheet = true },
             onShowLanguage = { showLanguageSheet = true },
             onShowLogout = { showLogoutDialog = true }
@@ -107,19 +148,45 @@ fun SettingsContent(
     onTogglePrivacy: (Boolean) -> Unit,
     onNavigateToSaved: () -> Unit,
     onNavigateToBlocked: () -> Unit,
+    onNavigateToAbout: () -> Unit = {},
+    onNavigateToVerifyAccount: () -> Unit = {},
     onShowTheme: () -> Unit,
     onShowLanguage: () -> Unit,
     onShowLogout: () -> Unit
 ) {
+    // Resolver strings en el contexto @Composable antes del LazyColumn
+    val themeLabel = when (currentTheme) {
+        ThemeMode.SYSTEM -> stringResource(R.string.theme_system)
+        ThemeMode.LIGHT -> stringResource(R.string.theme_light)
+        ThemeMode.DARK -> stringResource(R.string.theme_dark)
+    }
+    val langLabel = when (currentLanguage) {
+        AppLanguage.ES -> stringResource(R.string.language_es)
+        AppLanguage.EN -> stringResource(R.string.language_en)
+    }
+    val sectionAppHeader = stringResource(R.string.settings_section_app)
+    val labelTheme = stringResource(R.string.settings_item_theme)
+    val labelLang = stringResource(R.string.settings_item_language)
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .padding(padding)
     ) {
         usageSection(onNavigateToSaved)
-        privacySection(isPrivate, onTogglePrivacy, onNavigateToBlocked)
-        appSection(currentTheme, currentLanguage, onShowTheme, onShowLanguage)
-        moreSection(onShowLogout)
+        privacySection(isPrivate, onTogglePrivacy, onNavigateToBlocked, onNavigateToVerifyAccount)
+        appSection(
+            currentTheme = currentTheme,
+            currentLanguage = currentLanguage,
+            themeLabel = themeLabel,
+            langLabel = langLabel,
+            sectionHeader = sectionAppHeader,
+            labelTheme = labelTheme,
+            labelLang = labelLang,
+            onShowTheme = onShowTheme,
+            onShowLanguage = onShowLanguage
+        )
+        moreSection(onNavigateToAbout, onShowLogout)
     }
 }
 
@@ -139,7 +206,8 @@ private fun androidx.compose.foundation.lazy.LazyListScope.usageSection(
 private fun androidx.compose.foundation.lazy.LazyListScope.privacySection(
     isPrivate: Boolean,
     onTogglePrivacy: (Boolean) -> Unit,
-    onNavigateToBlocked: () -> Unit
+    onNavigateToBlocked: () -> Unit,
+    onNavigateToVerifyAccount: () -> Unit
 ) {
     item { SettingsSectionHeader(stringResource(R.string.settings_section_privacy)) }
     item {
@@ -167,7 +235,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.privacySection(
         SettingsListItem(
             icon = Icons.Default.VerifiedUser,
             label = stringResource(R.string.settings_item_verify_account),
-            onClick = { /* TODO */ }
+            onClick = onNavigateToVerifyAccount
         )
     }
 }
@@ -175,29 +243,35 @@ private fun androidx.compose.foundation.lazy.LazyListScope.privacySection(
 private fun androidx.compose.foundation.lazy.LazyListScope.appSection(
     currentTheme: ThemeMode,
     currentLanguage: AppLanguage,
+    themeLabel: String,
+    langLabel: String,
+    sectionHeader: String,
+    labelTheme: String,
+    labelLang: String,
     onShowTheme: () -> Unit,
     onShowLanguage: () -> Unit
 ) {
-    item { SettingsSectionHeader(stringResource(R.string.settings_section_app)) }
+    item { SettingsSectionHeader(sectionHeader) }
     item {
         SettingsListItem(
             icon = Icons.Default.Palette,
-            label = stringResource(R.string.settings_item_theme),
-            value = currentTheme.name.lowercase().replaceFirstChar { it.uppercase() },
+            label = labelTheme,
+            value = themeLabel,
             onClick = onShowTheme
         )
     }
     item {
         SettingsListItem(
             icon = Icons.Default.Language,
-            label = stringResource(R.string.settings_item_language),
-            value = currentLanguage.name,
+            label = labelLang,
+            value = langLabel,
             onClick = onShowLanguage
         )
     }
 }
 
 private fun androidx.compose.foundation.lazy.LazyListScope.moreSection(
+    onNavigateToAbout: () -> Unit,
     onShowLogout: () -> Unit
 ) {
     item { SettingsSectionHeader(stringResource(R.string.settings_section_more)) }
@@ -205,7 +279,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.moreSection(
         SettingsListItem(
             icon = Icons.Default.Info,
             label = stringResource(R.string.settings_item_about),
-            onClick = { /* TODO */ }
+            onClick = onNavigateToAbout
         )
     }
 

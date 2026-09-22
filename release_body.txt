@@ -1,13 +1,69 @@
-# Notas de Lanzamiento - Rinde v1.2.0
+# 🚀 Notas de Lanzamiento — Rinde v1.6.0-beta
 
-Esta actualización introduce mejoras significativas en la experiencia del usuario final mediante una navegación más intuitiva y orientada a la colaboración, además de robustecer la infraestructura de pruebas unitarias y estabilidad del código base.
+Esta versión representa un avance significativo en la madurez arquitectónica, robustez financiera y experiencia visual de **Rinde**. Se consolida la auditoría técnica de la pantalla **Dashboard**, se establece una arquitectura basada en casos de uso de dominio puros, se integra el **Calendario Financiero de Pagos y Gastos**, y se garantiza el **aislamiento estricto de sueldos y movimientos por periodo**.
 
-## 🚀 Nuevas Características
+---
 
-* **Navegación Prioritaria Basada en Comunidad**: La sección global de reportes de precios y contribuciones comunitarias (`CommunityScreen`) se establece ahora como el punto de acceso inicial predeterminado al abrir la aplicación. La **Lista de Mandado** ha sido reubicada de forma fluida a la segunda posición de la barra de navegación.
-* **Control de Navegación de Retroceso Optimizado**: Integración de una lógica de interceptación de retroceso mediante Compose `BackHandler` en la pantalla de inicio principal (Comunidad), lo que permite un cierre controlado y nativo del ciclo de vida de la aplicación.
+## 📊 Dashboard y Clean Architecture
+* **Capa de Dominio con Casos de Uso Dedicados**:
+  * `GetDashboardSummaryUseCase`: Flujo reactivo consolidado de ingresos, compras realizadas de la lista de compras, gastos del hogar y metas de ahorro activas.
+  * `ManageExtraExpenseUseCase`: Lógica de validación (etiqueta y monto mayor a cero) y persistencia para gastos del hogar (`addExpense`, `updateExpense`, `deleteExpense`).
+  * `ManageExtraIncomeUseCase`: Validación y persistencia para ganancias extras (`addIncome`, `updateIncome`, `deleteIncome`).
+  * `SyncDashboardDataUseCase`: Orquestación de sincronización remota con Firebase, metas, listas y verificación de rollover mensual.
+* **Semáforo Financiero Neutro (`FinancialHealthStatus.SETUP_REQUIRED`)**:
+  * Cuando el usuario no cuenta con sueldo configurado ni gastos registrados, el semáforo despliega un estado informativo con badge color terciario y la invitación directa *"Configurar sueldo"*, eliminando falsos positivos de salud financiera.
+* **Acceso Directo al Calendario Financiero desde el Header**:
+  * Al presionar el chip superior de fecha del mes ("Septiembre 2026"), se despliega de inmediato el modal del **Calendario Financiero**, permitiendo consultar los cobros y pagos día por día sin salir de la vista principal.
+* **Gesto Nativo Pull-to-Refresh**:
+  * Soporte de `PullToRefreshBox` de Material 3 para forzar la sincronización en la nube con un simple deslizamiento hacia abajo.
+* **Optimización de Rendimiento en Jetpack Compose**:
+  * Migración de animaciones continuas de escala y traslación a `Modifier.graphicsLayer`, aislando las transformaciones en la GPU y erradicando recomposiciones de layout por frame.
 
-## 🔧 Optimizaciones y Correcciones Técnicas (Bajo el Capó)
+---
 
-* **Sincronización del Flujo de Navegación**: Reestructuración y alineación de los componentes de navegación `HomeNavHost` y `BottomNavigationBar` para garantizar una transición libre de parpadeos e ideal para el rendimiento del renderizado en Jetpack Compose.
-* **Saneamiento del Entorno de Pruebas**: Corrección de inconsistencias de compilación preexistentes en la suite de pruebas unitarias de `ProfileViewModelTest`. Se actualizaron las inyecciones mock de los casos de uso `GetSavedPostsUseCase` y `ClearUploadStatusUseCase`, y se sincronizaron las llamadas asíncronas con el tipo de retorno encapsulado `Result<Unit>` para asegurar la estabilidad del pipeline de integración local.
+## 🗓️ Detalle Financiero y Calendario de Pagos/Gastos
+* **Aislamiento de Sueldo Fijo por Periodo**:
+  * Los cambios o asignaciones de sueldo fijo aplican únicamente al periodo en curso y hacia el futuro, manteniendo inmutables los registros cerrados de meses pasados.
+* **Aislamiento de Ingresos Variables**:
+  * Los ingresos variables capturados para un mes específico no se proyectan a meses posteriores en el Calendario Financiero.
+* **Eliminación Granular de Sueldos Recurrentes**:
+  * Diálogo de confirmación con 3 alternativas intuitivas:
+    1. *Solo este mes*: Suprime el ingreso del mes seleccionado mediante balance cerrado.
+    2. *Este y los meses futuros*: Da por terminada la recurrencia a partir del mes en consulta.
+    3. *Todos los pagos*: Cancela el sueldo en el perfil del usuario.
+* **Gestión Integral en Detalle Financiero**:
+  * Visualización y edición en tarjeta de sueldo base y desglose de ganancias extras del periodo.
+  * Botón unificado y persistente para agregar gastos del hogar.
+  * Diálogos de confirmación (`AlertDialog`) en BottomSheets de edición para prevenir borrados accidentales.
+
+---
+
+## 💾 Persistencia de Datos y Sincronización
+* **Esquema Room v31**:
+  * Nuevas columnas `expense_date`, `income_date` y `payment_date` con índices optimizados para consultas temporales y de calendario.
+  * Migración `MIGRATION_30_31` probada e integrada.
+* **Protección Offline-First**:
+  * Verificación de marcas de tiempo `updatedAt` en `DashboardRepositoryImpl.syncFromFirebase()` para salvaguardar cambios locales sin conexión frente a sobreescrituras remotas.
+
+---
+
+## 🎨 Experiencia Visual y UX ("Wow Factor")
+* **Carrusel Educativo y Animaciones en Estado Vacío (`SetupIncomeCard`)**:
+  * Carrusel rotativo cada 3 segundos con 4 pilares clave de la app, píldoras interactivas animadas y transiciones `AnimatedContent`.
+  * Micro-animaciones continuas de respiración en ícono y bordes.
+* **Alineación Centrada del Disponible Real**:
+  * Monto disponible y subtítulo centrados en la tarjeta principal del Dashboard y Detalle Financiero, optimizando el balance y jerarquía visual.
+
+---
+
+## 🧪 Calidad y Validación Automatizada
+* **100% de Pruebas Unitarias Exitosas**:
+  * `DashboardViewModelTest`: 12/12 pruebas PASSED.
+  * `DashboardUseCasesTest`: 5/5 pruebas PASSED.
+  * `FinancialDetailViewModelTest`: 19/19 pruebas PASSED.
+* **Pipeline SDD de Integración Local (`run_pipeline.ps1`)**:
+  * `Mobile Developer Audit`: **PASSED** (0 fugas de arquitectura).
+  * `Design Expert Audit`: **PASSED** (Tokens M3 y Compose stability).
+  * `Quality Expert Audit`: **PASSED** (Cobertura completa de requerimientos).
+  * `Security Expert Audit`: **PASSED** (SAST y seguridad Android).
+  * **Estado General**: **PIPELINE COMPLETED SUCCESSFULLY**.

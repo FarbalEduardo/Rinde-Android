@@ -19,7 +19,9 @@ class GoalsViewModel @Inject constructor(
     private val deleteGoalUseCase: DeleteGoalUseCase,
     private val depositToGoalUseCase: DepositToGoalUseCase,
     private val archiveGoalUseCase: ArchiveGoalUseCase,
+    private val unarchiveGoalUseCase: UnarchiveGoalUseCase,
     private val reorderGoalsUseCase: ReorderGoalsUseCase,
+    private val syncGoalsUseCase: SyncGoalsUseCase,
     private val settingsRepository: com.farbalapps.rinde.domain.repository.SettingsRepository
 ) : ViewModel() {
 
@@ -34,17 +36,25 @@ class GoalsViewModel @Inject constructor(
 
     init {
         loadGoalsData()
+        syncGoals()
+    }
+
+    fun syncGoals() {
+        viewModelScope.launch {
+            syncGoalsUseCase()
+        }
     }
 
     private fun loadGoalsData() {
         viewModelScope.launch {
             combine(
                 getGoalsUseCase(),
+                getArchivedGoalsUseCase(),
                 getGoalsSummaryUseCase(),
                 settingsRepository.isPrivacyMode()
-            ) { goals, summary, isPrivacyMode ->
+            ) { goals, archivedGoals, summary, isPrivacyMode ->
                 if (goals.isEmpty()) {
-                    GoalsUiState.Empty
+                    GoalsUiState.Empty(hasArchivedGoals = archivedGoals.isNotEmpty())
                 } else {
                     // E1.2 - E1.4: Lógica del layout adaptativo
                     // La primera de la lista ordenada por cantidad ahorrada es la destacada
@@ -136,6 +146,16 @@ class GoalsViewModel @Inject constructor(
         }
     }
 
+    fun unarchiveGoal(goalId: String) {
+        viewModelScope.launch {
+            unarchiveGoalUseCase(goalId).onSuccess {
+                _events.emit(GoalsEvent.Success("Meta reactivada con éxito"))
+            }.onFailure { e ->
+                _events.emit(GoalsEvent.ValidationError(e.message ?: "Error al reactivar la meta"))
+            }
+        }
+    }
+
     fun togglePrivacyMode(isPrivate: Boolean) {
         viewModelScope.launch {
             settingsRepository.togglePrivacyMode(isPrivate)
@@ -157,11 +177,7 @@ class GoalsViewModel @Inject constructor(
 
     fun saveGoalOrder(goals: List<SavingsGoal>) {
         viewModelScope.launch {
-            reorderGoalsUseCase(goals).onSuccess {
-                _events.emit(GoalsEvent.Success("Orden guardado"))
-            }.onFailure { e ->
-                _events.emit(GoalsEvent.ValidationError(e.message ?: "Error al guardar el orden"))
-            }
+            reorderGoalsUseCase(goals)
         }
     }
 }

@@ -36,3 +36,7 @@ google-services.json
 # Temporary build/test logs
 build_*.txt
 test_result.txt
+.artifacts/
+*~
+scratch/
+.agents/pipeline/*_report*.json

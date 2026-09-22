@@ -7,6 +7,7 @@ sealed interface HomeRoute {
     @Serializable data object List : HomeRoute
     @Serializable data object Community : HomeRoute
     @Serializable data object Goals : HomeRoute
+    @Serializable data object Dashboard : HomeRoute
     @Serializable data object Assistant : HomeRoute
     @Serializable data object Profile : HomeRoute
     @Serializable data object EditProfile : HomeRoute
@@ -14,9 +15,14 @@ sealed interface HomeRoute {
     @Serializable data object BlockedUsers : HomeRoute
     @Serializable data object CreatePost : HomeRoute
     @Serializable data object Settings : HomeRoute
+    @Serializable data object About : HomeRoute
+    @Serializable data class Legal(val initialTab: Int = 0) : HomeRoute
 
     @Serializable
     data class UserProfile(val userId: String) : HomeRoute
+
+    @Serializable
+    data class UserPosts(val userId: String, val userName: String = "") : HomeRoute
 
     @Serializable
     data class PostDetail(
@@ -30,4 +36,7 @@ sealed interface HomeRoute {
 
     @Serializable
     data class GoalDetail(val goalId: String) : HomeRoute
+
+    @Serializable
+    data object FinancialDetail : HomeRoute
 }

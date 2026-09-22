@@ -65,7 +65,7 @@ fun CreateGoalBottomSheet(
                 .navigationBarsPadding()
         ) {
             Text(
-                text = if (initialGoal != null) "Editar Meta de Ahorro" else "Nueva Meta de Ahorro",
+                text = if (initialGoal != null) androidx.compose.ui.res.stringResource(com.farbalapps.rinde.R.string.goals_dialog_edit_title) else androidx.compose.ui.res.stringResource(com.farbalapps.rinde.R.string.goals_dialog_new_title),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -92,10 +92,10 @@ fun CreateGoalBottomSheet(
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Box(modifier = Modifier.weight(1f)) {
-                    DateField(label = "Fecha Inicio", dateMillis = startDate, onDateSelected = { startDate = it })
+                    DateField(label = androidx.compose.ui.res.stringResource(com.farbalapps.rinde.R.string.goals_label_start_date), dateMillis = startDate, onDateSelected = { startDate = it })
                 }
                 Box(modifier = Modifier.weight(1f)) {
-                    DateField(label = "Fecha Límite", dateMillis = targetDate, onDateSelected = { targetDate = it })
+                    DateField(label = androidx.compose.ui.res.stringResource(com.farbalapps.rinde.R.string.goals_label_target_date), dateMillis = targetDate, onDateSelected = { targetDate = it })
                 }
             }
 

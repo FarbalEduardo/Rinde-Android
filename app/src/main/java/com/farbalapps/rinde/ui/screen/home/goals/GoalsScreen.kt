@@ -2,6 +2,8 @@ package com.farbalapps.rinde.ui.screen.home.goals
 
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -19,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.farbalapps.rinde.domain.model.SavingsGoal
 import com.farbalapps.rinde.ui.screen.home.goals.components.*
+import androidx.compose.ui.tooling.preview.Preview
 import kotlinx.coroutines.flow.collectLatest
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -39,8 +42,8 @@ fun GoalsScreen(
             when (event) {
                 is GoalsEvent.Success -> Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
                 is GoalsEvent.ValidationError -> Toast.makeText(context, event.message, Toast.LENGTH_LONG).show()
-                is GoalsEvent.GoalLimitReached -> Toast.makeText(context, "Límite de metas alcanzado (máximo 2).", Toast.LENGTH_SHORT).show()
-                is GoalsEvent.GoalCompleted -> Toast.makeText(context, "🎉 ¡Felicidades! Completaste la meta: ${event.title}", Toast.LENGTH_LONG).show()
+                is GoalsEvent.GoalLimitReached -> Toast.makeText(context, context.getString(com.farbalapps.rinde.R.string.goals_limit_reached), Toast.LENGTH_SHORT).show()
+                is GoalsEvent.GoalCompleted -> Toast.makeText(context, context.getString(com.farbalapps.rinde.R.string.goals_completed_toast, event.title), Toast.LENGTH_LONG).show()
                 is GoalsEvent.DepositExceedsTarget -> { }
             }
         }
@@ -57,12 +60,12 @@ fun GoalsScreen(
         onCreateGoal = { title, target, icon, color, startDate, targetDate -> viewModel.createGoal(title, target, icon, color, startDate, targetDate) },
         onDeleteGoal = { id -> viewModel.deleteGoal(id) },
         onArchiveGoal = { id -> viewModel.archiveGoal(id) },
+        onUnarchiveGoal = { id -> viewModel.unarchiveGoal(id) },
         onTogglePrivacyMode = { viewModel.togglePrivacyMode(it) },
         onToggleReorderMode = { viewModel.toggleReorderMode() },
         onReorderGoals = { goals -> viewModel.saveGoalOrder(goals) }
     )
 }
-
 @Composable
 fun GoalsScreenContent(
     uiState: GoalsUiState,
@@ -75,6 +78,7 @@ fun GoalsScreenContent(
     onCreateGoal: (String, Double, String, String, Long, Long) -> Unit = { _, _, _, _, _, _ -> },
     onDeleteGoal: (String) -> Unit = {},
     onArchiveGoal: (String) -> Unit = {},
+    onUnarchiveGoal: (String) -> Unit = {},
     onTogglePrivacyMode: (Boolean) -> Unit = {},
     onToggleReorderMode: () -> Unit = {},
     onReorderGoals: (List<SavingsGoal>) -> Unit = {}
@@ -95,11 +99,11 @@ fun GoalsScreenContent(
     if (showLimitDialog) {
         AlertDialog(
             onDismissRequest = { showLimitDialog = false },
-            title = { Text("Límite de metas alcanzado") },
-            text = { Text("Actualmente solo puedes tener un máximo de 2 metas activas. Elimina una meta existente o espera a nuestras próximas actualizaciones para tener metas ilimitadas.") },
+            title = { Text(androidx.compose.ui.res.stringResource(com.farbalapps.rinde.R.string.goals_dialog_limit_title)) },
+            text = { Text(androidx.compose.ui.res.stringResource(com.farbalapps.rinde.R.string.goals_dialog_limit_text)) },
             confirmButton = {
                 TextButton(onClick = { showLimitDialog = false }) {
-                    Text("Entendido")
+                    Text(androidx.compose.ui.res.stringResource(com.farbalapps.rinde.R.string.goals_dialog_limit_ok))
                 }
             }
         )
@@ -114,10 +118,16 @@ fun GoalsScreenContent(
     }
 
     if (showArchivedGoalsModal) {
+        val canAddMoreGoals = (uiState as? GoalsUiState.Content)?.canAddMore ?: true
         ArchivedGoalsModal(
             archivedGoals = archivedGoals,
+            canReactivate = canAddMoreGoals,
             onDismissRequest = { showArchivedGoalsModal = false },
-            onDeleteGoal = { id -> onDeleteGoal(id) }
+            onDeleteGoal = { id -> onDeleteGoal(id) },
+            onUnarchiveGoal = { id ->
+                onUnarchiveGoal(id)
+                showArchivedGoalsModal = false
+            }
         )
     }
 
@@ -134,17 +144,18 @@ fun GoalsScreenContent(
             is GoalsUiState.Empty -> {
                 EmptyGoalsContent(
                     onCreateFirstGoalClick = { showCreateBottomSheetInternal = true },
-                    onShowArchivedGoalsClick = { showArchivedGoalsModal = true }
+                    onShowArchivedGoalsClick = { showArchivedGoalsModal = true },
+                    hasArchivedGoals = (uiState as GoalsUiState.Empty).hasArchivedGoals
                 )
             }
             is GoalsUiState.Error -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(text = uiState.message, color = MaterialTheme.colorScheme.error)
+                    Text(text = (uiState as GoalsUiState.Error).message, color = MaterialTheme.colorScheme.error)
                 }
             }
             is GoalsUiState.Content -> {
                 goalsListContent(
-                    uiState = uiState,
+                    uiState = uiState as GoalsUiState.Content,
                     showOptionsMenu = showOptionsMenu,
                     onShowOptionsChange = { showOptionsMenu = it },
                     onCreateGoalClick = { showCreateBottomSheetInternal = true },
@@ -240,7 +251,9 @@ private fun goalsListContent(
             ChefRandomRecommendationCard()
         }
         item {
+            val hasMultipleGoals = allGoals.size > 1
             ActiveGoalsHeader(
+                hasMultipleGoals = hasMultipleGoals,
                 canAddMore = uiState.canAddMore,
                 isReorderMode = uiState.isReorderMode,
                 onToggleReorderMode = onToggleReorderMode,
@@ -289,6 +302,7 @@ private fun goalsListContent(
 
 @Composable
 private fun ActiveGoalsHeader(
+    hasMultipleGoals: Boolean,
     canAddMore: Boolean,
     isReorderMode: Boolean,
     onToggleReorderMode: () -> Unit,
@@ -305,13 +319,24 @@ private fun ActiveGoalsHeader(
             Text("Objetivos activos", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            IconButton(onClick = onToggleReorderMode, modifier = Modifier.size(36.dp)) {
-                Icon(
-                    imageVector = if (isReorderMode) Icons.Default.Check else Icons.Default.Edit,
-                    contentDescription = if (isReorderMode) "Guardar orden" else "Reordenar metas",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp)
-                )
+            if (hasMultipleGoals || isReorderMode) {
+                IconButton(onClick = onToggleReorderMode, modifier = Modifier.size(36.dp)) {
+                    AnimatedContent(
+                        targetState = isReorderMode,
+                        transitionSpec = {
+                            (fadeIn(animationSpec = tween(200)) + scaleIn(initialScale = 0.8f))
+                                .togetherWith(fadeOut(animationSpec = tween(150)) + scaleOut(targetScale = 0.8f))
+                        },
+                        label = "ReorderIconTransition"
+                    ) { reorder ->
+                        Icon(
+                            imageVector = if (reorder) Icons.Default.Check else Icons.Default.Edit,
+                            contentDescription = if (reorder) "Guardar orden" else "Reordenar metas",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
             }
             IconButton(onClick = onShowArchivedGoals, modifier = Modifier.size(36.dp)) {
                 Icon(
@@ -324,3 +349,23 @@ private fun ActiveGoalsHeader(
         }
     }
 }
+
+@Preview(showBackground = true)
+@Composable
+private fun GoalsScreenPreview() {
+    com.farbalapps.rinde.ui.theme.RindeTheme {
+        GoalsScreenContent(
+            uiState = GoalsUiState.Empty(hasArchivedGoals = false),
+            archivedGoals = emptyList(),
+            onDeposit = { _, _, _, _ -> },
+            onCreateGoal = { _, _, _, _, _, _ -> },
+            onDeleteGoal = {},
+            onArchiveGoal = {},
+            onUnarchiveGoal = {},
+            onTogglePrivacyMode = {},
+            onToggleReorderMode = {},
+            onReorderGoals = {}
+        )
+    }
+}
+

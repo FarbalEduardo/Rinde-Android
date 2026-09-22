@@ -41,6 +41,7 @@ class LocationService @Inject constructor(
     fun getAddressFromLocation(latitude: Double, longitude: Double): String? {
         return try {
             val geocoder = android.location.Geocoder(context, java.util.Locale.getDefault())
+            @Suppress("DEPRECATION")
             val addresses = geocoder.getFromLocation(latitude, longitude, 1)
             if (!addresses.isNullOrEmpty()) {
                 val address = addresses[0]

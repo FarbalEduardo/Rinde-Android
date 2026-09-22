@@ -9,6 +9,8 @@ import com.farbalapps.rinde.domain.model.VerificationStatus
 import com.farbalapps.rinde.domain.repository.FeedRepository
 import com.farbalapps.rinde.domain.usecase.ToggleVoteUseCase
 import com.farbalapps.rinde.domain.usecase.profile.*
+import com.farbalapps.rinde.util.UiText
+import com.farbalapps.rinde.util.logger.AppLogger
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import io.mockk.*
@@ -16,7 +18,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.test.*
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -39,7 +40,16 @@ class ProfileViewModelTest {
     private val syncProfileUseCase = mockk<SyncProfileUseCase>()
     private val clearUploadStatusUseCase = mockk<ClearUploadStatusUseCase>()
     private val toggleVoteUseCase = mockk<ToggleVoteUseCase>()
-    private val feedRepository = mockk<FeedRepository>()
+    private val calculateCommunityRatingUseCase = CalculateCommunityRatingUseCase()
+    private val getThemeUseCase = mockk<com.farbalapps.rinde.domain.usecase.settings.GetThemeUseCase>(relaxed = true)
+    private val setThemeUseCase = mockk<com.farbalapps.rinde.domain.usecase.settings.SetThemeUseCase>(relaxed = true)
+    private val getLanguageUseCase = mockk<com.farbalapps.rinde.domain.usecase.settings.GetLanguageUseCase>(relaxed = true)
+    private val setLanguageUseCase = mockk<com.farbalapps.rinde.domain.usecase.settings.SetLanguageUseCase>(relaxed = true)
+    private val isProfilePrivateUseCase = mockk<com.farbalapps.rinde.domain.usecase.settings.IsProfilePrivateUseCase>(relaxed = true)
+    private val togglePrivacyUseCase = mockk<com.farbalapps.rinde.domain.usecase.settings.TogglePrivacyUseCase>(relaxed = true)
+    private val settingsManager = mockk<com.farbalapps.rinde.data.local.SettingsManager>(relaxed = true)
+    private val feedRepository = mockk<FeedRepository>(relaxed = true)
+    private val logger = mockk<AppLogger>(relaxed = true)
     private val firebaseAuth = mockk<FirebaseAuth>()
     private val firebaseUser = mockk<FirebaseUser>()
 
@@ -116,8 +126,17 @@ class ProfileViewModelTest {
             syncProfileUseCase,
             clearUploadStatusUseCase,
             toggleVoteUseCase,
+            calculateCommunityRatingUseCase,
+            getThemeUseCase,
+            setThemeUseCase,
+            getLanguageUseCase,
+            setLanguageUseCase,
+            isProfilePrivateUseCase,
+            togglePrivacyUseCase,
+            settingsManager,
             firebaseAuth,
-            feedRepository
+            feedRepository,
+            logger
         )
     }
 
@@ -130,7 +149,6 @@ class ProfileViewModelTest {
     fun `when viewmodel starts, it should load profile and posts`() = runTest {
         viewModel.loadProfile(testUserId)
         viewModel.uiState.test {
-            // Wait for all updates to settle
             testScheduler.runCurrent()
             
             val state = expectMostRecentItem()
@@ -159,8 +177,17 @@ class ProfileViewModelTest {
             syncProfileUseCase,
             clearUploadStatusUseCase,
             toggleVoteUseCase,
+            calculateCommunityRatingUseCase,
+            getThemeUseCase,
+            setThemeUseCase,
+            getLanguageUseCase,
+            setLanguageUseCase,
+            isProfilePrivateUseCase,
+            togglePrivacyUseCase,
+            settingsManager,
             firebaseAuth,
-            feedRepository
+            feedRepository,
+            logger
         )
         
         viewModel.loadProfile(testUserId)
@@ -169,6 +196,46 @@ class ProfileViewModelTest {
             val state = expectMostRecentItem()
             assertTrue(state.isLoading)
             assertEquals(dummyProfile, state.profile)
+        }
+    }
+
+    @Test
+    fun `when refreshProfile is called, it should sync remote profile`() = runTest {
+        viewModel.loadProfile(testUserId)
+        testScheduler.runCurrent()
+        
+        viewModel.refreshProfile()
+        testScheduler.runCurrent()
+        
+        coVerify(atLeast = 2) { syncProfileUseCase(testUserId) }
+    }
+
+    @Test
+    fun `when target user has private profile, isPrivateProfileRestricted should be true`() = runTest {
+        val otherUserId = "other_private_user"
+        val privateProfile = testProfile.copy(id = otherUserId, isPrivate = true)
+        coEvery { getProfileUseCase(otherUserId) } returns flowOf(privateProfile)
+        coEvery { getProfilePostsUseCase(otherUserId) } returns flowOf(emptyList())
+
+        viewModel.loadProfile(otherUserId)
+        viewModel.uiState.test {
+            testScheduler.runCurrent()
+            val state = expectMostRecentItem()
+            assertFalse(state.isCurrentUser)
+            assertTrue(state.isPrivateProfileRestricted)
+        }
+    }
+
+    @Test
+    fun `when loadProfile called with null and no session, error is emitted and isLoading is false`() = runTest {
+        every { firebaseAuth.currentUser } returns null
+        
+        viewModel.loadProfile(null)
+        viewModel.uiState.test {
+            testScheduler.runCurrent()
+            val state = expectMostRecentItem()
+            assertFalse(state.isLoading)
+            assertTrue(state.error is UiText.StringResource)
         }
     }
 
@@ -268,6 +335,19 @@ class ProfileViewModelTest {
             testScheduler.runCurrent()
             val state = expectMostRecentItem()
             assertEquals(null, state.profile?.photoUrl)
+        }
+    }
+
+    @Test
+    fun `when deletePost succeeds, snackbarMessage is set to UiText`() = runTest {
+        coEvery { feedRepository.deletePost(any(), any()) } returns Result.success(Unit)
+
+        viewModel.deletePost("post_123", emptyList())
+        testScheduler.runCurrent()
+
+        viewModel.uiState.test {
+            val state = expectMostRecentItem()
+            assertTrue(state.snackbarMessage is UiText.StringResource)
         }
     }
 }

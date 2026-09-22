@@ -1,65 +1,43 @@
 package com.farbalapps.rinde.ui.screen.profile
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil.compose.AsyncImage
 import com.farbalapps.rinde.R
+import com.farbalapps.rinde.data.local.ThemeMode
 import com.farbalapps.rinde.domain.model.Profile
-import com.farbalapps.rinde.domain.model.User
-import com.farbalapps.rinde.domain.model.CommunityPost
-import com.farbalapps.rinde.domain.model.VerificationStatus
-import com.farbalapps.rinde.ui.screen.home.community.components.PostCard
-import com.farbalapps.rinde.ui.screen.profile.components.ProfileHeader
+import com.farbalapps.rinde.ui.screen.profile.components.*
 import com.farbalapps.rinde.ui.theme.RindeTheme
 
 data class ProfileActions(
     val onBack: () -> Unit = {},
+    val onRefresh: () -> Unit = {},
     val onEditProfile: () -> Unit = {},
-    val onNavigateToSettings: () -> Unit = {},
+    val onNavigateToPosts: (userId: String, userName: String) -> Unit = { _, _ -> },
     val onNavigateToSaved: () -> Unit = {},
     val onNavigateToBlocked: () -> Unit = {},
+    val onNavigateToAbout: () -> Unit = {},
+    val onNavigateToLegal: (initialTab: Int) -> Unit = {},
     val onLogout: () -> Unit = {},
-    val onTabSelected: (Int) -> Unit = {},
-    val onVote: (String, Int) -> Unit = { _, _ -> },
-    val onToggleSave: (String) -> Unit = {},
-    val onPostClick: (String) -> Unit = {},
-    val onEditPost: (String) -> Unit = {},
-    val onDeletePost: (CommunityPost) -> Unit = {},
-    val onMarkExpired: (CommunityPost) -> Unit = {},
-    val onReportExpired: (CommunityPost) -> Unit = {},
-    val onMarkAvailable: (CommunityPost) -> Unit = {}
+    val onSetTheme: (ThemeMode) -> Unit = {},
+    val onTogglePrivacy: (Boolean) -> Unit = {}
 )
-
-private fun sharePost(context: android.content.Context, post: CommunityPost) {
-    val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-        type = "text/plain"
-        putExtra(android.content.Intent.EXTRA_TEXT, "¡Mira esta oferta en Rinde!\n${post.title}\nhttps://rinde.app/post/${post.id}")
-    }
-    context.startActivity(android.content.Intent.createChooser(shareIntent, "Compartir publicación"))
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -68,19 +46,24 @@ fun ProfileScreen(
     targetUserId: String? = null,
     onBack: (() -> Unit)? = null,
     onEditProfile: () -> Unit = {},
-    onNavigateToSettings: () -> Unit = {},
-    onLogout: () -> Unit = {},
+    onNavigateToPosts: (userId: String, userName: String) -> Unit = { _, _ -> },
     onNavigateToSaved: () -> Unit = {},
     onNavigateToBlocked: () -> Unit = {},
-    onNavigateToPostDetail: (String) -> Unit = {},
-    onEditPost: (String) -> Unit = {},
+    onNavigateToAbout: () -> Unit = {},
+    onNavigateToLegal: (initialTab: Int) -> Unit = {},
+    onLogout: () -> Unit = {},
     viewModel: ProfileViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val postStatusOverlay by viewModel.postStatusOverlay.collectAsStateWithLifecycle()
-    val savedStatusOverlay by viewModel.savedStatusOverlay.collectAsStateWithLifecycle()
-    val voteStatusOverlay by viewModel.voteStatusOverlay.collectAsStateWithLifecycle()
+    val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
+    val isBunkerMode by viewModel.isBunkerMode.collectAsStateWithLifecycle()
+    val isProfilePrivate by viewModel.isProfilePrivate.collectAsStateWithLifecycle()
+
     val snackbarHostState = remember { SnackbarHostState() }
+    var showLogoutDialog by remember { mutableStateOf(false) }
+    var showThemeSheet by remember { mutableStateOf(false) }
+
+    val context = LocalContext.current
 
     LaunchedEffect(targetUserId) {
         viewModel.loadProfile(targetUserId)
@@ -102,75 +85,68 @@ fun ProfileScreen(
 
     LaunchedEffect(uiState.snackbarMessage) {
         uiState.snackbarMessage?.let { msg ->
-            snackbarHostState.showSnackbar(msg)
+            snackbarHostState.showSnackbar(msg.asString(context))
             viewModel.clearSnackbar()
         }
     }
 
-    val actions = remember(viewModel) {
-        ProfileActions(
-            onBack = { onBack?.invoke() },
-            onEditProfile = onEditProfile,
-            onNavigateToSettings = onNavigateToSettings,
-            onNavigateToSaved = onNavigateToSaved,
-            onNavigateToBlocked = onNavigateToBlocked,
-            onLogout = onLogout,
-            onVote = { postId, vote -> viewModel.toggleVote(postId, vote) },
-            onToggleSave = { viewModel.toggleSave(it) },
-            onPostClick = onNavigateToPostDetail,
-            onEditPost = onEditPost,
-            onDeletePost = { post -> viewModel.deletePost(post.id, post.photos) },
-            onMarkExpired = { post -> viewModel.markAsExpired(post.id) },
-            onReportExpired = { post -> viewModel.reportAsExpired(post.id, post.title, post.authorId) },
-            onMarkAvailable = { post -> viewModel.markAsAvailable(post.id) }
+    if (showLogoutDialog) {
+        LogoutConfirmDialog(
+            onConfirm = {
+                showLogoutDialog = false
+                onLogout()
+            },
+            onDismiss = { showLogoutDialog = false }
         )
     }
 
-    ProfileScreenContent(
-        uiState = uiState,
-        postStatusOverlay = postStatusOverlay,
-        savedStatusOverlay = savedStatusOverlay,
-        voteStatusOverlay = voteStatusOverlay,
-        snackbarHostState = snackbarHostState,
-        actions = actions
-    )
-}
+    if (showThemeSheet) {
+        ThemeSelectorSheet(
+            currentTheme = themeMode,
+            onThemeSelected = { viewModel.setTheme(it) },
+            onDismiss = { showThemeSheet = false }
+        )
+    }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun ProfileScreenContent(
-    uiState: ProfileUiState,
-    postStatusOverlay: Map<String, VerificationStatus>,
-    savedStatusOverlay: Map<String, Boolean>,
-    voteStatusOverlay: Map<String, com.farbalapps.rinde.domain.repository.VoteOverlay>,
-    snackbarHostState: SnackbarHostState,
-    actions: ProfileActions
-) {
+    val actions = remember(viewModel, onBack, onEditProfile, onNavigateToPosts, onNavigateToSaved, onNavigateToBlocked, onNavigateToAbout, onNavigateToLegal, onLogout) {
+        ProfileActions(
+            onBack = { onBack?.invoke() },
+            onRefresh = { viewModel.refreshProfile() },
+            onEditProfile = onEditProfile,
+            onNavigateToPosts = onNavigateToPosts,
+            onNavigateToSaved = onNavigateToSaved,
+            onNavigateToBlocked = onNavigateToBlocked,
+            onNavigateToAbout = onNavigateToAbout,
+            onNavigateToLegal = onNavigateToLegal,
+            onLogout = { showLogoutDialog = true },
+            onSetTheme = { viewModel.setTheme(it) },
+            onTogglePrivacy = { viewModel.togglePrivacy(it) }
+        )
+    }
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            if (uiState.isCurrentUser) {
+            if (!uiState.isCurrentUser) {
                 TopAppBar(
-                    title = { },
-                    actions = {
-                        IconButton(onClick = actions.onNavigateToSettings) {
-                            Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings_title))
-                        }
+                    title = {
+                        Text(
+                            text = uiState.profile?.name ?: stringResource(R.string.home_tab_profile),
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                        )
                     },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.background
-                    )
-                )
-            } else {
-                TopAppBar(
-                    title = { },
                     navigationIcon = {
                         IconButton(onClick = actions.onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = stringResource(R.string.back)
+                            )
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.background
+                        containerColor = MaterialTheme.colorScheme.background,
+                        titleContentColor = MaterialTheme.colorScheme.onBackground
                     )
                 )
             }
@@ -178,30 +154,65 @@ fun ProfileScreenContent(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         modifier = Modifier.fillMaxSize()
     ) { padding ->
+        val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+        val calculatedTopPadding = if (!uiState.isCurrentUser) {
+            padding.calculateTopPadding()
+        } else {
+            statusBarTop + 8.dp
+        }
         ProfileContent(
-            innerPadding = padding,
+            innerPadding = PaddingValues(
+                top = calculatedTopPadding,
+                bottom = innerPadding.calculateBottomPadding() 
+            ),
             uiState = uiState,
-            postStatusOverlay = postStatusOverlay,
-            savedStatusOverlay = savedStatusOverlay,
-            voteStatusOverlay = voteStatusOverlay,
+            currentTheme = themeMode,
+            isBunkerMode = isBunkerMode,
+            isPrivate = isProfilePrivate,
+            onShowThemeSheet = { showThemeSheet = true },
+            onToggleBunkerMode = { viewModel.toggleBunkerMode(it) },
+            onShareApp = {
+                val sendIntent = android.content.Intent().apply {
+                    action = android.content.Intent.ACTION_SEND
+                    putExtra(android.content.Intent.EXTRA_TEXT, context.getString(R.string.settings_share_text))
+                    type = "text/plain"
+                }
+                context.startActivity(android.content.Intent.createChooser(sendIntent, null))
+            },
+            onRateApp = {
+                runCatching {
+                    val uri = android.net.Uri.parse("market://details?id=${context.packageName}")
+                    context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, uri))
+                }.onFailure {
+                    val uri = android.net.Uri.parse("https://play.google.com/store/apps/details?id=${context.packageName}")
+                    context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, uri))
+                }
+            },
             actions = actions
         )
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileContent(
     innerPadding: PaddingValues,
     uiState: ProfileUiState,
-    postStatusOverlay: Map<String, com.farbalapps.rinde.domain.model.VerificationStatus> = emptyMap(),
-    savedStatusOverlay: Map<String, Boolean> = emptyMap(),
-    voteStatusOverlay: Map<String, com.farbalapps.rinde.domain.repository.VoteOverlay> = emptyMap(),
+    currentTheme: ThemeMode,
+    isBunkerMode: Boolean,
+    isPrivate: Boolean,
+    onShowThemeSheet: () -> Unit,
+    onToggleBunkerMode: (Boolean) -> Unit,
+    onShareApp: () -> Unit,
+    onRateApp: () -> Unit,
     actions: ProfileActions
 ) {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    
+    val context = LocalContext.current
+
     Surface(
-        modifier = Modifier.fillMaxSize().padding(innerPadding),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(innerPadding),
         color = MaterialTheme.colorScheme.background
     ) {
         if (uiState.isLoading && uiState.profile == null) {
@@ -212,40 +223,187 @@ fun ProfileContent(
         }
 
         uiState.error?.let { error ->
-            ProfileErrorState(error = error, onRetry = { })
+            ProfileErrorState(
+                error = error.asString(context), 
+                onRetry = { actions.onRefresh() }
+            )
             return@Surface
         }
 
         val profile = uiState.profile
-        
-        val emptyMyPostsMsg = stringResource(id = R.string.profile_empty_my_posts)
-        val emptyUserPostsMsg = stringResource(id = R.string.profile_empty_user_posts)
+        val targetUid = profile?.id ?: ""
+        val targetName = profile?.name ?: ""
 
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = dimensionResource(id = R.dimen.padding_large))
+        PullToRefreshBox(
+            isRefreshing = uiState.isRefreshing,
+            onRefresh = { actions.onRefresh() },
+            modifier = Modifier.fillMaxSize()
         ) {
-            item {
-                Box(modifier = Modifier.padding(dimensionResource(id = R.dimen.padding_medium))) {
-                    ProfileHeader(
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = 16.dp,
+                    end = 16.dp,
+                    top = 8.dp,
+                    bottom = 16.dp
+                )
+            ) {
+                // 1. Tarjeta Principal de Identidad / Perfil (Header Hero Card)
+                item {
+                    ProfileHeaderCard(
                         uiState = uiState,
                         onEditProfile = actions.onEditProfile
                     )
                 }
+
+                if (uiState.isCurrentUser) {
+                    // 2. Sección: Actividad y Comunidad
+                    item {
+                        ProfileSectionTitle(title = stringResource(R.string.settings_section_activity_community))
+                    }
+                    item {
+                        ProfileGroupCard {
+                            ProfileGroupItem(
+                                icon = Icons.Default.LocalOffer,
+                                title = stringResource(R.string.profile_tab_posts),
+                                value = (profile?.postsCount ?: 0).toString(),
+                                onClick = { actions.onNavigateToPosts(targetUid, targetName) }
+                            )
+                            ProfileGroupItem(
+                                icon = Icons.Default.BookmarkBorder,
+                                title = stringResource(R.string.profile_tab_saved),
+                                showDivider = false,
+                                onClick = actions.onNavigateToSaved
+                            )
+                        }
+                    }
+
+                    // 3. Sección: Cuenta y Seguridad
+                    item {
+                        ProfileSectionTitle(title = stringResource(R.string.settings_section_privacy))
+                    }
+                    item {
+                        ProfileGroupCard {
+                            ProfileGroupItem(
+                                icon = if (isPrivate) Icons.Default.Lock else Icons.Default.LockOpen,
+                                title = stringResource(R.string.settings_item_privacy_label),
+                                subtitle = if (isPrivate) {
+                                    stringResource(R.string.settings_item_privacy_private_desc)
+                                } else {
+                                    stringResource(R.string.settings_item_privacy_public_desc)
+                                },
+                                showDivider = true,
+                                trailingContent = {
+                                    Switch(
+                                        checked = isPrivate,
+                                        onCheckedChange = actions.onTogglePrivacy
+                                    )
+                                }
+                            )
+                            ProfileGroupItem(
+                                icon = Icons.Default.Block,
+                                title = stringResource(R.string.profile_blocked_users),
+                                subtitle = stringResource(R.string.profile_blocked_users_desc),
+                                showDivider = false,
+                                onClick = actions.onNavigateToBlocked
+                            )
+                        }
+                    }
+
+                    // 4. Sección: Aplicación y Medios
+                    item {
+                        ProfileSectionTitle(title = stringResource(R.string.settings_section_app))
+                    }
+                    item {
+                        ProfileGroupCard {
+                            val themeText = when (currentTheme) {
+                                ThemeMode.SYSTEM -> stringResource(R.string.theme_system)
+                                ThemeMode.LIGHT -> stringResource(R.string.theme_light)
+                                ThemeMode.DARK -> stringResource(R.string.theme_dark)
+                            }
+                            ProfileGroupItem(
+                                icon = Icons.Default.Palette,
+                                title = stringResource(R.string.settings_item_theme),
+                                value = themeText,
+                                showDivider = false,
+                                onClick = onShowThemeSheet
+                            )
+                        }
+                    }
+
+                    // 5. Sección: Comunidad y Soporte
+                    item {
+                        ProfileSectionTitle(title = stringResource(R.string.settings_section_more))
+                    }
+                    item {
+                        ProfileGroupCard {
+                            ProfileGroupItem(
+                                icon = Icons.Default.Share,
+                                title = stringResource(R.string.settings_item_share),
+                                onClick = onShareApp
+                            )
+                            ProfileGroupItem(
+                                icon = Icons.Default.StarRate,
+                                title = stringResource(R.string.settings_item_rate),
+                                onClick = onRateApp
+                            )
+                            ProfileGroupItem(
+                                icon = Icons.Default.Shield,
+                                title = stringResource(R.string.settings_item_privacy),
+                                onClick = { actions.onNavigateToLegal(0) }
+                            )
+                            ProfileGroupItem(
+                                icon = Icons.Default.Gavel,
+                                title = stringResource(R.string.settings_item_terms),
+                                onClick = { actions.onNavigateToLegal(1) }
+                            )
+                            ProfileGroupItem(
+                                icon = Icons.Default.Info,
+                                title = stringResource(R.string.settings_item_about),
+                                showDivider = false,
+                                onClick = actions.onNavigateToAbout
+                            )
+                        }
+                    }
+
+                    // 6. Cerrar sesión
+                    item {
+                        Spacer(modifier = Modifier.height(14.dp))
+                        ProfileGroupCard {
+                            ProfileGroupItem(
+                                icon = Icons.AutoMirrored.Filled.Logout,
+                                title = stringResource(R.string.settings_btn_logout),
+                                titleColor = MaterialTheme.colorScheme.error,
+                                showChevron = false,
+                                showDivider = false,
+                                onClick = actions.onLogout
+                            )
+                        }
+                    }
+                } else {
+                    // Si es un perfil de otro usuario:
+                    item {
+                        ProfileSectionTitle(title = stringResource(R.string.profile_tab_posts))
+                    }
+                    if (uiState.isPrivateProfileRestricted) {
+                        item {
+                            ProfilePrivateNoticeCard()
+                        }
+                    } else {
+                        item {
+                            ProfileGroupCard {
+                                ProfileGroupItem(
+                                    icon = Icons.Default.LocalOffer,
+                                    title = stringResource(R.string.profile_view_user_posts_format, targetName),
+                                    value = (profile?.postsCount ?: 0).toString(),
+                                    showDivider = false,
+                                    onClick = { actions.onNavigateToPosts(targetUid, targetName) }
+                                )
+                            }
+                        }
+                    }
+                }
             }
-
-            ProfilePostsContent(
-                uiState = uiState,
-                postStatusOverlay = postStatusOverlay,
-                savedStatusOverlay = savedStatusOverlay,
-                voteStatusOverlay = voteStatusOverlay,
-                profile = profile,
-                emptyMyPostsMsg = emptyMyPostsMsg,
-                emptyUserPostsMsg = emptyUserPostsMsg,
-                actions = actions
-            )
-
-            item { Spacer(modifier = Modifier.height(dimensionResource(id = R.dimen.spacer_huge))) }
         }
     }
 }
@@ -253,74 +411,36 @@ fun ProfileContent(
 @Composable
 fun ProfileErrorState(error: String, onRetry: () -> Unit) {
     Column(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Icon(Icons.Default.ErrorOutline, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(48.dp))
+        Icon(
+            imageVector = Icons.Default.ErrorOutline,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.error,
+            modifier = Modifier.size(48.dp)
+        )
         Spacer(modifier = Modifier.height(16.dp))
-        Text(text = error, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 32.dp))
-        Spacer(modifier = Modifier.height(24.dp))
+        Text(
+            text = error,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(16.dp))
         Button(onClick = onRetry) {
             Text(stringResource(R.string.profile_btn_retry))
         }
     }
 }
 
-fun LazyListScope.ProfilePostsContent(
-    uiState: ProfileUiState,
-    postStatusOverlay: Map<String, com.farbalapps.rinde.domain.model.VerificationStatus> = emptyMap(),
-    savedStatusOverlay: Map<String, Boolean> = emptyMap(),
-    voteStatusOverlay: Map<String, com.farbalapps.rinde.domain.repository.VoteOverlay> = emptyMap(),
-    profile: Profile?,
-    emptyMyPostsMsg: String,
-    emptyUserPostsMsg: String,
-    actions: ProfileActions
-) {
-    if (uiState.posts.isEmpty()) {
-        item {
-            EmptyProfileState(
-                message = if (uiState.isCurrentUser) emptyMyPostsMsg else emptyUserPostsMsg,
-                icon = Icons.Default.PostAdd
-            )
-        }
-    } else {
-        items(uiState.posts, key = { it.id }) { post ->
-            val context = androidx.compose.ui.platform.LocalContext.current
-            val overriddenStatus = postStatusOverlay[post.id] ?: post.verificationStatus
-            val overriddenSaved = savedStatusOverlay[post.id] ?: post.isSavedByMe
-            val voteOver = voteStatusOverlay[post.id]
-            val finalTruth = voteOver?.truthCount ?: post.truthCount
-            val finalFalse = voteOver?.falseCount ?: post.falseCount
-            val finalMyVote = voteOver?.myVote ?: post.myVoteValue
-            val finalScore = if (voteOver != null) (finalTruth - finalFalse) else post.votesScore
-            PostCard(
-                post = post.copy(
-                    verificationStatus = overriddenStatus,
-                    isSavedByMe = overriddenSaved,
-                    truthCount = finalTruth,
-                    falseCount = finalFalse,
-                    myVoteValue = finalMyVote,
-                    votesScore = finalScore
-                ),
-                isAuthorVerified = false,
-                currentUserId = profile?.id ?: "",
-                onSaveClick = { actions.onToggleSave(post.id) },
-                onPostClick = { actions.onPostClick(post.id) },
-                onEditPost = { actions.onEditPost(post.id) },
-                onDeletePost = { actions.onDeletePost(post) },
-                onMarkExpired = { actions.onMarkExpired(post) },
-                onReportExpired = { actions.onReportExpired(post) },
-                onMarkAvailable = { actions.onMarkAvailable(post) },
-                onSharePost = { sharePost(context, post) },
-                modifier = Modifier.padding(vertical = 1.dp)
-            )
-        }
-    }
-}
-
 @Composable
-fun EmptyProfileState(message: String, icon: androidx.compose.ui.graphics.vector.ImageVector) {
+fun EmptyProfileState(
+    message: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector = Icons.AutoMirrored.Filled.Article
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -350,29 +470,37 @@ fun EmptyProfileState(message: String, icon: androidx.compose.ui.graphics.vector
 fun ProfileScreenPreview() {
     val dummyProfile = Profile(
         id = "dummy_user",
-        name = "Eduardo Farbal",
-        email = "eduardo@example.com",
+        name = "Ronald Richards",
+        email = "ronaldrichards@gmail.com",
         photoUrl = null,
         followersCount = 142,
         followingCount = 98,
         postsCount = 12,
+        commentsCount = 34,
         rating = 4.7f,
         reviewsCount = 23,
+        isVerified = true,
         isPrivate = false,
         isDummy = false
     )
     RindeTheme {
         Surface {
-            ProfileScreenContent(
+            ProfileContent(
+                innerPadding = PaddingValues(0.dp),
                 uiState = ProfileUiState(
                     profile = dummyProfile,
                     posts = emptyList(),
-                    isCurrentUser = true
+                    isCurrentUser = true,
+                    computedRating = 4.8f,
+                    ratedPostsCount = 12
                 ),
-                postStatusOverlay = emptyMap(),
-                savedStatusOverlay = emptyMap(),
-                voteStatusOverlay = emptyMap(),
-                snackbarHostState = remember { SnackbarHostState() },
+                currentTheme = ThemeMode.SYSTEM,
+                isBunkerMode = false,
+                isPrivate = false,
+                onShowThemeSheet = {},
+                onToggleBunkerMode = {},
+                onShareApp = {},
+                onRateApp = {},
                 actions = ProfileActions()
             )
         }

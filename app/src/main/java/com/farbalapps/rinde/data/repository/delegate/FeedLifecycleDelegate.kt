@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import com.farbalapps.rinde.data.local.dao.PostDao
+import com.farbalapps.rinde.data.local.dao.ProfileDao
 import com.farbalapps.rinde.data.local.dao.SyncMetadataDao
 import com.farbalapps.rinde.data.local.dao.UserVoteDao
 import com.farbalapps.rinde.data.local.entity.SyncMetadataEntity
@@ -44,6 +45,7 @@ class FeedLifecycleDelegate @Inject constructor(
     private val database: FirebaseDatabase,
     private val workManager: WorkManager,
     private val postDao: PostDao,
+    private val profileDao: ProfileDao,
     private val syncMetadataDao: SyncMetadataDao,
     private val userVoteDao: UserVoteDao,
     private val savedPostsMemoryCache: SavedPostsMemoryCache,
@@ -158,6 +160,21 @@ class FeedLifecycleDelegate @Inject constructor(
         awaitClose { 
             listener.remove() 
             job.cancel()
+        }
+    }
+
+    suspend fun getPostByIdOnce(postId: String): CommunityPost? = withContext(Dispatchers.IO) {
+        val entity = postDao.getPostById(postId)
+        if (entity != null) {
+            enrichPost(entity.toDomainModel())
+        } else {
+            try {
+                val snapshot = firestore.collection("posts").document(postId).get().await()
+                val dto = snapshot.toObject(CommunityPostDto::class.java)?.copy(id = snapshot.id)
+                dto?.toDomain()?.let { enrichPost(it) }
+            } catch (_: Exception) {
+                null
+            }
         }
     }
 
@@ -288,6 +305,11 @@ class FeedLifecycleDelegate @Inject constructor(
 
         val workData = androidx.work.Data.Builder().putAll(inputMap).build()
 
+        val authorId = post.authorId.takeIf { it.isNotBlank() && it != "anonymous" } ?: firebaseAuth.currentUser?.uid
+        if (!authorId.isNullOrEmpty()) {
+            profileDao.updatePostsCount(authorId, 1)
+        }
+
         workManager.enqueue(
             OneTimeWorkRequestBuilder<CreatePostWorker>()
                 .setInputData(workData)
@@ -296,8 +318,22 @@ class FeedLifecycleDelegate @Inject constructor(
     }
 
     suspend fun deletePost(postId: String, photoUrls: List<String>): Result<Unit> = runCatching {
+        val post = postDao.getPostById(postId)
+        val authorId = post?.authorId ?: firebaseAuth.currentUser?.uid
+
         postDao.updatePostStatus(postId, false)
         firestore.collection("posts").document(postId).delete().await()
+
+        if (!authorId.isNullOrEmpty()) {
+            try {
+                firestore.collection("users").document(authorId)
+                    .update("postsCount", FieldValue.increment(-1)).await()
+            } catch (e: Exception) {
+                android.util.Log.w(TAG, "No se pudo decrementar postsCount en Firestore: ${e.message}")
+            }
+            profileDao.updatePostsCount(authorId, -1)
+        }
+
         android.util.Log.d(TAG, "Post eliminado de Firestore: $postId. Eliminando ${photoUrls.size} imágenes de Cloudinary...")
         photoUrls.forEach { photoUrl ->
             try {
@@ -403,5 +439,45 @@ class FeedLifecycleDelegate @Inject constructor(
                     "isRead" to false
                 ))
         }
+    }
+
+    // ── Gestión de caché y timestamps de lectura ─────────────────────────────
+
+    /**
+     * Implementa [FeedRepository.deleteOldCachedPosts].
+     * Delega la operación SQL al [PostDao] manteniendo la capa de dominio limpia.
+     */
+    suspend fun deleteOldCachedPosts(thresholdMs: Long): Result<Unit> = runCatching {
+        withContext(Dispatchers.IO) {
+            postDao.deleteOldPosts(thresholdMs)
+        }
+    }
+
+    /**
+     * Implementa [FeedRepository.updateFeedSeenTimestamp].
+     * Persiste el momento actual en [SyncMetadataDao] bajo la clave FEED_KEY.
+     */
+    suspend fun updateFeedSeenTimestamp() = withContext(Dispatchers.IO) {
+        val now = System.currentTimeMillis()
+        val existing = syncMetadataDao.getMetadata(FEED_KEY)
+        if (existing != null) {
+            syncMetadataDao.upsert(existing.copy(lastSeenTimestamp = now))
+        } else {
+            syncMetadataDao.upsert(
+                SyncMetadataEntity(
+                    key = FEED_KEY,
+                    lastSyncTimestamp = now,
+                    lastSeenTimestamp = now
+                )
+            )
+        }
+    }
+
+    /**
+     * Implementa [FeedRepository.getLastFeedSeenTimestamp].
+     * Devuelve el lastSeenTimestamp almacenado, o null si no existe registro previo.
+     */
+    suspend fun getLastFeedSeenTimestamp(): Long? = withContext(Dispatchers.IO) {
+        syncMetadataDao.getMetadata(FEED_KEY)?.lastSeenTimestamp
     }
 }

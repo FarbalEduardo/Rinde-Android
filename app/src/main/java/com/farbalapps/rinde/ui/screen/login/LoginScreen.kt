@@ -96,12 +96,61 @@ fun LoginScreen(
         onBackClick = onBackClick
     )
 
+    LaunchedEffect(state.reactivatedSuccess) {
+        if (state.reactivatedSuccess) {
+            Toast.makeText(context, context.getString(R.string.account_reactivated_success), Toast.LENGTH_LONG).show()
+        }
+    }
+
     ResetPasswordDialog(
         isOpen = showResetDialog,
         isLoading = resetState is Resource.Loading,
         onDismiss = { showResetDialog = false },
         onConfirm = { email -> viewModel.resetPassword(email) }
     )
+
+    if (state.showReactivateDialog) {
+        AlertDialog(
+            onDismissRequest = viewModel::dismissReactivation,
+            title = {
+                Text(
+                    text = stringResource(R.string.account_reactivate_dialog_title),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text(
+                    text = stringResource(R.string.account_reactivate_dialog_desc),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = viewModel::confirmReactivation,
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    if (state.isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                    } else {
+                        Text(stringResource(R.string.account_reactivate_btn_confirm))
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = viewModel::dismissReactivation,
+                    enabled = !state.isLoading
+                ) {
+                    Text(stringResource(R.string.account_reactivate_btn_cancel))
+                }
+            }
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

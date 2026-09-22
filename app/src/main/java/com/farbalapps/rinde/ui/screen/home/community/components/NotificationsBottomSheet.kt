@@ -8,7 +8,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.Reply
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.NotificationsNone
@@ -17,6 +18,8 @@ import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.res.stringResource
+import com.farbalapps.rinde.R
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -64,7 +67,7 @@ fun NotificationsBottomSheet(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Notificaciones",
+                    text = stringResource(R.string.community_notif_title),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -80,7 +83,7 @@ fun NotificationsBottomSheet(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "Marcar leídas",
+                            text = stringResource(R.string.notification_mark_read),
                             style = MaterialTheme.typography.labelMedium
                         )
                     }
@@ -115,7 +118,7 @@ fun NotificationsBottomSheet(
                             }
                         }
                         Text(
-                            text = "No tienes notificaciones",
+                            text = stringResource(R.string.notification_empty_message),
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -134,7 +137,8 @@ fun NotificationsBottomSheet(
                             onClick = {
                                 viewModel.markAsRead(notification.id)
                                 if (notification.postId.isNotEmpty()) {
-                                    val isCommentNotif = notification.type == NotificationType.NEW_COMMENT
+                                    val isCommentNotif = notification.type == NotificationType.NEW_COMMENT ||
+                                            notification.type == NotificationType.NEW_REPLY
                                     val isExpiredNotif = notification.type == NotificationType.POST_EXPIRED
                                     onNotificationClick(notification.postId, isCommentNotif, isExpiredNotif)
                                 }
@@ -166,7 +170,7 @@ private fun NotificationItemCard(
             MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f)
         )
         NotificationType.NEW_COMMENT -> Triple(
-            Icons.Default.Chat,
+            Icons.AutoMirrored.Filled.Chat,
             MaterialTheme.colorScheme.primary,
             MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
         )
@@ -175,18 +179,27 @@ private fun NotificationItemCard(
             MaterialTheme.colorScheme.secondary,
             MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f)
         )
+        NotificationType.NEW_REPLY -> Triple(
+            Icons.AutoMirrored.Filled.Reply,
+            MaterialTheme.colorScheme.tertiary,
+            MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.4f)
+        )
     }
 
+    val actorName = notification.actorName ?: stringResource(R.string.notification_actor_fallback)
+
     val titleText = when (notification.type) {
-        NotificationType.POST_EXPIRED -> "Publicación expirada"
-        NotificationType.NEW_COMMENT -> "${notification.actorName ?: "Alguien"} comentó"
-        NotificationType.POST_VERIFIED -> "¡Publicación verificada!"
+        NotificationType.POST_EXPIRED -> stringResource(R.string.notification_title_post_expired)
+        NotificationType.NEW_COMMENT -> stringResource(R.string.notification_title_new_comment, actorName)
+        NotificationType.POST_VERIFIED -> stringResource(R.string.notification_title_post_verified)
+        NotificationType.NEW_REPLY -> stringResource(R.string.notification_title_new_reply, actorName)
     }
 
     val descriptionText = when (notification.type) {
-        NotificationType.POST_EXPIRED -> "Tu publicación \"${notification.postTitle}\" fue marcada como expirada por la comunidad."
-        NotificationType.NEW_COMMENT -> "Comentó en tu publicación: \"${notification.postTitle}\""
-        NotificationType.POST_VERIFIED -> "Tu oferta \"${notification.postTitle}\" ya tiene los votos necesarios."
+        NotificationType.POST_EXPIRED -> stringResource(R.string.notification_desc_post_expired, notification.postTitle)
+        NotificationType.NEW_COMMENT -> stringResource(R.string.notification_desc_new_comment, notification.postTitle)
+        NotificationType.POST_VERIFIED -> stringResource(R.string.notification_desc_post_verified, notification.postTitle)
+        NotificationType.NEW_REPLY -> stringResource(R.string.notification_desc_new_reply, notification.postTitle)
     }
 
     Surface(

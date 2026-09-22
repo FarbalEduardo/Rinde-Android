@@ -70,7 +70,12 @@ object AppModule {
         userVoteDao: com.farbalapps.rinde.data.local.dao.UserVoteDao,
         postDao: com.farbalapps.rinde.data.local.dao.PostDao,
         syncMetadataDao: com.farbalapps.rinde.data.local.dao.SyncMetadataDao,
-        goalsDao: com.farbalapps.rinde.data.local.dao.GoalsDao
+        goalsDao: com.farbalapps.rinde.data.local.dao.GoalsDao,
+        financialDao: com.farbalapps.rinde.data.local.dao.FinancialDao,
+        goalsRepositoryProvider: javax.inject.Provider<com.farbalapps.rinde.domain.repository.GoalsRepository>,
+        firestore: FirebaseFirestore,
+        rtdb: FirebaseDatabase,
+        profileDao: ProfileDao
     ): AuthRepository {
         return FirebaseAuthRepository(
             firebaseAuth,
@@ -78,7 +83,12 @@ object AppModule {
             userVoteDao,
             postDao,
             syncMetadataDao,
-            goalsDao
+            goalsDao,
+            financialDao,
+            goalsRepositoryProvider,
+            firestore,
+            rtdb,
+            profileDao
         )
     }
 
@@ -190,15 +200,175 @@ object AppModule {
                 db.execSQL("ALTER TABLE savings_goals ADD COLUMN orderIndex INTEGER NOT NULL DEFAULT 0")
             }
         }
+
+        val MIGRATION_25_26 = object : androidx.room.migration.Migration(25, 26) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `chat_conversations` (" +
+                    "`id` TEXT NOT NULL, " +
+                    "`userId` TEXT NOT NULL, " +
+                    "`title` TEXT NOT NULL, " +
+                    "`createdAt` INTEGER NOT NULL, " +
+                    "`updatedAt` INTEGER NOT NULL, " +
+                    "`sourceListName` TEXT, " +
+                    "`messages` TEXT NOT NULL, " +
+                    "PRIMARY KEY(`id`))"
+                )
+            }
+        }
+
+        val MIGRATION_26_27 = object : androidx.room.migration.Migration(26, 27) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `financial_profiles` (" +
+                    "`id` TEXT NOT NULL, " +
+                    "`income` REAL NOT NULL, " +
+                    "`incomeFrequency` TEXT NOT NULL, " +
+                    "`currency` TEXT NOT NULL DEFAULT 'MXN', " +
+                    "`updatedAt` INTEGER NOT NULL, " +
+                    "PRIMARY KEY(`id`))"
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `extra_expenses` (" +
+                    "`id` TEXT NOT NULL, " +
+                    "`userId` TEXT NOT NULL, " +
+                    "`label` TEXT NOT NULL, " +
+                    "`amount` REAL NOT NULL, " +
+                    "`iconKey` TEXT NOT NULL DEFAULT 'receipt', " +
+                    "`month` INTEGER NOT NULL, " +
+                    "`year` INTEGER NOT NULL, " +
+                    "`createdAt` INTEGER NOT NULL, " +
+                    "PRIMARY KEY(`id`))"
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_extra_expenses_userId_year_month` ON `extra_expenses` (`userId`, `year`, `month`)")
+            }
+        }
+
+        val MIGRATION_27_28 = object : androidx.room.migration.Migration(27, 28) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `financial_profiles` ADD COLUMN `customStartDate` INTEGER DEFAULT NULL")
+                db.execSQL("ALTER TABLE `financial_profiles` ADD COLUMN `customEndDate` INTEGER DEFAULT NULL")
+            }
+        }
+
+        val MIGRATION_28_29 = object : androidx.room.migration.Migration(28, 29) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `monthly_financial_records` (" +
+                    "`id` TEXT NOT NULL, " +
+                    "`userId` TEXT NOT NULL, " +
+                    "`year` INTEGER NOT NULL, " +
+                    "`month` INTEGER NOT NULL, " +
+                    "`income` REAL NOT NULL, " +
+                    "`extraExpensesTotal` REAL NOT NULL, " +
+                    "`listTotal` REAL NOT NULL, " +
+                    "`goalsCommittedTotal` REAL NOT NULL, " +
+                    "`availableAmount` REAL NOT NULL, " +
+                    "`healthStatus` TEXT NOT NULL, " +
+                    "`isClosed` INTEGER NOT NULL DEFAULT 0, " +
+                    "`updatedAt` INTEGER NOT NULL, " +
+                    "PRIMARY KEY(`id`))"
+                )
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_monthly_financial_records_userId_year_month` ON `monthly_financial_records` (`userId`, `year`, `month`)")
+            }
+        }
+
+        val MIGRATION_29_30 = object : androidx.room.migration.Migration(29, 30) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `financial_profiles` ADD COLUMN `isVariableIncome` INTEGER NOT NULL DEFAULT 0")
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `extra_incomes` (" +
+                    "`id` TEXT NOT NULL, " +
+                    "`userId` TEXT NOT NULL, " +
+                    "`label` TEXT NOT NULL, " +
+                    "`amount` REAL NOT NULL, " +
+                    "`iconKey` TEXT NOT NULL DEFAULT 'payments', " +
+                    "`month` INTEGER NOT NULL, " +
+                    "`year` INTEGER NOT NULL, " +
+                    "`createdAt` INTEGER NOT NULL, " +
+                    "PRIMARY KEY(`id`))"
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_extra_incomes_userId_year_month` ON `extra_incomes` (`userId`, `year`, `month`)")
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `monthly_incomes` (" +
+                    "`id` TEXT NOT NULL, " +
+                    "`userId` TEXT NOT NULL, " +
+                    "`year` INTEGER NOT NULL, " +
+                    "`month` INTEGER NOT NULL, " +
+                    "`amount` REAL NOT NULL, " +
+                    "`updatedAt` INTEGER NOT NULL, " +
+                    "PRIMARY KEY(`id`))"
+                )
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_monthly_incomes_userId_year_month` ON `monthly_incomes` (`userId`, `year`, `month`)")
+            }
+        }
+
+        val MIGRATION_30_31 = object : androidx.room.migration.Migration(30, 31) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `extra_expenses` ADD COLUMN `expenseDate` INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("UPDATE `extra_expenses` SET `expenseDate` = `createdAt` WHERE `expenseDate` = 0")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_extra_expenses_userId_expenseDate` ON `extra_expenses` (`userId`, `expenseDate`)")
+
+                db.execSQL("ALTER TABLE `extra_incomes` ADD COLUMN `incomeDate` INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("UPDATE `extra_incomes` SET `incomeDate` = `createdAt` WHERE `incomeDate` = 0")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_extra_incomes_userId_incomeDate` ON `extra_incomes` (`userId`, `incomeDate`)")
+
+                db.execSQL("ALTER TABLE `monthly_incomes` ADD COLUMN `paymentDate` INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("UPDATE `monthly_incomes` SET `paymentDate` = `updatedAt` WHERE `paymentDate` = 0")
+            }
+        }
         
         return Room.databaseBuilder(
             context,
             RindeDatabase::class.java,
             "rinde_database"
-        ).addMigrations(MIGRATION_6_7, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25)
-         .fallbackToDestructiveMigration()
+        ).addMigrations(MIGRATION_6_7, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31)
+         .fallbackToDestructiveMigration(dropAllTables = true)
          .build()
      }
+
+    @Provides
+    @Singleton
+    fun provideFinancialDao(db: RindeDatabase): com.farbalapps.rinde.data.local.dao.FinancialDao {
+        return db.financialDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideDashboardRepository(
+        dao: com.farbalapps.rinde.data.local.dao.FinancialDao,
+        auth: FirebaseAuth,
+        firestore: FirebaseFirestore,
+        @IoDispatcher ioDispatcher: CoroutineDispatcher
+    ): com.farbalapps.rinde.domain.repository.DashboardRepository {
+        return com.farbalapps.rinde.data.repository.DashboardRepositoryImpl(dao, auth, firestore, ioDispatcher)
+    }
+
+    @Provides
+    @Singleton
+    fun provideChatDao(db: RindeDatabase): com.farbalapps.rinde.data.local.dao.ChatDao {
+        return db.chatDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideChatRepository(
+        dao: com.farbalapps.rinde.data.local.dao.ChatDao,
+        firestore: FirebaseFirestore,
+        auth: FirebaseAuth,
+        @IoDispatcher ioDispatcher: CoroutineDispatcher
+    ): com.farbalapps.rinde.domain.repository.ChatRepository {
+        return com.farbalapps.rinde.data.repository.ChatRepositoryImpl(dao, firestore, auth, ioDispatcher)
+    }
+
+    @Provides
+    @Singleton
+    fun provideAiRepository(
+        @IoDispatcher ioDispatcher: CoroutineDispatcher
+    ): com.farbalapps.rinde.domain.repository.AiRepository {
+        return com.farbalapps.rinde.data.repository.AiRepositoryImpl(ioDispatcher)
+    }
+
 
 
     @Provides
@@ -344,9 +514,10 @@ object AppModule {
     fun provideCommentRepository(
         @ApplicationContext context: Context,
         database: FirebaseDatabase,
-        firestore: FirebaseFirestore
+        firestore: FirebaseFirestore,
+        profileDao: ProfileDao
     ): CommentRepository {
-        return CommentRepositoryImpl(context, database, firestore)
+        return CommentRepositoryImpl(context, database, firestore, profileDao)
     }
 
     @Provides

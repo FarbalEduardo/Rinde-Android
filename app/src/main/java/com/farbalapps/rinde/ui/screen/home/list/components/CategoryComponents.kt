@@ -1,5 +1,7 @@
 package com.farbalapps.rinde.ui.screen.home.list.components
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -73,6 +75,19 @@ private fun CategoryChip(
     onClick: () -> Unit,
     onLongClick: () -> Unit
 ) {
+    val backgroundColor by animateColorAsState(
+        targetValue = if (isSelected) MaterialTheme.colorScheme.primary
+                      else MaterialTheme.colorScheme.surface,
+        animationSpec = tween(durationMillis = 200),
+        label = "chipBgColor"
+    )
+    val contentColor by animateColorAsState(
+        targetValue = if (isSelected) MaterialTheme.colorScheme.onPrimary
+                      else MaterialTheme.colorScheme.onSurfaceVariant,
+        animationSpec = tween(durationMillis = 200),
+        label = "chipContentColor"
+    )
+
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier.height(36.dp)
@@ -85,8 +100,7 @@ private fun CategoryChip(
                     onLongClick = onLongClick
                 ),
             shape = CircleShape,
-            color = if (isSelected) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.surface,
+            color = backgroundColor,
             border = if (isSelected) null 
                      else androidx.compose.foundation.BorderStroke(
                          1.dp, 
@@ -100,8 +114,7 @@ private fun CategoryChip(
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = if (isSelected) androidx.compose.ui.text.font.FontWeight.SemiBold 
                              else androidx.compose.ui.text.font.FontWeight.Medium,
-                color = if (isSelected) MaterialTheme.colorScheme.onPrimary
-                        else MaterialTheme.colorScheme.onSurfaceVariant
+                color = contentColor
             )
         }
     }

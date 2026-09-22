@@ -2,6 +2,7 @@ package com.farbalapps.rinde.ui.screen.home.community
 
 import app.cash.turbine.test
 import com.farbalapps.rinde.data.local.dao.PostDao
+import com.farbalapps.rinde.domain.model.Comment
 import com.farbalapps.rinde.domain.model.CommunityPost
 import com.farbalapps.rinde.domain.model.OfferType
 import com.farbalapps.rinde.domain.model.PostLocation
@@ -20,6 +21,7 @@ import com.farbalapps.rinde.domain.usecase.ReportCommentUseCase
 import com.farbalapps.rinde.domain.usecase.ToggleCommentLikeUseCase
 import com.farbalapps.rinde.domain.usecase.ToggleVoteUseCase
 import com.farbalapps.rinde.domain.usecase.VoteResult
+import com.farbalapps.rinde.util.logger.AppLogger
 import io.mockk.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -38,18 +40,22 @@ class PostDetailViewModelTest {
 
     private val testDispatcher = StandardTestDispatcher()
 
-    private val feedRepository = mockk<FeedRepository>(relaxed = true)
-    private val authRepository = mockk<AuthRepository>(relaxed = true)
-    private val toggleVoteUseCase = mockk<ToggleVoteUseCase>()
-    private val getCommentsUseCase = mockk<GetCommentsUseCase>(relaxed = true)
-    private val addCommentUseCase = mockk<AddCommentUseCase>(relaxed = true)
-    private val addReplyUseCase = mockk<AddReplyUseCase>(relaxed = true)
-    private val toggleLikeUseCase = mockk<ToggleCommentLikeUseCase>(relaxed = true)
-    private val deleteCommentUseCase = mockk<DeleteCommentUseCase>(relaxed = true)
-    private val editCommentUseCase = mockk<EditCommentUseCase>(relaxed = true)
-    private val deleteReplyUseCase = mockk<DeleteReplyUseCase>(relaxed = true)
-    private val editReplyUseCase = mockk<EditReplyUseCase>(relaxed = true)
-    private val reportCommentUseCase = mockk<ReportCommentUseCase>(relaxed = true)
+    private val feedRepository: FeedRepository = mockk(relaxed = true)
+    private val authRepository: AuthRepository = mockk(relaxed = true)
+    private val toggleVoteUseCase: ToggleVoteUseCase = mockk(relaxed = true)
+    private val getCommentsUseCase: GetCommentsUseCase = mockk(relaxed = true)
+    private val addCommentUseCase: AddCommentUseCase = mockk(relaxed = true)
+    private val addReplyUseCase: AddReplyUseCase = mockk(relaxed = true)
+    private val toggleLikeUseCase: ToggleCommentLikeUseCase = mockk(relaxed = true)
+    private val deleteCommentUseCase: DeleteCommentUseCase = mockk(relaxed = true)
+    private val editCommentUseCase: EditCommentUseCase = mockk(relaxed = true)
+    private val deleteReplyUseCase: DeleteReplyUseCase = mockk(relaxed = true)
+    private val editReplyUseCase: EditReplyUseCase = mockk(relaxed = true)
+    private val reportCommentUseCase: ReportCommentUseCase = mockk(relaxed = true)
+    private val markPostExpiredUseCase: com.farbalapps.rinde.domain.usecase.community.MarkPostExpiredUseCase = mockk(relaxed = true)
+    private val deletePostUseCase: com.farbalapps.rinde.domain.usecase.community.DeletePostUseCase = mockk(relaxed = true)
+    private val reportPostExpiredUseCase: com.farbalapps.rinde.domain.usecase.community.ReportPostExpiredUseCase = mockk(relaxed = true)
+    private val logger: AppLogger = mockk(relaxed = true)
     private val postDao = mockk<PostDao>(relaxed = true)
 
     private lateinit var viewModel: PostDetailViewModel
@@ -120,7 +126,11 @@ class PostDetailViewModelTest {
             editCommentUseCase,
             deleteReplyUseCase,
             editReplyUseCase,
-            reportCommentUseCase
+            reportCommentUseCase,
+            markPostExpiredUseCase,
+            deletePostUseCase,
+            reportPostExpiredUseCase,
+            logger
         )
     }
 
@@ -138,22 +148,18 @@ class PostDetailViewModelTest {
 
         viewModel.toggleVote(1)
 
-        viewModel.uiState.test {
-            val state = expectMostRecentItem()
-            // Verifica que el voto optimista en el UI se aplico
-            assertEquals(1, state.post?.myVoteValue)
-            assertEquals(3, state.post?.truthCount) // 2 + 1 optimista
+        assertEquals(VoteUiState.SENDING, viewModel.uiState.value.voteState)
 
-            testScheduler.runCurrent()
+        testScheduler.runCurrent()
 
-            val confirmedState = expectMostRecentItem()
-            // Verifica que finalmente se actualizo con los datos reales del servidor
-            assertEquals(5, confirmedState.post?.truthCount)
-            assertEquals(1, confirmedState.post?.falseCount)
-            assertEquals(VoteUiState.IDLE, confirmedState.voteState)
-        }
+        val confirmedState = viewModel.uiState.value
+        // Verifica que finalmente se actualizo con los datos reales del servidor
+        assertEquals(1, confirmedState.post?.myVoteValue)
+        assertEquals(5, confirmedState.post?.truthCount)
+        assertEquals(1, confirmedState.post?.falseCount)
+        assertEquals(VoteUiState.IDLE, confirmedState.voteState)
 
-        coVerify { postDao.updateVoteState(testPostId, 1, 5, 1, 4) }
+        coVerify { toggleVoteUseCase(testPostId, 1, "author_1") }
     }
 
     @Test
@@ -175,4 +181,53 @@ class PostDetailViewModelTest {
             assertEquals("Fallo del servidor", state.voteErrorMessage)
         }
     }
+
+    @Test
+    fun `onCommentTextChange updates state and submitComment sends comment successfully`() = runTest {
+        val mockComment = Comment(
+            id = "c_1",
+            postId = testPostId,
+            authorId = "current_user_1",
+            authorName = "Current User",
+            text = "Gran oferta!",
+            timestamp = 1000L
+        )
+        coEvery { addCommentUseCase(postId = testPostId, text = "Gran oferta!", imageUri = null) } returns Result.success(mockComment)
+
+        viewModel.loadPost(testPostId)
+        testScheduler.runCurrent()
+
+        viewModel.onCommentTextChange("Gran oferta!")
+        assertEquals("Gran oferta!", viewModel.uiState.value.commentText)
+
+        viewModel.submitComment()
+        testScheduler.runCurrent()
+
+        assertEquals("", viewModel.uiState.value.commentText)
+        assertEquals(false, viewModel.uiState.value.isSendingComment)
+        coVerify { addCommentUseCase(postId = testPostId, text = "Gran oferta!", imageUri = null) }
+    }
+
+    @Test
+    fun `setReplyingTo sets target comment and onReplyTextChange updates state`() = runTest {
+        val targetComment = Comment(
+            id = "c_1",
+            postId = testPostId,
+            authorId = "user_2",
+            authorName = "Ana",
+            text = "Comentario inicial",
+            timestamp = 1000L
+        )
+
+        viewModel.setReplyingTo(targetComment)
+        assertEquals(targetComment, viewModel.uiState.value.replyingToComment)
+        assertEquals("", viewModel.uiState.value.replyText)
+
+        viewModel.onReplyTextChange("Totalmente de acuerdo")
+        assertEquals("Totalmente de acuerdo", viewModel.uiState.value.replyText)
+
+        viewModel.setReplyingTo(null)
+        assertEquals(null, viewModel.uiState.value.replyingToComment)
+    }
 }
+

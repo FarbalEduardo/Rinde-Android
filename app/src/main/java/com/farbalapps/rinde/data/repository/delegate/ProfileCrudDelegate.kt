@@ -25,6 +25,7 @@ import javax.inject.Inject
 class ProfileCrudDelegate @Inject constructor(
     private val firestore: FirebaseFirestore,
     private val profileDao: ProfileDao,
+    private val postDao: com.farbalapps.rinde.data.local.dao.PostDao,
     @ApplicationContext private val context: Context
 ) {
     fun generateGenericName(userId: String): String {
@@ -236,21 +237,27 @@ class ProfileCrudDelegate @Inject constructor(
 
     private suspend fun propagateProfileChangesToPosts(userId: String, validatedName: String, finalPhotoUrl: String?) {
         try {
+            // 1. Actualizar Room localmente para consistencia inmediata
+            postDao.updateAuthorDetails(userId, validatedName, finalPhotoUrl)
+
+            // 2. Propagación en Firestore por lotes seguros (máx 450 por batch)
             val postsSnapshot = firestore.collection("posts")
                 .whereEqualTo("authorId", userId)
                 .get().await()
             
             if (!postsSnapshot.isEmpty) {
-                firestore.runBatch { batch ->
-                    postsSnapshot.documents.forEach { doc ->
-                        val postRef = firestore.collection("posts").document(doc.id)
-                        val postUpdates = mutableMapOf<String, Any?>(
-                            "authorName" to validatedName,
-                            "authorPhotoUrl" to finalPhotoUrl
-                        )
-                        batch.update(postRef, postUpdates)
-                    }
-                }.await()
+                postsSnapshot.documents.chunked(450).forEach { chunk ->
+                    firestore.runBatch { batch ->
+                        chunk.forEach { doc ->
+                            val postRef = firestore.collection("posts").document(doc.id)
+                            val postUpdates = mutableMapOf<String, Any?>(
+                                "authorName" to validatedName,
+                                "authorPhotoUrl" to finalPhotoUrl
+                            )
+                            batch.update(postRef, postUpdates)
+                        }
+                    }.await()
+                }
             }
         } catch (pe: Exception) {
             android.util.Log.e("ProfileCrudDelegate", "⚠️ Error al propagar cambios a posts", pe)

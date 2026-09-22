@@ -14,8 +14,6 @@ class GetGoalsUseCase @Inject constructor(
     private val repository: GoalsRepository
 ) {
     operator fun invoke(): Flow<List<SavingsGoal>> {
-        return repository.getGoals().map { list ->
-            list.sortedByDescending { it.currentAmount }
-        }
+        return repository.getGoals()
     }
 }

@@ -73,6 +73,9 @@ class FeedRepositoryImpl @Inject constructor(
     override fun getPostById(postId: String): Flow<CommunityPost> =
         lifecycleDelegate.getPostById(postId)
 
+    override suspend fun getPostByIdOnce(postId: String): CommunityPost? =
+        lifecycleDelegate.getPostByIdOnce(postId)
+
     override fun getUserPosts(userId: String): Flow<List<CommunityPost>> =
         lifecycleDelegate.getUserPosts(userId)
 
@@ -154,6 +157,34 @@ class FeedRepositoryImpl @Inject constructor(
     override suspend fun savePendingVote(userId: String, postId: String, voteValue: Int, authorId: String) =
         interactionDelegate.savePendingVote(userId, postId, voteValue, authorId)
 
+    override suspend fun isNetworkAvailable(): Boolean =
+        interactionDelegate.isNetworkAvailable()
+
+    override suspend fun handleOfflineVote(userId: String, postId: String, voteValue: Int, authorId: String) =
+        interactionDelegate.handleOfflineVote(userId, postId, voteValue, authorId)
+
+    override suspend fun applyOptimisticVote(postId: String, voteValue: Int) =
+        interactionDelegate.applyOptimisticVote(postId, voteValue)
+
+    override suspend fun revertOptimisticVote(postId: String) =
+        interactionDelegate.revertOptimisticVote(postId)
+
+    override suspend fun syncLocalVoteAfterSuccess(postId: String, voteValue: Int, counts: Triple<Int, Int, Int>) =
+        interactionDelegate.syncLocalVoteAfterSuccess(postId, voteValue, counts)
+
+    override suspend fun recalculateAuthorTrustScore(authorId: String): Result<Unit> =
+        interactionDelegate.recalculateAuthorTrustScore(authorId)
+
     override fun clearSessionState() =
         interactionDelegate.clearSessionState()
+
+    override suspend fun deleteOldCachedPosts(thresholdMs: Long): Result<Unit> =
+        lifecycleDelegate.deleteOldCachedPosts(thresholdMs)
+
+    override suspend fun updateFeedSeenTimestamp() =
+        lifecycleDelegate.updateFeedSeenTimestamp()
+
+    override suspend fun getLastFeedSeenTimestamp(): Long? =
+        lifecycleDelegate.getLastFeedSeenTimestamp()
 }
+

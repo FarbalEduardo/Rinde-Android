@@ -49,6 +49,18 @@ class MainActivity : ComponentActivity() {
                 com.farbalapps.rinde.data.local.ThemeMode.SYSTEM -> androidx.compose.foundation.isSystemInDarkTheme()
             }
 
+            // Sincronizar con AppCompatDelegate para componentes y el sistema
+            val appLanguage by settingsManager.appLanguage.collectAsState(initial = com.farbalapps.rinde.data.local.AppLanguage.ES)
+            androidx.compose.runtime.LaunchedEffect(appLanguage) {
+                val localeTag = if (appLanguage == com.farbalapps.rinde.data.local.AppLanguage.EN) "en" else "es"
+                val current = androidx.appcompat.app.AppCompatDelegate.getApplicationLocales()
+                if (current.toLanguageTags() != localeTag) {
+                    androidx.appcompat.app.AppCompatDelegate.setApplicationLocales(
+                        androidx.core.os.LocaleListCompat.forLanguageTags(localeTag)
+                    )
+                }
+            }
+
             RindeTheme(darkTheme = isDarkTheme) {
                 val navController = rememberNavController()
                 val isLoggedByFirebase = authRepository.isUserLoggedIn()
